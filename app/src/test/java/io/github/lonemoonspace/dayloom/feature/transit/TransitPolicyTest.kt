@@ -199,8 +199,14 @@ class TransitPolicyTest {
         assertEquals(UiText.Plural(R.plurals.transit_notify_delayed, 12, listOf("R1", "07:40", 12)), notification.body)
         assertTrue(rule.evaluate(RuleInput(fresh, now), decision.newState).notifications.isEmpty())
 
+        // A cancellation added to an already notified delay is the news, so the body names it.
+        // 已通知过的延误之外又有一段被取消，取消才是新消息，正文要说它。
+        trips = trips.copy(outbound = listOf(option(leg(line = "R1", delay = 12), leg(line = "B2", dep = now.plusMinutes(45), cancelled = true))))
+        val worse = rule.evaluate(RuleInput(fresh, now), decision.newState)
+        assertEquals(UiText.Res(R.string.transit_notify_cancelled, listOf("B2", "08:15")), worse.notifications.single().body)
+
         trips = trips.copy(mode = CommuteMode.BOTH)
-        assertEquals(decision.newState, rule.evaluate(RuleInput(fresh, now), decision.newState).newState)
+        assertEquals(worse.newState, rule.evaluate(RuleInput(fresh, now), worse.newState).newState)
         assertTrue(rule.evaluate(RuleInput(fresh, now), null).notifications.isEmpty())
     }
 }

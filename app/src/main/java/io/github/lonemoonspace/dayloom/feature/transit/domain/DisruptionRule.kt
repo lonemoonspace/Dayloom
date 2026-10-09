@@ -41,9 +41,11 @@ class DisruptionRule(
             CommuteMode.BOTH -> null
         }
         val decision = DisruptionPolicy.evaluate(option, input.now.zone, previous)
-        val leg = decision.disrupted.firstOrNull() ?: return RuleDecision(decision.newFingerprint)
+        // The notification stays one line, so it names the worst leg: a cancelled connection matters more than an earlier
+        // leg's delay, which may also be the part the user was already told about.
+        // 通知只有一行，所以说最严重的那一段：换乘段被取消比前一段的延误更要紧，而那个延误可能已经通知过了。
+        val (leg, status) = TransitPolicy.worst(TripOption(decision.disrupted)) ?: return RuleDecision(decision.newFingerprint)
         val at = Instant.ofEpochMilli(leg.aimedDeparture).atZone(input.now.zone).format(TIME)
-        val status = TransitPolicy.legStatus(leg)
         val body = if (status.state == LegState.CANCELLED) {
             UiText.Res(R.string.transit_notify_cancelled, listOf(leg.line, at))
         } else {

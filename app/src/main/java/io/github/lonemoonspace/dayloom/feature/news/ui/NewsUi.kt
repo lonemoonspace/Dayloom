@@ -177,8 +177,14 @@ private fun ArticleRow(article: StoredArticle, now: ZonedDateTime, onClick: () -
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false),
             )
-            Text(" · " + ago(article.publishedAt, now), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-            Spacer(Modifier.weight(1f))
+            // The age keeps the rest of the row, so the star always ends up at the right edge. / 时间占满剩余部分，星标总在最右边。
+            Text(
+                " · " + ago(article.publishedAt, now),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
             if (article.starred) Icon(Icons.Default.Star, contentDescription = stringResource(R.string.news_starred), tint = MaterialTheme.statusColors.amber, modifier = Modifier.size(16.dp))
         }
         Text(

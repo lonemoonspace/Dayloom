@@ -67,6 +67,8 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import androidx.room.RoomDatabase
+import kotlin.reflect.KClass
 
 /**
  * Acceptance test of design §4.4: a module written only against core plugs into the host, the coordinator, notifications and
@@ -152,6 +154,7 @@ class ModuleHostTest {
             override suspend fun put(plain: String) {}
         }
         override val googleMapsKey = secret("google_maps")
+        override fun <T : RoomDatabase> database(type: KClass<T>): T = error("no database in this test")
         override fun notificationId(offset: Int) = offset
     }
 

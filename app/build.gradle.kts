@@ -6,6 +6,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
 }
 
 val keystoreProps = Properties()
@@ -101,6 +103,12 @@ androidComponents {
     }
 }
 
+// The schema of every Room version is committed, so each later version can be tested against it (frozen from v1.0.0).
+// 每个 Room 版本的 schema 都提交入库，以后每个新版本都能对照它测试迁移（从 v1.0.0 起冻结）。
+room {
+    schemaDirectory("$projectDir/schemas")
+}
+
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
@@ -181,6 +189,10 @@ dependencies {
     implementation(libs.reorderable)
     // Lunar dates and solar terms for the calendar module, behind its LunarProvider. / 日历模块的农历与节气，藏在 LunarProvider 后面。
     implementation(libs.lunar)
+
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.work.runtime.ktx)

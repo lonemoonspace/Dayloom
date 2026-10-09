@@ -133,7 +133,6 @@ interface ModuleInstance {
     val notificationChannels: List<ChannelSpec>
     val notificationRules: List<NotificationRule<*>>
     val brief: BriefContributor?                   // One line in the morning brief
-    val backgroundWork: List<BackgroundWorkSpec>   // Extra background work (e.g. news sync); added with the news module in M6, unused before
     val configured: Flow<ConfigState>              // Whether it is set up; if not, cards show a setup prompt
 }
 ```
@@ -384,7 +383,8 @@ Module settings refer to these shared items — weather defaults to "Home", traf
 - **Data source**: the user's own Miniflux server and LLM endpoint.
 - **Settings**: Miniflux URL and token; LLM URL, model and key.
 - **Storage**: Room `dayloom.db` (schema exported from v1).
-- **Background work**: `news.sync` (declared by the module through `backgroundWork`).
+- **Background work**: `news.sync` is an ordinary source that runs in the shared refresh round (see §12).
+- **Implementation (M6)**: the original code was not available at implementation time, so it was rewritten against the Miniflux API v1 and the OpenAI-compatible chat API and tested against a mock server. A sync first downloads the unread and starred entries (up to 200 each, newest first), then pushes local changes (read/unread in one request; the bookmark call toggles, so a star is only sent when the server's state differs from the wanted one), then merges into Room. A local change stays pending, and wins, until a push succeeds, so reading offline is not undone; an article that left a complete unread list without a local change was read elsewhere; a list cut off at 200 proves nothing; read, unstarred articles older than 14 days are deleted. Opening an article marks it read and pushes read states right away. AI summaries are made only when the user taps the button (they may cost money), from the text without markup cut to 12,000 characters, with a prompt in the app language, and kept in Room. Addresses must be https, because the token must not travel in clear text. Room comes through `ModuleContext.database()`; only one module may own `dayloom.db`. A small home card shows the unread count and the three newest headlines.
 - **Summary language**: follows the app language (prompts in both languages).
 - **Ported**: almost entirely (it is already generic); the main work is bilingual text and plugging into the module interface.
 
@@ -395,7 +395,7 @@ Module settings refer to these shared items — weather defaults to "Home", traf
 - One generic periodic refresh worker (unique work name `dayloom.refresh`): picks the sources due according to their `RefreshCadence` → refreshes them → hands the result to `NotificationEngine` to evaluate the rules of all enabled modules.
 - No network constraint: rules that only depend on the clock (expiry reminders) must run offline too, and offline sources are skipped without a request. WorkManager is asked to retry only when every source actually attempted failed.
 - While the home screen is visible it checks every minute with the same cadences and refreshes the due sources; a source that failed waits an interval before the next try, so a broken service is not hit every minute.
-- Extra module work (e.g. `news.sync`) is declared by the module and scheduled centrally by `app`; disabling a module cancels its work.
+- Modules get no WorkManager work of their own: work like the news sync is a `CachedSource` too (`news.sync`), run in the same round on its own `RefreshCadence`, with the same offline skip, error display and failure throttling; a disabled module is simply no longer refreshed. That leaves one worker to freeze.
 - Worker class names and unique work names are frozen from v1.0 (WorkManager instantiates scheduled work by class name).
 
 ---
@@ -510,6 +510,8 @@ Check every file before porting: remove personal information from defaults, test
 | Morning brief | Sent on the first background round inside the to-work window, every day, with a line each from weather, public transport, traffic and expiry reminders; modules whose data is too old are left out (§7.3) |
 | rc.1 test feedback (2026-10-09) | Calendar header: solar term on the clock row, stem-branch year and lunar date on one line beside the date. Weather: always Home, no settings; the commute windows on the card are replaced by the day's outlook with clothing advice and tips, tomorrow's from 18:00. Public transport: train and bus commutes apart (sources, cards, settings, rules). Places: no device location; Google search with a shared key, typed coordinates, Open-Meteo as the keyless fallback. Daily windows apply every day. Settings may now have several cards per module (`ModuleInstance.settingsSections`). The overall look is being discussed separately |
 | Visual design (2026-10-09) | Direction B of three mockups: Material 3 Expressive with colours from the wallpaper (Material You), 20 dp cards, one weather card in the scheme's primary colour that does not change with the weather, cards with a line icon, title, route and "updated" time in one row, one dense row per trip option (departure, lines, arrival, duration, transfers, platform, status pill), three options per commute window by default |
+| News sync (M6) | No separate `news.sync` WorkManager work; it runs as a source in the shared refresh round (§12). Room comes through `ModuleContext.database()`, and only one module may own `dayloom.db` |
+| Football and news implementation (M5, M6) | The PersonalAssistant code was not available at implementation time; both were rewritten from the public API documentation and tested against a mock server. They need one real test with real keys |
 
 ### Rationale (archived)
 

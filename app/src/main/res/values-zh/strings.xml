@@ -493,4 +493,51 @@
     <string name="football_comp_bsa">巴甲</string>
     <string name="football_comp_ec">欧洲杯</string>
     <string name="football_comp_wc">世界杯</string>
+
+    <string name="news_title">新闻</string>
+    <string name="news_summary">来自你自己的 Miniflux 服务器的文章，双向同步，可选 AI 摘要</string>
+    <string name="news_setup_server">Miniflux 服务器地址</string>
+    <string name="news_setup_token">Miniflux API 令牌</string>
+    <string name="news_setup_llm">请在「设置 → 新闻」里填写 AI 摘要的接口、模型与 Key</string>
+    <string name="news_tab_setup">请在「设置 → 新闻」里填写 Miniflux 服务器地址与 API 令牌。</string>
+    <string name="news_server_note">你自己的 Miniflux 服务器，只支持 https。在 Miniflux 的「设置 → API 密钥」里创建令牌。令牌只保存在本机。</string>
+    <string name="news_server_url">服务器地址，如 https://reader.example.org</string>
+    <string name="news_token">Miniflux API 令牌</string>
+    <string name="news_llm_section">AI 摘要（可选）</string>
+    <string name="news_llm_note">任意兼容 OpenAI 的接口。只在你点按钮时生成摘要，可能会产生服务商的费用。文章正文会发送给该服务。</string>
+    <string name="news_llm_url">接口地址，如 https://api.example.org/v1</string>
+    <string name="news_llm_model">模型名称</string>
+    <string name="news_llm_key">API Key</string>
+    <string name="news_url_invalid">请输入完整的 https:// 地址。</string>
+    <string name="news_all_read">全部读完了。</string>
+    <string name="news_none">这里还没有内容。</string>
+    <string name="news_filter_unread">未读</string>
+    <string name="news_filter_starred">收藏</string>
+    <string name="news_filter_all">全部</string>
+    <string name="news_starred">已收藏</string>
+    <string name="news_has_summary">有 AI 摘要</string>
+    <string name="news_back">返回列表</string>
+    <string name="news_open_original">打开原文</string>
+    <string name="news_star">收藏</string>
+    <string name="news_unstar">取消收藏</string>
+    <string name="news_mark_read">标为已读</string>
+    <string name="news_mark_unread">标为未读</string>
+    <string name="news_summary_title">AI 摘要</string>
+    <string name="news_summarize">生成摘要</string>
+    <string name="news_summarizing">正在生成摘要…</string>
+    <plurals name="news_unread_count">
+        <item quantity="other">%1$d 篇未读</item>
+    </plurals>
+    <plurals name="news_reading_minutes">
+        <item quantity="other">约 %1$d 分钟读完</item>
+    </plurals>
+    <plurals name="news_ago_minutes">
+        <item quantity="other">%1$d 分钟前</item>
+    </plurals>
+    <plurals name="news_ago_hours">
+        <item quantity="other">%1$d 小时前</item>
+    </plurals>
+    <plurals name="news_ago_days">
+        <item quantity="other">%1$d 天前</item>
+    </plurals>
 </resources>

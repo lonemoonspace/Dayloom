@@ -508,4 +508,56 @@
     <string name="football_comp_bsa">Brasileirão</string>
     <string name="football_comp_ec">European Championship</string>
     <string name="football_comp_wc">World Cup</string>
+
+    <string name="news_title">News</string>
+    <string name="news_summary">Articles from your own Miniflux server, synced both ways, with optional AI summaries</string>
+    <string name="news_setup_server">Miniflux server address</string>
+    <string name="news_setup_token">Miniflux API token</string>
+    <string name="news_setup_llm">AI summary endpoint, model and key in Settings → News</string>
+    <string name="news_tab_setup">Enter your Miniflux server and API token under Settings → News.</string>
+    <string name="news_server_note">Your own Miniflux server, https only. Create an API token under Settings → API Keys in Miniflux. The token stays on this phone.</string>
+    <string name="news_server_url">Server address, e.g. https://reader.example.org</string>
+    <string name="news_token">Miniflux API token</string>
+    <string name="news_llm_section">AI summaries (optional)</string>
+    <string name="news_llm_note">Any OpenAI-compatible endpoint. Summaries are made only when you tap the button and may cost money with your provider. The article text is sent to that service.</string>
+    <string name="news_llm_url">Endpoint, e.g. https://api.example.org/v1</string>
+    <string name="news_llm_model">Model name</string>
+    <string name="news_llm_key">API key</string>
+    <string name="news_url_invalid">Enter a full https:// address.</string>
+    <string name="news_all_read">All caught up.</string>
+    <string name="news_none">Nothing here yet.</string>
+    <string name="news_filter_unread">Unread</string>
+    <string name="news_filter_starred">Starred</string>
+    <string name="news_filter_all">All</string>
+    <string name="news_starred">Starred</string>
+    <string name="news_has_summary">AI summary</string>
+    <string name="news_back">Back to the list</string>
+    <string name="news_open_original">Open original</string>
+    <string name="news_star">Star</string>
+    <string name="news_unstar">Unstar</string>
+    <string name="news_mark_read">Mark read</string>
+    <string name="news_mark_unread">Mark unread</string>
+    <string name="news_summary_title">AI summary</string>
+    <string name="news_summarize">Summarize</string>
+    <string name="news_summarizing">Summarizing…</string>
+    <plurals name="news_unread_count">
+        <item quantity="one">%1$d unread</item>
+        <item quantity="other">%1$d unread</item>
+    </plurals>
+    <plurals name="news_reading_minutes">
+        <item quantity="one">%1$d min read</item>
+        <item quantity="other">%1$d min read</item>
+    </plurals>
+    <plurals name="news_ago_minutes">
+        <item quantity="one">%1$d min ago</item>
+        <item quantity="other">%1$d min ago</item>
+    </plurals>
+    <plurals name="news_ago_hours">
+        <item quantity="one">%1$d h ago</item>
+        <item quantity="other">%1$d h ago</item>
+    </plurals>
+    <plurals name="news_ago_days">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
 </resources>

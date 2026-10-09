@@ -9,6 +9,8 @@ import io.github.lonemoonspace.dayloom.core.secret.SecretState
 import io.github.lonemoonspace.dayloom.core.storage.SnapshotStore
 import io.github.lonemoonspace.dayloom.core.storage.ValueStore
 import io.github.lonemoonspace.dayloom.core.time.AppClock
+import androidx.room.RoomDatabase
+import kotlin.reflect.KClass
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.KSerializer
@@ -50,6 +52,14 @@ interface ModuleContext {
      * 用户的 Google Maps Platform Key，与地点搜索共用，只需输入一次（`core.google_maps`）。
      */
     val googleMapsKey: ModuleSecret
+
+    /**
+     * The app's Room database `dayloom.db` (design §6.1), built for [type]. Only one module may own it; a second caller
+     * fails at creation, so a new module needing Room gets its own file instead of sharing tables.
+     * App 的 Room 数据库 `dayloom.db`（设计文档 §6.1），按 [type] 构建。只能由一个模块持有；第二个调用者在创建时就会失败，
+     * 所以新模块需要 Room 时要用自己的文件，而不是共用表。
+     */
+    fun <T : RoomDatabase> database(type: KClass<T>): T
 
     fun channelId(name: String): String = "$moduleId.$name"
 

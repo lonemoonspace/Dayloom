@@ -6,7 +6,7 @@ Dayloom is an extensible Android daily dashboard: weather, Norwegian public tran
 football and news, each as a module you can turn on or off. The UI is available in English and Chinese.
 
 > **Status: early development.** The module system, home screen, settings and build pipeline are in place (milestone M0),
-> along with shared places and daily routine, weather and calendar (M1), expiry reminders and traffic (M2), Norwegian public transport (M3), and background refresh, notifications, the morning brief and onboarding (M4). See the [design document](docs/design.en.md) for the plan.
+> along with shared places and daily routine, weather and calendar (M1), expiry reminders and traffic (M2), Norwegian public transport (M3), background refresh, notifications, the morning brief and onboarding (M4), football (M5) and news with AI summaries (M6). See the [design document](docs/design.en.md) for the plan.
 
 ## Principles
 

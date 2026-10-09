@@ -53,6 +53,10 @@ looks it up literally.
   fixtures, results with win/draw/loss and the league table; a home card appears around match time with a live score.
   Refreshing follows the schedule (every minute while a match is on). Opt-in kick-off reminders and final scores, and a
   morning-brief line on match days.
+- News module (M6): articles from your own Miniflux server in their own tab, with Unread / Starred / All filters and an
+  article view. Read and starred states sync both ways and survive being offline; syncing runs every 30 minutes in the
+  shared background round. AI summaries from any OpenAI-compatible endpoint, on request, in the app language. A home card
+  shows the unread count and the newest headlines. Articles are kept in Room (`dayloom.db`, schema in `app/schemas/`).
 
 - 项目骨架（M0）：带注册表、宿主与命名空间存储的模块系统；从 PersonalAssistant 移植并泛化的刷新协调器与通知引擎；
   卡片可拖动排序的首页；语言、时区与模块开关设置；中英文资源；架构测试与字符串一致性测试；CI 与发版 workflow。
@@ -86,3 +90,6 @@ looks it up literally.
 - 足球模块（M5）：用你自己的免费 football-data.org Key 关注一支球队。独立标签页显示当下的比赛、赛程、带胜平负的赛果与联赛积分榜；
   比赛前后首页出现一张带实时比分的卡片。刷新节奏随赛程变化（比赛进行中每分钟一次）。需要主动打开的开赛提醒与终场比分，比赛日的
   早间简报里有一行。
+- 新闻模块（M6）：来自你自己的 Miniflux 服务器的文章，独立标签页，可按未读 / 收藏 / 全部筛选，并有文章阅读页。已读与收藏状态
+  双向同步，离线时的修改不会丢；同步每 30 分钟在共用的后台轮次里运行一次。可用任意兼容 OpenAI 的接口按需生成 App 语言的 AI 摘要。
+  首页卡片显示未读数与最新标题。文章存于 Room（`dayloom.db`，schema 在 `app/schemas/`）。

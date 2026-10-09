@@ -3,6 +3,8 @@ package io.github.lonemoonspace.dayloom.app
 import android.content.Context
 import android.util.Log
 import androidx.datastore.dataStoreFile
+import androidx.room.Room
+import androidx.room.RoomDatabase
 import io.github.lonemoonspace.dayloom.BuildConfig
 import io.github.lonemoonspace.dayloom.app.work.BackgroundRound
 import io.github.lonemoonspace.dayloom.core.i18n.AppLanguage
@@ -41,6 +43,7 @@ import io.github.lonemoonspace.dayloom.core.time.ZonePolicy
 import io.github.lonemoonspace.dayloom.core.time.currentDeviceZone
 import io.github.lonemoonspace.dayloom.core.time.deviceZoneFlow
 import java.time.ZoneId
+import kotlin.reflect.KClass
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -135,6 +138,19 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
         }
     }
 
+    private var databaseOwner: String? = null
+
+    private val databaseFactory = object : DefaultModuleContext.DatabaseFactory {
+        override fun <T : RoomDatabase> create(moduleId: String, type: KClass<T>): T {
+            synchronized(this) {
+                val owner = databaseOwner
+                check(owner == null || owner == moduleId) { "$DATABASE_FILE is owned by $owner, not $moduleId" }
+                databaseOwner = moduleId
+            }
+            return Room.databaseBuilder(appContext, type.java, DATABASE_FILE).build()
+        }
+    }
+
     val host = ModuleHost(
         modules = modules,
         settings = appSettings,
@@ -151,6 +167,7 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
                 moduleSettings = moduleSettings,
                 secrets = secrets,
                 snapshotFactory = snapshotFactory,
+                databaseFactory = databaseFactory,
             )
         },
         coordinator = coordinator,
@@ -169,5 +186,8 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
 
     private companion object {
         const val TAG = "AppGraph"
+
+        /** Frozen from v1.0.0 (design §6.1). / 从 v1.0.0 起冻结（设计文档 §6.1）。 */
+        const val DATABASE_FILE = "dayloom.db"
     }
 }

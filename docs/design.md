@@ -132,7 +132,6 @@ interface ModuleInstance {
     val notificationChannels: List<ChannelSpec>
     val notificationRules: List<NotificationRule<*>>
     val brief: BriefContributor?                   // 早间简报中的一行
-    val backgroundWork: List<BackgroundWorkSpec>   // 额外后台任务（如新闻同步）；M6 随新闻模块加入，在此之前没有使用者
     val configured: Flow<ConfigState>              // 是否已配置好；未配置时卡片显示引导
 }
 ```
@@ -383,7 +382,8 @@ val allModules: List<FeatureModule> = listOf(
 - **数据源**：用户自己的 Miniflux 服务器与 LLM 接口。
 - **设置**：Miniflux 地址与 Token、LLM 地址/模型/Key。
 - **存储**：Room `dayloom.db`（schema v1 起导出）。
-- **后台任务**：`news.sync`（模块通过 `backgroundWork` 声明）。
+- **后台任务**：`news.sync` 是一个普通来源，在共用的刷新轮次里运行（见 §12）。
+- **实现（M6）**：原项目代码在实现时不可用，按 Miniflux API v1 与 OpenAI 兼容接口重写，并用模拟服务器测试。同步：先下载未读与已收藏（各最多 200 条，按发布时间倒序），再把本地修改推送上去（已读/未读一次请求；收藏接口是切换式的，只在服务器状态与想要的不同时才发），最后合并进 Room。本地修改在推送成功前保持「待发送」并优先，离线时读过的文章不会被改回去；从完整的未读列表里消失、本地又没改过的文章视为在别处读过；被 200 条截断的列表不做这种推断；14 天前的已读且未收藏文章删除。打开文章即标为已读并尽快推送已读状态。AI 摘要只在用户点按钮时生成（可能产生费用），正文去掉标签后截到 12000 字符，提示词按 App 语言选择，摘要存进 Room。地址只接受 https（令牌不能明文传输）。Room 通过 `ModuleContext.database()` 获得，`dayloom.db` 只能有一个模块持有。首页有一张小卡片：未读数与最新三条标题。
 - **摘要语言**：跟随应用语言（提示词中英两套）。
 - **移植**：基本整体移植（它本来就是通用的），主要工作是文案双语化与接入模块接口。
 
@@ -394,7 +394,7 @@ val allModules: List<FeatureModule> = listOf(
 - 一个通用的周期刷新 Worker（唯一任务名 `dayloom.refresh`）：按各来源的 `RefreshCadence` 挑选需要刷新的来源 → 刷新 → 交给 `NotificationEngine` 评估所有已启用模块的规则。
 - 不加联网约束：只依赖时间的规则（到期提醒）离线时也要运行，离线的来源直接跳过、不发请求。只有实际尝试过的来源全部失败时才让 WorkManager 重试。
 - 首页可见时每分钟按同样的节奏检查一次，刷新到期的来源；失败的来源要再等一个间隔才重试，不会每分钟敲一次坏掉的服务。
-- 模块的额外任务（如 `news.sync`）由模块声明，`app` 统一排期；模块关闭时取消对应任务。
+- 模块不另设 WorkManager 任务：新闻同步这类工作也是一个 `CachedSource`（`news.sync`），在同一轮里按自己的 `RefreshCadence` 运行，沿用离线跳过、错误显示与失败节流；模块关闭时它自然不再被刷新。这样只有一个 Worker 需要冻结。
 - Worker 的类名与唯一任务名从 v1.0 起冻结（WorkManager 按类名实例化已排期的任务）。
 
 ---
@@ -509,6 +509,8 @@ val allModules: List<FeatureModule> = listOf(
 | 早间简报 | 每天上班时间窗内第一轮后台刷新时发送，天气、公共交通、路况、到期提醒各一行；数据过旧的模块不出现在简报里（§7.3） |
 | rc.1 测试反馈（2026-10-09） | 日历页头：节气放在时钟那一行，干支年与农历日期写成一行、与公历日期同高。天气：固定为家，没有设置；卡片上的通勤时间窗换成当天概况、穿衣建议与温馨提示，18:00 起改看明天。公共交通：火车与公交通勤分开（来源、卡片、设置、规则）。地点：不用设备定位；Google 搜索（共用 Key）、手动输入坐标，没有 Key 时退回 Open-Meteo。日常时间窗每天生效。一个模块现在可以有多张设置卡片（`ModuleInstance.settingsSections`）。整体视觉另行讨论 |
 | 视觉设计（2026-10-09） | 三个样稿中选定方向 B：Material 3 Expressive，颜色取自壁纸（Material You），卡片 20 dp 圆角；天气是一整块主题主色的主卡，不随天气变色；卡片标题行一行放下线条图标、标题、路线与「更新于」；每个出行方案一行（出发、线路、到达、用时、换乘、站台、状态胶囊）；每段通勤时间窗默认显示 3 个方案 |
+| 新闻同步（M6） | 不另设 `news.sync` WorkManager 任务，而是作为来源在共用的刷新轮次里运行（§12）；Room 经 `ModuleContext.database()` 提供，`dayloom.db` 只能由一个模块持有 |
+| 足球与新闻的实现（M5、M6） | PersonalAssistant 代码在实现时不可用，按公开接口文档重写，用模拟服务器测试；拿到真实 Key 后需要实测一次 |
 
 ### 决策依据（存档）
 

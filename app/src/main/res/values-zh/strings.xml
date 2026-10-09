@@ -260,6 +260,62 @@
     <string name="traffic_severe">严重拥堵</string>
     <string name="traffic_unknown">未知</string>
 
+    <string name="transit_title">公共交通</string>
+    <string name="transit_summary">挪威的通勤方案与实时发车，数据来自 Entur</string>
+    <string name="transit_commute_title">通勤</string>
+    <string name="transit_boards_title">发车板</string>
+    <string name="transit_setup_commute">通勤站点</string>
+    <string name="transit_setup_boards">收藏站点</string>
+    <string name="transit_to_work">上班 · %1$s → %2$s</string>
+    <string name="transit_back_home">回家 · %1$s → %2$s</string>
+    <string name="transit_direction">%1$s → %2$s</string>
+    <string name="transit_no_options">目前查不到出行方案。</string>
+    <string name="transit_no_departures">接下来几小时没有符合条件的班次。</string>
+    <string name="transit_direct">%1$s · 直达</string>
+    <plurals name="transit_transfers">
+        <item quantity="other">%1$s · 在 %2$s 换乘</item>
+    </plurals>
+    <plurals name="transit_minutes">
+        <item quantity="other">%1$d 分钟</item>
+    </plurals>
+    <string name="transit_now">现在</string>
+    <string name="transit_platform">%1$s 站台</string>
+    <string name="transit_on_time">准点</string>
+    <plurals name="transit_late">
+        <item quantity="other">晚 %1$d 分</item>
+    </plurals>
+    <string name="transit_no_realtime">实时未知</string>
+    <string name="transit_cancelled">已取消</string>
+    <string name="transit_line_status">%1$s：%2$s</string>
+    <string name="transit_attribution">公共交通数据：Entur（NLOD）</string>
+    <string name="transit_region_note">你的「家」不在挪威。公共交通目前只覆盖挪威（Entur）。</string>
+    <string name="transit_from">起点</string>
+    <string name="transit_to">终点</string>
+    <string name="transit_not_set">未设置</string>
+    <string name="transit_options">显示方案数</string>
+    <string name="transit_add_board">添加收藏站点</string>
+    <string name="transit_edit_board">编辑收藏站点</string>
+    <string name="transit_delete">删除</string>
+    <string name="transit_stop">站点</string>
+    <string name="transit_lines_hint">只看这些线路，例如 31, L1</string>
+    <string name="transit_destinations_hint">只看开往，例如 Tonsenhagen</string>
+    <string name="transit_filter_help">多个用逗号分隔；留空表示全部显示。终点与车前显示牌匹配，带「stasjon」或「via …」的写法也算。</string>
+    <string name="transit_filter_lines">线路 %1$s</string>
+    <string name="transit_filter_destinations">开往 %1$s</string>
+    <string name="transit_filter_none">全部班次</string>
+    <string name="transit_search_title">查找站点</string>
+    <string name="transit_search_hint">站点名称</string>
+    <string name="transit_search">搜索</string>
+    <string name="transit_search_none">没有找到站点。</string>
+    <string name="transit_channel">通勤异常</string>
+    <string name="transit_channel_description">通勤时段内下一个方案被取消或严重延误时</string>
+    <string name="transit_notify_to_work">上班路上有异常</string>
+    <string name="transit_notify_back_home">回家路上有异常</string>
+    <string name="transit_notify_cancelled">%2$s 的 %1$s 已取消</string>
+    <plurals name="transit_notify_delayed">
+        <item quantity="other">%2$s 的 %1$s 晚点 %3$d 分钟</item>
+    </plurals>
+
     <string name="nav_home">首页</string>
     <string name="nav_settings">设置</string>
 

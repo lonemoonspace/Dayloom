@@ -21,6 +21,10 @@ looks it up literally.
   PersonalAssistant's ticket logic; delivery is switched on with the notification wiring in M4.
 - Traffic module (M2): driving time and congestion between two saved places with the user's own Google Routes key,
   direction following the daily windows; off by default. Ported from PersonalAssistant.
+- Public transport module (M3): Entur trip options between two commute stops (any line, with transfers) following the
+  daily windows, with the real-time status of every leg (on time, late, cancelled, no live data); real-time departure
+  boards for favourite stops, filtered by line and destination; disruption rule for the commute windows. Entur API
+  validated first; request handling, status rules and disruption fingerprints ported from PersonalAssistant.
 
 - 项目骨架（M0）：带注册表、宿主与命名空间存储的模块系统；从 PersonalAssistant 移植并泛化的刷新协调器与通知引擎；
   卡片可拖动排序的首页；语言、时区与模块开关设置；中英文资源；架构测试与字符串一致性测试；CI 与发版 workflow。
@@ -33,3 +37,6 @@ looks it up literally.
   截止当天、刚过期）移植自 PersonalAssistant 的车票逻辑；实际发送在 M4 接上通知后开启。
 - 路况模块（M2）：用用户自己的 Google Routes Key 查两个已保存地点之间的驾车时间与拥堵，方向随日常时间窗切换；默认关闭。
   移植自 PersonalAssistant。
+- 公共交通模块（M3）：用 Entur 查两个通勤站点之间的出行方案（任意线路，可换乘），跟随日常时间窗，并显示每一段的实时状态
+  （准点、晚点、取消、实时未知）；收藏站点的实时发车板，可按线路与终点过滤；通勤时段的异常通知规则。先验证了 Entur 接口；
+  请求处理、状态规则与异常指纹移植自 PersonalAssistant。

@@ -255,8 +255,8 @@ private fun remainingText(status: ReminderPolicy.Status): String = when {
 @Composable
 private fun chip(state: ReminderPolicy.State): Pair<Color, Int> = when (state) {
     ReminderPolicy.State.ACTIVE -> MaterialTheme.statusColors.green to R.drawable.ic_status_ok
-    ReminderPolicy.State.EXPIRING -> MaterialTheme.statusColors.amber to R.drawable.ic_status_warn
-    ReminderPolicy.State.EXPIRED -> MaterialTheme.statusColors.red to R.drawable.ic_status_warn
+    ReminderPolicy.State.EXPIRING -> MaterialTheme.statusColors.amber to R.drawable.ic_status_late
+    ReminderPolicy.State.EXPIRED -> MaterialTheme.statusColors.red to R.drawable.ic_status_cancel
 }
 
 @Composable

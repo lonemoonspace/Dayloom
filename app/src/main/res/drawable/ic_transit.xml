@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Public transport module icon: a train front, tinted by the Icon. / 公共交通模块图标：列车正面，由 Icon 着色。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M8,3h8a3,3 0,0 1,3 3v9a3,3 0,0 1,-3 3h-8a3,3 0,0 1,-3 -3v-9a3,3 0,0 1,3 -3zM5,10h14M8,21l2,-3M16,21l-2,-3" />
+    <path android:fillColor="#FF000000" android:pathData="M8.5,14.5m-1.2,0a1.2,1.2 0,1 1,2.4 0a1.2,1.2 0,1 1,-2.4 0M15.5,14.5m-1.2,0a1.2,1.2 0,1 1,2.4 0a1.2,1.2 0,1 1,-2.4 0" />
+</vector>

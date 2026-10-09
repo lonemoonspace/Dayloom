@@ -269,6 +269,66 @@
     <string name="traffic_severe">Heavy traffic</string>
     <string name="traffic_unknown">Unknown</string>
 
+    <string name="transit_title">Public transport</string>
+    <string name="transit_summary">Commute trips and live departures in Norway, from Entur</string>
+    <string name="transit_commute_title">Commute</string>
+    <string name="transit_boards_title">Departures</string>
+    <string name="transit_setup_commute">Commute stops</string>
+    <string name="transit_setup_boards">A favourite stop</string>
+    <string name="transit_to_work">To work · %1$s → %2$s</string>
+    <string name="transit_back_home">Home · %1$s → %2$s</string>
+    <string name="transit_direction">%1$s → %2$s</string>
+    <string name="transit_no_options">No trips found right now.</string>
+    <string name="transit_no_departures">No matching departures in the next hours.</string>
+    <string name="transit_direct">%1$s · direct</string>
+    <plurals name="transit_transfers">
+        <item quantity="one">%1$s · change at %2$s</item>
+        <item quantity="other">%1$s · changes at %2$s</item>
+    </plurals>
+    <plurals name="transit_minutes">
+        <item quantity="one">%1$d min</item>
+        <item quantity="other">%1$d min</item>
+    </plurals>
+    <string name="transit_now">Now</string>
+    <string name="transit_platform">Pl. %1$s</string>
+    <string name="transit_on_time">On time</string>
+    <plurals name="transit_late">
+        <item quantity="one">%1$d min late</item>
+        <item quantity="other">%1$d min late</item>
+    </plurals>
+    <string name="transit_no_realtime">No live data</string>
+    <string name="transit_cancelled">Cancelled</string>
+    <string name="transit_line_status">%1$s: %2$s</string>
+    <string name="transit_attribution">Public transport data: Entur (NLOD)</string>
+    <string name="transit_region_note">Your Home is outside Norway. Public transport currently covers Norway only (Entur).</string>
+    <string name="transit_from">From</string>
+    <string name="transit_to">To</string>
+    <string name="transit_not_set">Not set</string>
+    <string name="transit_options">Options to show</string>
+    <string name="transit_add_board">Add a favourite stop</string>
+    <string name="transit_edit_board">Edit favourite stop</string>
+    <string name="transit_delete">Delete</string>
+    <string name="transit_stop">Stop</string>
+    <string name="transit_lines_hint">Only these lines, e.g. 31, L1</string>
+    <string name="transit_destinations_hint">Only towards, e.g. Tonsenhagen</string>
+    <string name="transit_filter_help">Separate several with commas; leave empty to show everything. A destination matches the sign on the vehicle, also when it adds "stasjon" or "via …".</string>
+    <string name="transit_filter_lines">Lines %1$s</string>
+    <string name="transit_filter_destinations">towards %1$s</string>
+    <string name="transit_filter_none">All departures</string>
+    <string name="transit_search_title">Find a stop</string>
+    <string name="transit_search_hint">Stop name</string>
+    <string name="transit_search">Search</string>
+    <string name="transit_search_none">No stops found.</string>
+    <string name="transit_channel">Commute disruptions</string>
+    <string name="transit_channel_description">When the next trip in your commute window is cancelled or heavily delayed</string>
+    <string name="transit_notify_to_work">Disruption on your way to work</string>
+    <string name="transit_notify_back_home">Disruption on your way home</string>
+    <string name="transit_notify_cancelled">%1$s at %2$s is cancelled</string>
+    <plurals name="transit_notify_delayed">
+        <item quantity="one">%1$s at %2$s is %3$d minute late</item>
+        <item quantity="other">%1$s at %2$s is %3$d minutes late</item>
+    </plurals>
+
     <string name="nav_home">Home</string>
     <string name="nav_settings">Settings</string>
 

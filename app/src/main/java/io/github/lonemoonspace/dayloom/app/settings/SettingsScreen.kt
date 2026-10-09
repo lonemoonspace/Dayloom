@@ -8,6 +8,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -194,6 +196,7 @@ internal fun ModulesCard(modules: List<ModuleToggle>, onToggle: (String, Boolean
  * open-source licenses (MIT requires shipping lunar-java's notice with the app).
  * 版本、许可证与源代码，外加三个对话框：数据从哪里来、App 保存与发送什么、开源许可（MIT 要求随 App 附上 lunar-java 的声明）。
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AboutCard() {
     val uriHandler = LocalUriHandler.current
@@ -205,11 +208,10 @@ private fun AboutCard() {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        // One line when it fits (Chinese), wrapping only when it does not. / 放得下就排一行（中文），放不下才换行。
+        FlowRow(Modifier.fillMaxWidth()) {
             TextButton(onClick = { showing = AboutPage.SOURCES }) { Text(stringResource(R.string.about_data_sources)) }
             TextButton(onClick = { showing = AboutPage.PRIVACY }) { Text(stringResource(R.string.about_privacy)) }
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             TextButton(onClick = { showing = AboutPage.LICENSES }) { Text(stringResource(R.string.about_licenses)) }
             TextButton(onClick = { uriHandler.openUri(SharedHttpClient.REPO_URL) }) { Text(stringResource(R.string.settings_source_code)) }
         }

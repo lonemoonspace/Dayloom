@@ -298,7 +298,7 @@ private fun WeatherIcon.drawable(): Int = when (this) {
 }
 
 @StringRes
-private fun conditionText(condition: WeatherCondition): Int = when (condition) {
+internal fun conditionText(condition: WeatherCondition): Int = when (condition) {
     WeatherCondition.CLEAR -> R.string.weather_clear
     WeatherCondition.FAIR -> R.string.weather_fair
     WeatherCondition.PARTLY_CLOUDY -> R.string.weather_partly_cloudy

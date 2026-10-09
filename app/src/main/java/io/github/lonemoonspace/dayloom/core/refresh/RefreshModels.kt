@@ -37,7 +37,10 @@ enum class Trigger {
     /** Background worker: silent, never shows a spinner or records failures. / 后台任务：静默，不显示转圈、不记录失败。 */
     BACKGROUND,
 
-    /** High-frequency polling (live scores): silent like [BACKGROUND]. / 高频轮询（实时比分）：与 [BACKGROUND] 一样静默。 */
+    /**
+     * Polling while a screen is open (home cards, live scores): silent like [BACKGROUND].
+     * 页面打开期间的轮询（首页卡片、实时比分）：与 [BACKGROUND] 一样静默。
+     */
     LIVE_POLL,
     ;
 

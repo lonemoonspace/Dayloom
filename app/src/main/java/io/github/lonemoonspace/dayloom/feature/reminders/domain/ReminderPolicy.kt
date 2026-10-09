@@ -91,6 +91,16 @@ object ReminderPolicy {
     fun needsAttention(items: List<ReminderItem>, now: LocalDateTime): Boolean =
         statuses(items, now).any { it.state != State.ACTIVE }
 
+    /**
+     * Items for the morning brief, soonest first: those about to expire, and those that expired within
+     * [EXPIRED_NOTICE_WINDOW]; an item long expired stays out, as it does for notifications.
+     * 早间简报要说的条目，最早到期的在前：快到期的，以及在 [EXPIRED_NOTICE_WINDOW] 之内刚过期的；早已过期的条目不提，
+     * 与通知一致。
+     */
+    fun briefItems(items: List<ReminderItem>, now: LocalDateTime): List<Status> = statuses(items, now).filter {
+        it.state == State.EXPIRING || (it.state == State.EXPIRED && !now.isAfter(it.until.plus(EXPIRED_NOTICE_WINDOW)))
+    }
+
     /** A fresh id: `item<n>` with the smallest unused n. / 新 id：`item<n>`，n 取最小未用的数。 */
     fun newId(items: List<ReminderItem>): String {
         val used = items.mapTo(mutableSetOf()) { it.id }

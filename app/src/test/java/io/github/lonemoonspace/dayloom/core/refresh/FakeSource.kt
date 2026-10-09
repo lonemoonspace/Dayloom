@@ -25,6 +25,7 @@ class FakeSource(
     initialParam: String = "A",
     /** Extra refresh-key part, standing in for a credential fingerprint. / 额外的刷新键部分，代替凭据指纹。 */
     initialSignal: Any = 0,
+    override val cadence: RefreshCadence = RefreshCadence.DEFAULT,
 ) : CachedSource<String, String>(SourceId("test.$name"), store, clock) {
 
     val param = MutableStateFlow(initialParam)

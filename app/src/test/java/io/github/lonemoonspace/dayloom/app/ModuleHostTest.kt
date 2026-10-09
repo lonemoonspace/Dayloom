@@ -12,7 +12,15 @@ import io.github.lonemoonspace.dayloom.core.module.ModuleSecret
 import io.github.lonemoonspace.dayloom.core.module.ModuleTab
 import io.github.lonemoonspace.dayloom.core.module.SettingsSection
 import io.github.lonemoonspace.dayloom.core.network.FakeNetworkStatus
+import io.github.lonemoonspace.dayloom.app.work.BackgroundRound
+import io.github.lonemoonspace.dayloom.core.i18n.UiText
+import io.github.lonemoonspace.dayloom.core.notify.AppNotification
+import io.github.lonemoonspace.dayloom.core.notify.BriefContributor
 import io.github.lonemoonspace.dayloom.core.notify.ChannelSpec
+import io.github.lonemoonspace.dayloom.core.notify.CoreNotifications
+import io.github.lonemoonspace.dayloom.core.notify.NotificationEngine
+import io.github.lonemoonspace.dayloom.core.notify.NotificationStateStore
+import io.github.lonemoonspace.dayloom.core.notify.Notifier
 import io.github.lonemoonspace.dayloom.core.notify.NotificationRule
 import io.github.lonemoonspace.dayloom.core.notify.RuleDecision
 import io.github.lonemoonspace.dayloom.core.notify.RuleInput
@@ -53,6 +61,7 @@ import kotlinx.serialization.builtins.serializer
 import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -101,8 +110,10 @@ class ModuleHostTest {
             override val name = "seen"
             override val codec = StringStateCodec
             override suspend fun isEnabled() = true
-            override suspend fun evaluate(input: RuleInput, previous: String?) = RuleDecision(previous)
+            override suspend fun evaluate(input: RuleInput, previous: String?) =
+                RuleDecision(if (input.report.succeeded(source.id)) "fresh" else previous)
         })
+        override val brief = BriefContributor { UiText.Raw("sample line") }
     }
 
     private class SampleModule(
@@ -161,7 +172,7 @@ class ModuleHostTest {
         assertEquals(setOf(SourceId("sample.main")), coordinator.sourceIds)
         assertEquals(setOf(SourceId("sample.main")), ModuleHost.sourceIds(active))
         assertEquals(listOf("sample.seen"), ModuleHost.rules(active).map { it.stateKey })
-        assertEquals(setOf("sample.alerts"), ModuleHost.channels(active).keys)
+        assertEquals(setOf("sample.alerts", "core.brief"), ModuleHost.channels(active).keys)
 
         coordinator.refresh(ModuleHost.sourceIds(active), Trigger.USER)
         assertEquals(1, module.instance.source.fetches)
@@ -203,7 +214,7 @@ class ModuleHostTest {
         val other = SampleModule(id = "other", notificationIds = 6_000..6_099)
         val settings = InMemoryValueStore(AppSettings(cardOrder = listOf("other.card", "sample.card")))
         val (host, coordinator) = backgroundScope.host(listOf(module, other), settings)
-        val vm = HomeViewModel(host.active, settings, coordinator)
+        val vm = HomeViewModel(host.active, settings, coordinator, flowOf(Routine()), clock)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
         testScheduler.runCurrent()
 
@@ -217,6 +228,79 @@ class ModuleHostTest {
         vm.saveOrder(listOf("sample.card", "other.card"))
         testScheduler.runCurrent()
         assertEquals(listOf("sample.card", "other.card"), settings.state.value.cardOrder)
+    }
+
+    private class MemoryState : NotificationStateStore {
+        val values = mutableMapOf<String, String>()
+        override suspend fun read(key: String) = values[key]
+        override suspend fun write(key: String, value: String) {
+            values[key] = value
+        }
+    }
+
+    private class Sent : Notifier {
+        val notifications = mutableListOf<AppNotification>()
+        override fun send(notification: AppNotification) {
+            notifications += notification
+        }
+    }
+
+    @Test
+    fun `a background round refreshes due sources, runs the module rules and sends the morning brief`() = runTest {
+        val module = SampleModule()
+        val settings = InMemoryValueStore(AppSettings(morningBrief = true))
+        val (host, coordinator) = backgroundScope.host(listOf(module), settings)
+        val state = MemoryState()
+        val sent = Sent()
+        // Friday 08:00, inside the default to-work window. / 周五 08:00，在默认的上班时间窗内。
+        val round = BackgroundRound(
+            active = host.active,
+            routine = flowOf(Routine()),
+            clock = clock,
+            coordinator = coordinator,
+            engine = NotificationEngine(state, sent),
+            morningBrief = { settings.get().morningBrief },
+        )
+        testScheduler.runCurrent()
+
+        assertFalse("success needs no retry", round.run())
+        assertEquals(1, module.instance.source.fetches)
+        assertEquals("fresh", state.values["sample.seen"])
+        val brief = sent.notifications.single()
+        assertEquals(UiText.Lines(listOf(UiText.Raw("sample line"))), brief.body)
+        assertEquals("2026-10-09", state.values[CoreNotifications.BRIEF_STATE_KEY])
+
+        round.run()
+        assertEquals("not due again within its cadence", 1, module.instance.source.fetches)
+        assertEquals("the brief goes out once a day", 1, sent.notifications.size)
+    }
+
+    @Test
+    fun `the visible home screen refreshes due sources and stops when hidden`() = runTest {
+        val module = SampleModule()
+        val settings = InMemoryValueStore(AppSettings())
+        val (host, coordinator) = backgroundScope.host(listOf(module), settings)
+        val vm = HomeViewModel(host.active, settings, coordinator, flowOf(Routine()), clock)
+        testScheduler.runCurrent()
+
+        vm.startPolling()
+        testScheduler.runCurrent()
+        assertEquals("refreshed on becoming visible", 1, module.instance.source.fetches)
+
+        testScheduler.advanceTimeBy(61_000)
+        testScheduler.runCurrent()
+        assertEquals("still fresh a minute later", 1, module.instance.source.fetches)
+
+        clock.current = clock.current.plusHours(2)
+        testScheduler.advanceTimeBy(60_000)
+        testScheduler.runCurrent()
+        assertEquals("due again", 2, module.instance.source.fetches)
+
+        vm.stopPolling()
+        clock.current = clock.current.plusHours(2)
+        testScheduler.advanceTimeBy(120_000)
+        testScheduler.runCurrent()
+        assertEquals("hidden screens do not poll", 2, module.instance.source.fetches)
     }
 
     @Test

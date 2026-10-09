@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.lonemoonspace.dayloom.R
+import io.github.lonemoonspace.dayloom.core.i18n.UiText
 import io.github.lonemoonspace.dayloom.core.i18n.uiText
 import io.github.lonemoonspace.dayloom.core.location.Place
 import io.github.lonemoonspace.dayloom.core.module.ConfigState
@@ -15,20 +16,26 @@ import io.github.lonemoonspace.dayloom.core.module.HomeCard
 import io.github.lonemoonspace.dayloom.core.module.ModuleContext
 import io.github.lonemoonspace.dayloom.core.module.ModuleInstance
 import io.github.lonemoonspace.dayloom.core.module.SettingsSection
+import io.github.lonemoonspace.dayloom.core.notify.BriefContributor
 import io.github.lonemoonspace.dayloom.core.secret.SecretState
 import io.github.lonemoonspace.dayloom.core.time.minuteTicks
 import io.github.lonemoonspace.dayloom.core.ui.PlacePicker
 import io.github.lonemoonspace.dayloom.core.ui.SecretInput
+import io.github.lonemoonspace.dayloom.core.ui.placeTitleText
 import io.github.lonemoonspace.dayloom.feature.traffic.data.GoogleRoutesApi
 import io.github.lonemoonspace.dayloom.feature.traffic.data.TrafficSource
 import io.github.lonemoonspace.dayloom.feature.traffic.domain.Direction
+import io.github.lonemoonspace.dayloom.feature.traffic.domain.TrafficLevel
 import io.github.lonemoonspace.dayloom.feature.traffic.domain.TrafficPolicy
 import io.github.lonemoonspace.dayloom.feature.traffic.domain.TrafficStatus
 import io.github.lonemoonspace.dayloom.feature.traffic.ui.TrafficCard
+import io.github.lonemoonspace.dayloom.feature.traffic.ui.levelText
+import io.github.lonemoonspace.dayloom.feature.traffic.ui.wholeMinutes
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -103,6 +110,20 @@ private class TrafficInstance(private val ctx: ModuleContext) : ModuleInstance {
     )
 
     override val settings = SettingsSection { Settings() }
+
+    override val brief = BriefContributor { now ->
+        val status = source.current()?.takeUnless { source.isStale(it, now.toInstant()) }?.value ?: return@BriefContributor null
+        // Only the way to work belongs in a morning brief. / 早间简报只说去上班的路。
+        if (status.direction != Direction.TO_WORK) return@BriefContributor null
+        val destination = to.first() ?: return@BriefContributor null
+        val minutes = wholeMinutes(status.durationSec)
+        val duration = UiText.Plural(R.plurals.traffic_minutes, minutes)
+        if (status.level == TrafficLevel.UNKNOWN) {
+            UiText.Res(R.string.traffic_brief_plain, listOf(placeTitleText(destination), duration))
+        } else {
+            UiText.Res(R.string.traffic_brief, listOf(placeTitleText(destination), duration, UiText.Res(levelText(status.level))))
+        }
+    }
 
     @Composable
     private fun Settings() {

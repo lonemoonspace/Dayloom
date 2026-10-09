@@ -18,6 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import io.github.lonemoonspace.dayloom.R
+import io.github.lonemoonspace.dayloom.core.i18n.UiText
 import io.github.lonemoonspace.dayloom.core.location.Place
 
 /** "Home", "Work" or the custom place's own label. / 「家」「公司」或自定义地点自己的标签。 */
@@ -26,6 +27,13 @@ fun placeTitle(place: Place): String = when (place.id) {
     Place.HOME -> stringResource(R.string.place_home)
     Place.WORK -> stringResource(R.string.place_work)
     else -> place.label.ifBlank { place.name }
+}
+
+/** [placeTitle] for text resolved later (notifications). / 供稍后解析的文字（通知）使用的 [placeTitle]。 */
+fun placeTitleText(place: Place): UiText = when (place.id) {
+    Place.HOME -> UiText.Res(R.string.place_home)
+    Place.WORK -> UiText.Res(R.string.place_work)
+    else -> UiText.Raw(place.label.ifBlank { place.name })
 }
 
 /**

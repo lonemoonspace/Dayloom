@@ -28,6 +28,7 @@ data class SettingsState(
     val modules: List<ModuleToggle> = emptyList(),
     /** Enabled modules that contribute a settings section, in registry order. / 提供设置分区的已开启模块，按注册表顺序。 */
     val sections: List<ActiveModule> = emptyList(),
+    val morningBrief: Boolean = false,
 )
 
 class SettingsViewModel(
@@ -49,6 +50,7 @@ class SettingsViewModel(
             effectiveZone = z.id,
             modules = modules.map { ModuleToggle(it, it.id in enabled) },
             sections = act.orEmpty().filter { it.instance.settings != null },
+            morningBrief = s.morningBrief,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsState())
 
@@ -66,6 +68,14 @@ class SettingsViewModel(
         if (trimmed.isNotEmpty() && ZonePolicy.parse(trimmed) == null) return false
         viewModelScope.launch { settings.update { it.copy(timeZoneOverride = trimmed) } }
         return true
+    }
+
+    fun finishOnboarding() {
+        viewModelScope.launch { settings.update { it.copy(onboardingDone = true) } }
+    }
+
+    fun setMorningBrief(enabled: Boolean) {
+        viewModelScope.launch { settings.update { it.copy(morningBrief = enabled) } }
     }
 
     fun setModuleEnabled(moduleId: String, enabled: Boolean) {

@@ -34,7 +34,9 @@ import io.github.lonemoonspace.dayloom.BuildConfig
 import io.github.lonemoonspace.dayloom.R
 import io.github.lonemoonspace.dayloom.core.i18n.LanguageChoice
 import io.github.lonemoonspace.dayloom.core.network.SharedHttpClient
+import io.github.lonemoonspace.dayloom.core.notify.CoreNotifications
 import io.github.lonemoonspace.dayloom.core.ui.InfoCard
+import io.github.lonemoonspace.dayloom.core.ui.NotifySwitch
 import io.github.lonemoonspace.dayloom.core.ui.SwitchRow
 import io.github.lonemoonspace.dayloom.core.ui.plusBars
 
@@ -44,6 +46,7 @@ fun SettingsScreen(
     onLanguage: (LanguageChoice) -> Unit,
     onTimeZone: (String) -> Boolean,
     onModuleEnabled: (String, Boolean) -> Unit,
+    onMorningBrief: (Boolean) -> Unit,
     /** The shared places and daily-routine cards. / 共用的地点与日常作息卡片。 */
     sharedData: @Composable () -> Unit = {},
 ) {
@@ -55,6 +58,7 @@ fun SettingsScreen(
         item(key = "language") { LanguageCard(state.language, onLanguage) }
         item(key = "timezone") { TimeZoneCard(state.timeZoneOverride, state.effectiveZone, onTimeZone) }
         item(key = "shared") { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { sharedData() } }
+        item(key = "notifications") { NotificationsCard(state.morningBrief, onMorningBrief) }
         item(key = "modules") { ModulesCard(state.modules, onModuleEnabled) }
         items(state.sections, key = { "section:${it.module.id}" }) { active ->
             InfoCard(title = stringResource(active.module.title)) {
@@ -65,8 +69,9 @@ fun SettingsScreen(
     }
 }
 
+/** Also used by the onboarding. / 首次启动引导也用它。 */
 @Composable
-private fun LanguageCard(selected: LanguageChoice, onSelect: (LanguageChoice) -> Unit) {
+internal fun LanguageCard(selected: LanguageChoice, onSelect: (LanguageChoice) -> Unit) {
     InfoCard(title = stringResource(R.string.settings_language)) {
         Column(Modifier.selectableGroup()) {
             LanguageChoice.entries.forEach { choice ->
@@ -136,7 +141,29 @@ private fun TimeZoneCard(override: String, effective: String, onSave: (String) -
 }
 
 @Composable
-private fun ModulesCard(modules: List<ModuleToggle>, onToggle: (String, Boolean) -> Unit) {
+private fun NotificationsCard(morningBrief: Boolean, onMorningBrief: (Boolean) -> Unit) {
+    InfoCard(title = stringResource(R.string.settings_notifications)) {
+        NotifySwitch(
+            label = stringResource(R.string.brief_title),
+            summary = stringResource(R.string.brief_switch_summary),
+            checked = morningBrief,
+            channelId = CoreNotifications.BRIEF_CHANNEL_ID,
+            onCheckedChange = onMorningBrief,
+        )
+        Text(
+            text = stringResource(R.string.settings_notifications_note),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * The module switches; also used by the onboarding.
+ * 模块开关；首次启动引导也用它。
+ */
+@Composable
+internal fun ModulesCard(modules: List<ModuleToggle>, onToggle: (String, Boolean) -> Unit) {
     InfoCard(title = stringResource(R.string.settings_modules)) {
         if (modules.isEmpty()) {
             Text(

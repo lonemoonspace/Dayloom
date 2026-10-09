@@ -25,6 +25,12 @@ looks it up literally.
   daily windows, with the real-time status of every leg (on time, late, cancelled, no live data); real-time departure
   boards for favourite stops, filtered by line and destination; disruption rule for the commute windows. Entur API
   validated first; request handling, status rules and disruption fingerprints ported from PersonalAssistant.
+- Background work and notifications (M4): a periodic background refresh (every 15 minutes, each source throttled to its
+  own cadence) that then runs every notification rule; the home screen also refreshes due sources every minute while it is
+  visible. Opt-in switches for expiry reminders and commute disruptions; the notification permission is asked for only
+  when one is turned on, and a switch says when the permission or its system channel is off. Morning brief: on working
+  days, one notification at the start of the to-work window with a line each from weather, public transport, traffic and
+  expiry reminders. First-run onboarding: language, Home, modules.
 
 - 项目骨架（M0）：带注册表、宿主与命名空间存储的模块系统；从 PersonalAssistant 移植并泛化的刷新协调器与通知引擎；
   卡片可拖动排序的首页；语言、时区与模块开关设置；中英文资源；架构测试与字符串一致性测试；CI 与发版 workflow。
@@ -40,3 +46,6 @@ looks it up literally.
 - 公共交通模块（M3）：用 Entur 查两个通勤站点之间的出行方案（任意线路，可换乘），跟随日常时间窗，并显示每一段的实时状态
   （准点、晚点、取消、实时未知）；收藏站点的实时发车板，可按线路与终点过滤；通勤时段的异常通知规则。先验证了 Entur 接口；
   请求处理、状态规则与异常指纹移植自 PersonalAssistant。
+- 后台刷新与通知（M4）：周期性后台刷新（每 15 分钟一次，每个来源再按自己的节奏节流），刷新后运行所有通知规则；首页可见时
+  也每分钟刷新到期的来源。到期提醒与通勤异常各有一个需要主动打开的开关；只在打开开关时才请求通知权限，权限或对应的系统渠道
+  被关掉时开关会提示。早间简报：工作日上班时间窗开始时发一条，天气、公共交通、路况与到期提醒各一行。首次启动引导：语言、家、模块。

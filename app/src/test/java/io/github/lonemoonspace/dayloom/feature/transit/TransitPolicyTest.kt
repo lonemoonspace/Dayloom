@@ -15,6 +15,7 @@ import io.github.lonemoonspace.dayloom.feature.transit.domain.DisruptionPolicy
 import io.github.lonemoonspace.dayloom.feature.transit.domain.DisruptionRule
 import io.github.lonemoonspace.dayloom.feature.transit.domain.FavouriteBoard
 import io.github.lonemoonspace.dayloom.feature.transit.domain.LegState
+import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitBrief
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitLeg
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitPolicy
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TripOption
@@ -208,5 +209,23 @@ class TransitPolicyTest {
         trips = trips.copy(mode = CommuteMode.BOTH)
         assertEquals(worse.newState, rule.evaluate(RuleInput(fresh, now), worse.newState).newState)
         assertTrue(rule.evaluate(RuleInput(fresh, now), null).notifications.isEmpty())
+    }
+
+    // Morning brief / 早间简报
+
+    @Test
+    fun `the brief names the next trip to work and its worst leg`() {
+        val onTime = CommuteTrips(CommuteMode.OUTBOUND, outbound = listOf(option(leg(line = "R1", dep = t(5, 7, 42)))))
+        val onTimeText = UiText.Res(R.string.transit_on_time)
+        assertEquals(UiText.Res(R.string.transit_brief, listOf("R1", "07:42", onTimeText)), TransitBrief.line(onTime, now))
+
+        val late = CommuteTrips(
+            CommuteMode.OUTBOUND,
+            outbound = listOf(option(leg(line = "R1", dep = t(5, 7, 42)), leg(line = "L2", dep = t(5, 8, 20), delay = 6))),
+        )
+        val lateText = UiText.Res(R.string.transit_line_status, listOf("L2", UiText.Plural(R.plurals.transit_late, 6)))
+        assertEquals(UiText.Res(R.string.transit_brief, listOf("R1", "07:42", lateText)), TransitBrief.line(late, now))
+
+        assertNull("nothing left today", TransitBrief.line(CommuteTrips(CommuteMode.OUTBOUND), now))
     }
 }

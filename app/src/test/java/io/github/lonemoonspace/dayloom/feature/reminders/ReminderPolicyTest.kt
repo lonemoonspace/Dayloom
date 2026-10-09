@@ -9,6 +9,7 @@ import io.github.lonemoonspace.dayloom.feature.reminders.domain.ReminderPolicy
 import io.github.lonemoonspace.dayloom.feature.reminders.domain.ReminderPolicy.Stage
 import io.github.lonemoonspace.dayloom.feature.reminders.domain.ReminderPolicy.State
 import io.github.lonemoonspace.dayloom.feature.reminders.domain.ReminderRule
+import io.github.lonemoonspace.dayloom.feature.reminders.domain.briefLine
 import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlinx.coroutines.test.runTest
@@ -143,5 +144,23 @@ class ReminderPolicyTest {
         // The state survives a round trip through the codec. / 状态经编解码往返后不变。
         assertEquals(decision.newState, rule.codec.decode(rule.codec.encode(decision.newState)))
         assertEquals(ReminderPolicy.NotifiedState(), rule.codec.decode("corrupt"))
+    }
+
+    @Test
+    fun `the brief names the soonest item and counts the others, leaving long-expired ones out`() {
+        val items = listOf(
+            item("2026-09-16", id = "item1").copy(name = "Pass"),
+            item("2026-09-17", id = "item2").copy(name = "Permit"),
+            item("2026-09-14T12:00", id = "item3").copy(name = "Card"),
+            item("2026-08-01", id = "item4").copy(name = "Old"),
+            item("2026-12-01", id = "item5").copy(name = "Later"),
+        )
+        val expiredCard = UiText.Res(R.string.reminders_notify_expired, listOf("Card"))
+        assertEquals(UiText.Plural(R.plurals.reminders_brief_more, 2, listOf(expiredCard, 2)), briefLine(items, now))
+        assertEquals(
+            UiText.Res(R.string.reminders_notify_tomorrow, listOf("Pass")),
+            briefLine(listOf(items[0], items[4]), now),
+        )
+        assertNull(briefLine(listOf(items[3], items[4]), now))
     }
 }

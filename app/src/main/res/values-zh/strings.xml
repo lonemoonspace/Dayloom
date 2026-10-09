@@ -28,6 +28,8 @@
     <string name="weather_rain_stops">雨会在 %1$s 前后停</string>
     <string name="weather_rain_starts">%1$s 前后开始下雨</string>
     <string name="weather_attribution">天气数据：挪威气象局 MET Norway（CC BY 4.0）</string>
+    <string name="weather_brief">%1$s，%2$d°</string>
+    <string name="weather_brief_umbrella">%1$s，%2$d° · 通勤时段有雨，记得带伞</string>
     <string name="weather_clear">晴</string>
     <string name="weather_fair">少云</string>
     <string name="weather_partly_cloudy">多云</string>
@@ -238,6 +240,11 @@
         <item quantity="other">%1$s还剩 %2$d 天</item>
     </plurals>
     <string name="reminders_notify_body">有效期至 %1$s。续期后记得回到织日更新截止时间。</string>
+    <string name="reminders_notify_switch">到期提醒</string>
+    <string name="reminders_notify_switch_summary">快到期、最后一天和过期时各提醒一次（08:00–21:00）</string>
+    <plurals name="reminders_brief_more">
+        <item quantity="other">%1$s（另有 %2$d 项）</item>
+    </plurals>
 
     <string name="traffic_title">路况</string>
     <string name="traffic_summary">实时路况下的驾车时间（需要你自己的 Google Key）</string>
@@ -259,6 +266,8 @@
     <string name="traffic_moderate">中度拥堵</string>
     <string name="traffic_severe">严重拥堵</string>
     <string name="traffic_unknown">未知</string>
+    <string name="traffic_brief">开车去%1$s：%2$s · %3$s</string>
+    <string name="traffic_brief_plain">开车去%1$s：%2$s</string>
 
     <string name="transit_title">公共交通</string>
     <string name="transit_summary">挪威的通勤方案与实时发车，数据来自 Entur</string>
@@ -286,6 +295,7 @@
     </plurals>
     <string name="transit_no_realtime">实时未知</string>
     <string name="transit_cancelled">已取消</string>
+    <string name="transit_brief">%1$s %2$s · %3$s</string>
     <string name="transit_line_status">%1$s：%2$s</string>
     <string name="transit_attribution">公共交通数据：Entur（NLOD）</string>
     <string name="transit_region_note">你的「家」不在挪威。公共交通目前只覆盖挪威（Entur）。</string>
@@ -309,6 +319,8 @@
     <string name="transit_search_none">没有找到站点。</string>
     <string name="transit_channel">通勤异常</string>
     <string name="transit_channel_description">通勤时段内下一个方案被取消或严重延误时</string>
+    <string name="transit_notify_switch">异常提醒</string>
+    <string name="transit_notify_switch_summary">通勤时间窗内下一班被取消或晚点 5 分钟以上时提醒</string>
     <string name="transit_notify_to_work">上班路上有异常</string>
     <string name="transit_notify_back_home">回家路上有异常</string>
     <string name="transit_notify_cancelled">%2$s 的 %1$s 已取消</string>
@@ -361,6 +373,26 @@
     <string name="settings_version">版本 %1$s</string>
     <string name="settings_license">以 Apache License 2.0 开源</string>
     <string name="settings_source_code">源代码</string>
+    <string name="settings_notifications">通知</string>
+    <string name="settings_notifications_note">所有通知都要你自己打开。各模块的通知开关在下面对应模块里。</string>
+    <string name="brief_title">早间简报</string>
+    <string name="brief_switch_summary">工作日上班时间窗开始时，汇总各模块的情况发一条</string>
+    <string name="brief_channel">早间简报</string>
+    <string name="brief_channel_description">工作日上班时间窗开始时发一次</string>
+    <string name="onboarding_step">第 %1$d 步，共 %2$d 步</string>
+    <string name="onboarding_welcome_title">欢迎使用织日</string>
+    <string name="onboarding_welcome_body">一眼看清你的一天：天气、通勤、快到期的东西等等。你填的一切都只留在这部手机上。</string>
+    <string name="onboarding_home_title">你的家在哪里？</string>
+    <string name="onboarding_home_body">天气和通勤都从这里算起。可以先跳过，之后在设置的「地点」里再设。</string>
+    <string name="onboarding_modules_title">想看哪些内容？</string>
+    <string name="onboarding_modules_body">需要你自己的 Key 或只在挪威可用的模块默认关闭。这些随时都能在设置里修改。</string>
+    <string name="onboarding_back">上一步</string>
+    <string name="onboarding_next">下一步</string>
+    <string name="onboarding_skip">跳过</string>
+    <string name="onboarding_done">开始使用</string>
+    <string name="notify_permission_denied">织日没有发通知的权限，请在系统设置里允许。</string>
+    <string name="notify_channel_off">这类通知在系统设置里被关掉了，不会送达。</string>
+    <string name="notify_open_settings">打开系统设置</string>
 
     <string name="error_offline">当前离线，显示的是上次保存的数据。</string>
     <string name="error_network">网络错误，请检查连接（%1$s）</string>

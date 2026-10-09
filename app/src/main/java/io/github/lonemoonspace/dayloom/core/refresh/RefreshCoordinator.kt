@@ -87,6 +87,9 @@ class RefreshCoordinator(
     private val lock = Mutex()
     private val inFlight = mutableMapOf<SourceId, Flight>()
 
+    /** When each source last started a fetch in this process. Guarded by [lock]. / 本进程里每个来源上次开始抓取的时刻。由 [lock] 保护。 */
+    private val lastAttempt = mutableMapOf<SourceId, Instant>()
+
     /** [visible] becomes true once a visible trigger joins a silent flight. Guarded by [lock]. / 有可见触发加入静默的在途刷新后改为 true。由 [lock] 保护。 */
     private class Flight(val paramsKey: String, var visible: Boolean) {
         lateinit var result: Deferred<SourceResult>
@@ -129,6 +132,39 @@ class RefreshCoordinator(
             }.awaitAll().toMap()
         }
         return RefreshReport(results, clock.instant())
+    }
+
+    /**
+     * Refreshes only the sources among [ids] that their [RefreshCadence] says are due; [inWindow] = the user is inside a daily
+     * window. The background worker passes only sources with [RefreshCadence.background].
+     * With [throttleFailures] a source that failed is not retried before its interval passes again, so polling the screen
+     * every minute never hammers a broken service. The background worker passes false: a WorkManager retry right after a
+     * failure must actually refetch.
+     * 只刷新 [ids] 里按各自 [RefreshCadence] 已到期的来源；[inWindow] = 用户正处于日常时间窗内。后台任务只传
+     * [RefreshCadence.background] 为 true 的来源。
+     * [throttleFailures] 为 true 时，失败的来源要再等一个间隔才重试，页面每分钟轮询也不会反复敲一个坏掉的服务。
+     * 后台任务传 false：失败后 WorkManager 的重试必须真的重新抓取。
+     */
+    suspend fun refreshDue(ids: Set<SourceId>, trigger: Trigger, inWindow: Boolean, throttleFailures: Boolean): RefreshReport {
+        val sources = registered.value
+        require(sources.keys.containsAll(ids)) { "unregistered sources: ${ids - sources.keys}" }
+        val now = clock.instant()
+        val attempts = if (throttleFailures) lock.withLock { lastAttempt.toMap() } else emptyMap()
+        val due = ids.filterTo(mutableSetOf()) { id ->
+            val source = sources.getValue(id)
+            val last = listOfNotNull(lastFetchedAt(source), attempts[id]).maxOrNull()
+            RefreshCadencePolicy.isDue(source.cadence, inWindow, last, now)
+        }
+        return refresh(due, trigger)
+    }
+
+    /** An unreadable snapshot or input counts as never fetched, so it is retried. / 读不出快照或输入时视同从未抓取，于是会重试。 */
+    private suspend fun lastFetchedAt(source: CachedSource<*, *>): Instant? = try {
+        source.current()?.let { Instant.ofEpochMilli(it.fetchedAt) }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        null
     }
 
     /**
@@ -212,6 +248,7 @@ class RefreshCoordinator(
     /** Caller holds [lock]. / 调用方需持有 [lock]。 */
     private fun <P> startFlight(source: CachedSource<P, *>, input: SourceInput.Ready<P>, visible: Boolean): Flight {
         val flight = Flight(input.key, visible)
+        lastAttempt[source.id] = clock.instant()
         flight.result = appScope.async(fetchContext, start = CoroutineStart.LAZY) { execute(source, input, flight) }
         inFlight[source.id] = flight
         if (visible) updateStatus(source.id) { it.copy(refreshing = true) }

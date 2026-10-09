@@ -32,6 +32,7 @@ class AppPoliciesTest {
                 info("settings"),
                 info("transit", ids = 1_500..2_499),
                 info("news", ids = 2_500..2_599),
+                info("brief", ids = 900..1_099),
             ),
         )
         assertTrue(problems.any { it.startsWith("duplicate module id: weather") })
@@ -39,6 +40,7 @@ class AppPoliciesTest {
         assertTrue(problems.any { it.startsWith("reserved module id: settings") })
         assertTrue(problems.any { it.startsWith("notification ids overlap: weather") && "transit" in it })
         assertTrue("adjacent ranges do not overlap", problems.none { "news" in it })
+        assertTrue("the shell's own ids are off limits", problems.any { "brief" in it && "shell" in it })
     }
 
     @Test

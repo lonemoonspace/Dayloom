@@ -23,4 +23,8 @@ data class AppSettings(
      * 用户排好的首页卡片键（`<模块id>.<卡片>`）；未知的键忽略，缺的追加在后面。
      */
     val cardOrder: List<String> = emptyList(),
+    /** Opt-in like every notification (design §7.4). / 与所有通知一样需要用户主动打开（设计文档 §7.4）。 */
+    val morningBrief: Boolean = false,
+    /** False until the first-run onboarding is finished or skipped. / 首次启动引导完成或跳过之前为 false。 */
+    val onboardingDone: Boolean = false,
 )

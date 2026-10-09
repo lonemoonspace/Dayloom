@@ -8,10 +8,15 @@ import io.github.lonemoonspace.dayloom.core.module.CardPlacement
 import io.github.lonemoonspace.dayloom.core.module.HomeCard
 import io.github.lonemoonspace.dayloom.core.refresh.RefreshCoordinator
 import io.github.lonemoonspace.dayloom.core.refresh.Trigger
+import io.github.lonemoonspace.dayloom.core.routine.Routine
+import io.github.lonemoonspace.dayloom.core.routine.RoutinePolicy
 import io.github.lonemoonspace.dayloom.core.storage.AppSettings
 import io.github.lonemoonspace.dayloom.core.storage.ValueStore
+import io.github.lonemoonspace.dayloom.core.time.AppClock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,6 +25,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /** A card with its stored key `<moduleId>.<key>`. / 卡片及其存储键 `<模块id>.<键>`。 */
@@ -40,7 +47,11 @@ class HomeViewModel(
     private val active: StateFlow<List<ActiveModule>?>,
     private val settings: ValueStore<AppSettings>,
     private val coordinator: RefreshCoordinator,
+    private val routine: Flow<Routine>,
+    private val clock: AppClock,
 ) : ViewModel() {
+
+    private var polling: Job? = null
 
     private val placedCards: Flow<List<Pair<HomeCardEntry, CardPlacement>>?> = active.flatMapLatest { modules ->
         when {
@@ -88,10 +99,49 @@ class HomeViewModel(
         }
     }
 
-    /** Coming back to the app: shared single-flight refreshes, so repeated calls are cheap. / 回到 App 时调用：刷新按来源去重，重复调用代价很小。 */
-    fun onForeground() = refresh(Trigger.AUTO)
+    /**
+     * While the home screen is visible, refreshes whatever is due by each source's cadence: at once (visibly, so the user
+     * sees it happen on return), then silently every minute. In a commute window the departures stay current without the
+     * user pulling; outside, most minutes nothing is due and no request goes out.
+     * 首页可见期间，按各来源的节奏刷新到期的来源：先立即刷新一次（可见，用户回到 App 时看得到），之后每分钟静默检查一次。
+     * 通勤时间窗内发车信息不用手动刷新也保持最新；时间窗外大多数分钟里没有来源到期，不会发请求。
+     */
+    fun startPolling() {
+        if (polling?.isActive == true) return
+        polling = viewModelScope.launch {
+            var trigger = Trigger.AUTO
+            while (true) {
+                refreshDue(trigger)
+                trigger = Trigger.LIVE_POLL
+                delay(POLL_INTERVAL_MS)
+            }
+        }
+    }
+
+    fun stopPolling() {
+        polling?.cancel()
+        polling = null
+    }
+
+    private suspend fun refreshDue(trigger: Trigger) {
+        // On a cold start the enabled modules may not be known yet; wait rather than refresh nothing.
+        // 冷启动时可能还不知道开启了哪些模块；等一等，而不是什么都不刷。
+        val ids = ModuleHost.sourceIds(active.filterNotNull().first())
+        try {
+            val inWindow = RoutinePolicy.active(routine.first(), clock.now()) != null
+            coordinator.refreshDue(ids, trigger, inWindow, throttleFailures = true)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // As in refresh(): per-source errors are in coordinator.status. / 与 refresh() 相同：各来源的错误在 coordinator.status 里。
+        }
+    }
 
     fun saveOrder(keys: List<String>) {
         viewModelScope.launch { settings.update { it.copy(cardOrder = keys) } }
+    }
+
+    private companion object {
+        const val POLL_INTERVAL_MS = 60_000L
     }
 }

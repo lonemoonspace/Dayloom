@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.lonemoonspace.dayloom.R
+import io.github.lonemoonspace.dayloom.core.i18n.UiText
 import io.github.lonemoonspace.dayloom.core.i18n.uiText
 import io.github.lonemoonspace.dayloom.core.location.Place
 import io.github.lonemoonspace.dayloom.core.module.ConfigState
@@ -15,15 +16,19 @@ import io.github.lonemoonspace.dayloom.core.module.HomeCard
 import io.github.lonemoonspace.dayloom.core.module.ModuleContext
 import io.github.lonemoonspace.dayloom.core.module.ModuleInstance
 import io.github.lonemoonspace.dayloom.core.module.SettingsSection
+import io.github.lonemoonspace.dayloom.core.notify.BriefContributor
 import io.github.lonemoonspace.dayloom.core.routine.Routine
 import io.github.lonemoonspace.dayloom.core.ui.PlacePicker
 import io.github.lonemoonspace.dayloom.feature.weather.data.MetApi
 import io.github.lonemoonspace.dayloom.feature.weather.data.WeatherSource
 import io.github.lonemoonspace.dayloom.feature.weather.domain.Forecast
+import io.github.lonemoonspace.dayloom.feature.weather.domain.WeatherBriefPolicy
 import io.github.lonemoonspace.dayloom.feature.weather.ui.WeatherCard
+import io.github.lonemoonspace.dayloom.feature.weather.ui.conditionText
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -78,6 +83,13 @@ private class WeatherInstance(private val ctx: ModuleContext) : ModuleInstance {
     )
 
     override val settings = SettingsSection { Settings() }
+
+    override val brief = BriefContributor { now ->
+        val snapshot = source.current()?.takeUnless { source.isStale(it, now.toInstant()) } ?: return@BriefContributor null
+        val brief = WeatherBriefPolicy.brief(snapshot.value, ctx.routine.first(), now) ?: return@BriefContributor null
+        val condition = UiText.Res(conditionText(brief.condition))
+        UiText.Res(if (brief.umbrella) R.string.weather_brief_umbrella else R.string.weather_brief, listOf(condition, brief.temperature))
+    }
 
     @Composable
     private fun Card() {

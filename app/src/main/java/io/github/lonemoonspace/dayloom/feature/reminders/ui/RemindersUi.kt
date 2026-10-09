@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.lonemoonspace.dayloom.R
+import io.github.lonemoonspace.dayloom.core.ui.NotifySwitch
 import io.github.lonemoonspace.dayloom.core.ui.InfoCard
 import io.github.lonemoonspace.dayloom.core.ui.StatusChip
 import io.github.lonemoonspace.dayloom.core.ui.rememberMinuteTick
@@ -91,7 +92,11 @@ internal fun RemindersCard(settings: Flow<RemindersSettings>) {
  * 设置分区：新增、编辑、删除条目。[update] 由模块在应用级作用域里执行。
  */
 @Composable
-internal fun RemindersSettingsSection(settings: Flow<RemindersSettings>, update: ((RemindersSettings) -> RemindersSettings) -> Unit) {
+internal fun RemindersSettingsSection(
+    settings: Flow<RemindersSettings>,
+    channelId: String,
+    update: ((RemindersSettings) -> RemindersSettings) -> Unit,
+) {
     val saved by settings.collectAsStateWithLifecycle(initialValue = RemindersSettings())
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
     val items = saved.items.sortedBy { ReminderPolicy.parse(it.until) ?: LocalDateTime.MAX }
@@ -107,6 +112,12 @@ internal fun RemindersSettingsSection(settings: Flow<RemindersSettings>, update:
         }
     }
     TextButton(onClick = { editing = NEW }) { Text(stringResource(R.string.reminders_add)) }
+    NotifySwitch(
+        label = stringResource(R.string.reminders_notify_switch),
+        summary = stringResource(R.string.reminders_notify_switch_summary),
+        checked = saved.notify,
+        channelId = channelId,
+    ) { on -> update { it.copy(notify = on) } }
     editing?.let { id ->
         val existing = saved.items.firstOrNull { it.id == id }
         // Keyed by item, so the dialog's saved fields never carry over from another item. / 按条目区分，对话框保存的字段不会串到另一个条目。

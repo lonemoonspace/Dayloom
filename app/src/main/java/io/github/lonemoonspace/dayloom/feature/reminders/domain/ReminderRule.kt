@@ -8,6 +8,7 @@ import io.github.lonemoonspace.dayloom.core.notify.NotificationRule
 import io.github.lonemoonspace.dayloom.core.notify.RuleDecision
 import io.github.lonemoonspace.dayloom.core.notify.RuleInput
 import io.github.lonemoonspace.dayloom.core.notify.StateCodec
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 /**
@@ -39,20 +40,10 @@ class ReminderRule(
 
     private fun notification(reminder: ReminderPolicy.Reminder): AppNotification {
         val status = reminder.status
-        val name = status.item.name
-        val title = when (reminder.stage) {
-            ReminderPolicy.Stage.EXPIRED -> UiText.Res(R.string.reminders_notify_expired, listOf(name))
-            ReminderPolicy.Stage.LAST_DAY -> UiText.Res(R.string.reminders_notify_today, listOf(name))
-            ReminderPolicy.Stage.SOON -> if (status.daysUntil == 1L) {
-                UiText.Res(R.string.reminders_notify_tomorrow, listOf(name))
-            } else {
-                UiText.Plural(R.plurals.reminders_notify_days, status.daysUntil.toInt(), listOf(name, status.daysUntil.toInt()))
-            }
-        }
         return AppNotification(
             id = notificationId(status.item),
             channelId = channelId,
-            title = title,
+            title = headline(status),
             // Numeric date and time read the same in every language. / 数字日期时间在各语言里写法一致。
             body = UiText.Res(R.string.reminders_notify_body, listOf(status.until.format(BODY_FORMAT))),
             deepLink = deepLink,
@@ -62,4 +53,28 @@ class ReminderRule(
     private companion object {
         val BODY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
     }
+}
+
+/**
+ * "Monthly pass expires tomorrow"; the notification title and the morning brief line. The stage follows from the status the
+ * same way as in [ReminderPolicy.evaluate].
+ * 「月票明天到期」；用作通知标题与早间简报的一行。档位由状态推出，与 [ReminderPolicy.evaluate] 的判定一致。
+ */
+internal fun headline(status: ReminderPolicy.Status): UiText {
+    val name = status.item.name
+    val days = status.daysUntil.toInt()
+    return when {
+        status.state == ReminderPolicy.State.EXPIRED -> UiText.Res(R.string.reminders_notify_expired, listOf(name))
+        days <= 0 -> UiText.Res(R.string.reminders_notify_today, listOf(name))
+        days == 1 -> UiText.Res(R.string.reminders_notify_tomorrow, listOf(name))
+        else -> UiText.Plural(R.plurals.reminders_notify_days, days, listOf(name, days))
+    }
+}
+
+/** The morning brief line: the soonest item, and how many more there are. / 早间简报的一行：最早到期的条目，以及另外还有几项。 */
+internal fun briefLine(items: List<ReminderItem>, now: LocalDateTime): UiText? {
+    val due = ReminderPolicy.briefItems(items, now)
+    val first = headline(due.firstOrNull() ?: return null)
+    val more = due.size - 1
+    return if (more == 0) first else UiText.Plural(R.plurals.reminders_brief_more, more, listOf(first, more))
 }

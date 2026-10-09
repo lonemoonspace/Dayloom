@@ -96,4 +96,18 @@ class SettingsViewModelTest {
         assertEquals(LanguageChoice.CHINESE, language.value)
         assertEquals(LanguageChoice.CHINESE, vm.state.value.language)
     }
+
+    @Test
+    fun `the morning brief and the end of the onboarding are saved`() = runTest {
+        val vm = vm()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
+        assertFalse("off until the user opts in", vm.state.value.morningBrief)
+
+        vm.setMorningBrief(true)
+        assertTrue(vm.state.value.morningBrief)
+
+        assertFalse(settings.state.value.onboardingDone)
+        vm.finishOnboarding()
+        assertTrue(settings.state.value.onboardingDone)
+    }
 }

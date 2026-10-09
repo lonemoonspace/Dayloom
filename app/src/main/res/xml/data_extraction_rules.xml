@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  No cloud backup. Device-to-device transfer copies everything except credentials: they are encrypted with this phone's
+  Keystore key and could not be decrypted on the new one.
+  不做云备份。换机迁移复制除凭据外的全部数据：凭据用本机 Keystore 密钥加密，到新手机上解不开。
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="datastore/secrets.preferences_pb" />
+    </device-transfer>
+</data-extraction-rules>

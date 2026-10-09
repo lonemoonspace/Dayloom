@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed icon (Android 13+): one colour, the system tints it. / 主题图标（Android 13 起）：单色，由系统着色。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M36,54 A18,18 0 0,1 72,54 Z M34,58 h40 a2,2 0 0 1 0,4 h-40 a2,2 0 0 1 0,-4 Z M34,66 h40 a2,2 0 0 1 0,4 h-40 a2,2 0 0 1 0,-4 Z M34,74 h40 a2,2 0 0 1 0,4 h-40 a2,2 0 0 1 0,-4 Z" />
+</vector>

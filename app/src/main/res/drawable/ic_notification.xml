@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status-bar icon: white on transparent, no tint; the system colours it using only the alpha channel. -->
+<!-- 状态栏小图标：透明底上的白色，不写 tint；系统只取 alpha 通道着色。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M6,12 A6,6 0 0,1 18,12 Z M4,14 h16 v2 h-16 Z M4,18 h16 v2 h-16 Z" />
+</vector>

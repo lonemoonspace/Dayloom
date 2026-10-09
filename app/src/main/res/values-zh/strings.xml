@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 中文。键必须与 values/strings.xml 完全一致。 -->
+<resources>
+    <string name="app_name">织日</string>
+
+    <string name="common_cached">缓存</string>
+    <string name="common_loading">加载中</string>
+    <string name="common_save">保存</string>
+
+    <string name="nav_home">首页</string>
+    <string name="nav_settings">设置</string>
+
+    <string name="home_refresh">刷新</string>
+    <string name="home_edit_order">调整卡片顺序</string>
+    <string name="home_done">完成</string>
+    <string name="home_move_up">上移</string>
+    <string name="home_move_down">下移</string>
+    <string name="home_drag_handle">拖动排序</string>
+    <string name="home_empty_title">还没有开启任何模块</string>
+    <string name="home_empty_body">在设置里打开需要的模块。</string>
+    <string name="home_open_settings">打开设置</string>
+
+    <string name="settings_language">语言</string>
+    <string name="settings_language_system">跟随系统</string>
+    <string name="settings_time_zone">时区</string>
+    <string name="settings_time_zone_follow">跟随设备</string>
+    <string name="settings_time_zone_hint">IANA 时区，如 Asia/Shanghai</string>
+    <string name="settings_time_zone_invalid">无法识别的时区</string>
+    <string name="settings_time_zone_current">当前使用：%1$s</string>
+    <string name="settings_modules">模块</string>
+    <string name="settings_modules_none">这个版本里还没有可用的模块。</string>
+    <string name="settings_about">关于</string>
+    <string name="settings_version">版本 %1$s</string>
+    <string name="settings_license">以 Apache License 2.0 开源</string>
+    <string name="settings_source_code">源代码</string>
+
+    <string name="error_offline">当前离线，显示的是上次保存的数据。</string>
+    <string name="error_network">网络错误，请检查连接（%1$s）</string>
+    <string name="error_http">%1$s 返回错误（HTTP %2$d）</string>
+    <string name="error_http_auth">%1$s 拒绝了凭据（HTTP %2$d），请检查设置里的 Key。</string>
+    <string name="error_not_configured">请先设置：%1$s</string>
+    <string name="error_secret_unreadable">%1$s 已无法解密，请在设置里重新输入。</string>
+    <string name="error_bad_data">%1$s 返回的数据无法读取</string>
+    <string name="error_unexpected">意外错误（%1$s）</string>
+</resources>

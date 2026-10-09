@@ -85,10 +85,10 @@
     <string name="calendar_country_china">China</string>
     <string name="calendar_country_norway">Norway</string>
     <string name="calendar_solar_term_today">%1$s today</string>
-    <string name="calendar_lunar_leap_month">leap %1$s</string>
-    <string name="calendar_lunar_date">Lunar %1$s, %2$s</string>
-    <string name="calendar_lunar_year">%1$s-%2$s, year of the %3$s</string>
-    <string name="calendar_lunar_line">%1$s · %2$s</string>
+    <string name="calendar_lunar_leap_month">L%1$s</string>
+    <string name="calendar_lunar_date">Lunar %1$s/%2$s</string>
+    <string name="calendar_lunar_year">Year of the %3$s (%1$s-%2$s)</string>
+    <string name="calendar_lunar_line">%2$s · %1$s</string>
     <string name="calendar_countdown_tomorrow">%1$s tomorrow</string>
     <plurals name="calendar_countdown_days">
         <item quantity="one">%1$s in %2$d day</item>
@@ -119,50 +119,50 @@
     <string name="holiday_christmas_day">Christmas Day</string>
     <string name="holiday_boxing_day">Boxing Day</string>
     <string-array name="calendar_lunar_months">
-        <item>month 1</item>
-        <item>month 2</item>
-        <item>month 3</item>
-        <item>month 4</item>
-        <item>month 5</item>
-        <item>month 6</item>
-        <item>month 7</item>
-        <item>month 8</item>
-        <item>month 9</item>
-        <item>month 10</item>
-        <item>month 11</item>
-        <item>month 12</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+        <item>6</item>
+        <item>7</item>
+        <item>8</item>
+        <item>9</item>
+        <item>10</item>
+        <item>11</item>
+        <item>12</item>
     </string-array>
     <string-array name="calendar_lunar_days">
-        <item>day 1</item>
-        <item>day 2</item>
-        <item>day 3</item>
-        <item>day 4</item>
-        <item>day 5</item>
-        <item>day 6</item>
-        <item>day 7</item>
-        <item>day 8</item>
-        <item>day 9</item>
-        <item>day 10</item>
-        <item>day 11</item>
-        <item>day 12</item>
-        <item>day 13</item>
-        <item>day 14</item>
-        <item>day 15</item>
-        <item>day 16</item>
-        <item>day 17</item>
-        <item>day 18</item>
-        <item>day 19</item>
-        <item>day 20</item>
-        <item>day 21</item>
-        <item>day 22</item>
-        <item>day 23</item>
-        <item>day 24</item>
-        <item>day 25</item>
-        <item>day 26</item>
-        <item>day 27</item>
-        <item>day 28</item>
-        <item>day 29</item>
-        <item>day 30</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+        <item>6</item>
+        <item>7</item>
+        <item>8</item>
+        <item>9</item>
+        <item>10</item>
+        <item>11</item>
+        <item>12</item>
+        <item>13</item>
+        <item>14</item>
+        <item>15</item>
+        <item>16</item>
+        <item>17</item>
+        <item>18</item>
+        <item>19</item>
+        <item>20</item>
+        <item>21</item>
+        <item>22</item>
+        <item>23</item>
+        <item>24</item>
+        <item>25</item>
+        <item>26</item>
+        <item>27</item>
+        <item>28</item>
+        <item>29</item>
+        <item>30</item>
     </string-array>
     <string-array name="calendar_heavenly_stems">
         <item>Jia</item>

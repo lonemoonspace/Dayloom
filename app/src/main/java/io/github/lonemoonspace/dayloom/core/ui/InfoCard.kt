@@ -81,14 +81,15 @@ fun InfoCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
+                            // Takes all the room left, so it only shortens when the row is really full. / 占满剩余空间，只有整行真的放不下才截断。
+                            modifier = Modifier.weight(1f),
                         )
                     }
                     if (stale) {
                         Spacer(Modifier.width(6.dp))
                         CacheChip()
                     }
-                    Spacer(Modifier.weight(1f))
+                    if (subtitle == null) Spacer(Modifier.weight(1f))
                     if (meta != null) {
                         Spacer(Modifier.width(6.dp))
                         Text(meta, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline, maxLines = 1)

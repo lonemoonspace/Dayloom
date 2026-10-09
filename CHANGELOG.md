@@ -59,6 +59,9 @@ looks it up literally.
   shows the unread count and the newest headlines. Articles are kept in Room (`dayloom.db`, schema in `app/schemas/`).
 - Polish (M7): the About card in Settings opens the data sources, a privacy statement and the open-source licenses
   (including lunar-java's MIT notice); the privacy statement is also in `PRIVACY.md`.
+- Layout fixes found by rendering the home screen: card titles no longer cut the route short, the timetable time of a late
+  departure sits under the expected one (12-hour clocks fit), the four-day strip uses weekday names, the English lunar
+  line puts the date first, and the date keeps its colour in dark mode. README screenshots added.
 
 - 项目骨架（M0）：带注册表、宿主与命名空间存储的模块系统；从 PersonalAssistant 移植并泛化的刷新协调器与通知引擎；
   卡片可拖动排序的首页；语言、时区与模块开关设置；中英文资源；架构测试与字符串一致性测试；CI 与发版 workflow。
@@ -96,3 +99,5 @@ looks it up literally.
   双向同步，离线时的修改不会丢；同步每 30 分钟在共用的后台轮次里运行一次。可用任意兼容 OpenAI 的接口按需生成 App 语言的 AI 摘要。
   首页卡片显示未读数与最新标题。文章存于 Room（`dayloom.db`，schema 在 `app/schemas/`）。
 - 打磨（M7）：设置里的「关于」卡片可以查看数据来源、隐私声明与开源许可（含 lunar-java 的 MIT 声明）；隐私声明另见 `PRIVACY.zh-CN.md`。
+- 渲染首页时发现并修正的排版问题：卡片标题不再过早截断路线；晚点班次的时刻表时间放到预计时间下面（12 小时制也放得下）；四天预报
+  一律用星期；英文农历一行先写日期；深色模式下日期颜色正确。README 加入截图。

@@ -65,7 +65,6 @@ import io.github.lonemoonspace.dayloom.feature.weather.domain.WeatherPointPicker
 import io.github.lonemoonspace.dayloom.feature.weather.domain.WeatherSymbolPolicy
 import io.github.lonemoonspace.dayloom.feature.weather.domain.WeatherTip
 import java.time.Instant
-import java.time.LocalDate
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -123,7 +122,7 @@ internal fun WeatherCard(
             if (strip.isNotEmpty()) {
                 Divider()
                 Row {
-                    strip.forEach { DayCell(it, now.toLocalDate(), Modifier.weight(1f)) }
+                    strip.forEach { DayCell(it, Modifier.weight(1f)) }
                     repeat(STRIP_DAYS - strip.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
@@ -278,11 +277,9 @@ private fun HourCell(hour: HourWeather, modifier: Modifier) {
 }
 
 @Composable
-private fun DayCell(day: DailyForecast, today: LocalDate, modifier: Modifier) {
-    val label = when (day.date) {
-        today.plusDays(1) -> stringResource(R.string.common_tomorrow)
-        else -> day.date.format(rememberPatternFormatter("EEE"))
-    }
+private fun DayCell(day: DailyForecast, modifier: Modifier) {
+    // Weekday names only: "Tomorrow" is too wide for a quarter of the row in English. / 只用星期：英文的「Tomorrow」在四分之一行里放不下。
+    val label = day.date.format(rememberPatternFormatter("EEE"))
     val content = LocalContentColor.current
     Row(modifier = modifier, horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = content.copy(alpha = 0.75f), maxLines = 1)

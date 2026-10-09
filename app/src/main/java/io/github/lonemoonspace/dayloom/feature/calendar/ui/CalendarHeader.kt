@@ -77,6 +77,9 @@ internal fun CalendarHeader(showLunar: Boolean, countries: Set<HolidayCountry>, 
                     date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR),
                 ),
                 style = MaterialTheme.typography.bodyMedium,
+                // The header sits on the page, not in a card, so it names its colour instead of inheriting one.
+                // 页头直接放在页面上而不是卡片里，所以明确指定颜色，不依赖继承。
+                color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 1,
                 modifier = Modifier.alignByBaseline(),
             )

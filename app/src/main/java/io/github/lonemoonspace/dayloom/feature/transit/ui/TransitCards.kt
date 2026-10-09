@@ -137,10 +137,10 @@ private fun OptionList(options: List<TripOption>, now: ZonedDateTime) {
 }
 
 /**
- * One option in one row: the expected departure large on the left (the timetable time struck through beside it when late),
+ * One option in one row: the expected departure large on the left (the timetable time struck through under it when late),
  * lines, arrival and duration in the middle with transfers and platform under them, the status pill on the right.
  * Cancelled options stay, struck through, so the user knows why they are gone.
- * 一个方案一行：左边大字是预计出发时刻（晚点时旁边划掉时刻表时间），中间是线路、到达与用时，下面是换乘与站台，右边是状态胶囊。
+ * 一个方案一行：左边大字是预计出发时刻（晚点时下面划掉时刻表时间），中间是线路、到达与用时，下面是换乘与站台，右边是状态胶囊。
  * 被取消的方案保留并划掉，用户才知道它为什么没了。
  */
 @Composable
@@ -154,7 +154,9 @@ private fun OptionRow(option: TripOption, now: ZonedDateTime, divider: Boolean) 
     val faint = MaterialTheme.colorScheme.outline
     if (divider) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 5.dp)) {
-        Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.widthIn(min = 52.dp)) {
+        // The timetable time goes under the expected one, which keeps the row narrow enough for 12-hour clocks.
+        // 时刻表时间放在预计时间下面，12 小时制时这一行也放得下。
+        Column(Modifier.widthIn(min = 52.dp)) {
             Text(
                 text = at(option.departure),
                 fontSize = 17.sp,
@@ -162,10 +164,10 @@ private fun OptionRow(option: TripOption, now: ZonedDateTime, divider: Boolean) 
                 fontWeight = FontWeight.Bold,
                 color = if (cancelled) faint else LocalContentColor.current,
                 textDecoration = if (cancelled) TextDecoration.LineThrough else null,
+                maxLines = 1,
             )
             if (!cancelled && first.expectedDeparture != first.aimedDeparture) {
-                Spacer(Modifier.width(3.dp))
-                Text(at(first.aimedDeparture), style = MaterialTheme.typography.labelSmall, color = faint, textDecoration = TextDecoration.LineThrough)
+                Text(at(first.aimedDeparture), style = MaterialTheme.typography.labelSmall, color = faint, textDecoration = TextDecoration.LineThrough, maxLines = 1)
             }
         }
         Spacer(Modifier.width(8.dp))

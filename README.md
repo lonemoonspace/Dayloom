@@ -8,6 +8,13 @@ football and news, each as a module you can turn on or off. The UI is available 
 > **Status: early development.** The module system, home screen, settings and build pipeline are in place (milestone M0),
 > along with shared places and daily routine, weather and calendar (M1), expiry reminders and traffic (M2), Norwegian public transport (M3), background refresh, notifications, the morning brief and onboarding (M4), football (M5) and news with AI summaries (M6). See the [design document](docs/design.en.md) for the plan.
 
+<p>
+  <img src="docs/screenshots/home-en.png" width="300" alt="Home screen: clock and lunar date, the weather for today with what to wear, train and bus commutes with live status, expiry reminders">
+  <img src="docs/screenshots/home-zh-dark.png" width="300" alt="The same home screen in Chinese, dark mode">
+</p>
+
+<sub>Rendered with sample data; colours follow the phone's wallpaper.</sub>
+
 ## Principles
 
 - **Modules, not a monolith.** Every feature is a module in `feature/<id>/` registered with one line in `ModuleRegistry`.

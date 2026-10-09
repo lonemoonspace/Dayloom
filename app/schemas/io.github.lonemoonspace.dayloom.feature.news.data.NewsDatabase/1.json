@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "66361a294673fe2a0e7caa1632ce93cc",
+    "identityHash": "5302d8ad5e6f62edf76593458b225c99",
     "entities": [
       {
         "tableName": "article",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `feedTitle` TEXT NOT NULL, `title` TEXT NOT NULL, `url` TEXT NOT NULL, `author` TEXT NOT NULL, `contentHtml` TEXT NOT NULL, `publishedAt` INTEGER NOT NULL, `read` INTEGER NOT NULL, `starred` INTEGER NOT NULL, `readingMinutes` INTEGER NOT NULL, `pendingRead` INTEGER, `pendingStarred` INTEGER, `summary` TEXT NOT NULL, `summaryLanguage` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `feedTitle` TEXT NOT NULL, `title` TEXT NOT NULL, `url` TEXT NOT NULL, `author` TEXT NOT NULL, `contentHtml` TEXT NOT NULL, `publishedAt` INTEGER NOT NULL, `read` INTEGER NOT NULL, `starred` INTEGER NOT NULL, `readingMinutes` INTEGER NOT NULL, `pendingRead` INTEGER, `pendingStarred` INTEGER, `readAt` INTEGER NOT NULL, `summary` TEXT NOT NULL, `summaryLanguage` TEXT NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -79,6 +79,12 @@
             "affinity": "INTEGER"
           },
           {
+            "fieldPath": "readAt",
+            "columnName": "readAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
             "fieldPath": "summary",
             "columnName": "summary",
             "affinity": "TEXT",
@@ -101,7 +107,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '66361a294673fe2a0e7caa1632ce93cc')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5302d8ad5e6f62edf76593458b225c99')"
     ]
   }
 }

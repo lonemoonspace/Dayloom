@@ -36,6 +36,7 @@ import io.github.lonemoonspace.dayloom.core.ui.StatusChip
 import io.github.lonemoonspace.dayloom.core.ui.rememberMinuteTick
 import io.github.lonemoonspace.dayloom.core.ui.rememberTimeFormatter
 import io.github.lonemoonspace.dayloom.core.ui.theme.statusColors
+import io.github.lonemoonspace.dayloom.core.ui.updatedAgo
 import io.github.lonemoonspace.dayloom.core.ui.userMessage
 import io.github.lonemoonspace.dayloom.feature.transit.domain.BoardDeparture
 import io.github.lonemoonspace.dayloom.feature.transit.domain.Boards
@@ -114,17 +115,6 @@ internal fun kindTitle(kind: CommuteKind): Int = when (kind) {
 private fun kindIcon(kind: CommuteKind): Int = when (kind) {
     CommuteKind.TRAIN -> R.drawable.ic_train
     CommuteKind.BUS -> R.drawable.ic_bus
-}
-
-/** "Just now", "3 min ago" within the hour, the clock time after that. / 「刚刚」，一小时内「3 分钟前」，之后显示时刻。 */
-@Composable
-private fun updatedAgo(fetchedAt: Long, now: ZonedDateTime): String {
-    val minutes = Duration.between(Instant.ofEpochMilli(fetchedAt), now.toInstant()).toMinutes().toInt()
-    return when {
-        minutes < 1 -> stringResource(R.string.common_updated_now)
-        minutes < 60 -> pluralStringResource(R.plurals.common_updated_minutes, minutes, minutes)
-        else -> Instant.ofEpochMilli(fetchedAt).atZone(now.zone).format(rememberTimeFormatter())
-    }
 }
 
 @Composable

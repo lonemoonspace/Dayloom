@@ -15,13 +15,13 @@ interface ArticleStore {
 
     fun observe(id: Long): Flow<StoredArticle?>
 
-    /** Marks read or unread here, to be sent to Miniflux. / 在本机标为已读或未读，稍后发给 Miniflux。 */
-    suspend fun markRead(id: Long, read: Boolean)
+    /** Counts and newest headlines, live, for the home card and the filter chips. / 实时的数量与最新标题，供首页卡片与筛选标签使用。 */
+    fun observeSummary(): Flow<SyncSummary>
+
+    /** Marks read or unread here, to be sent to Miniflux; [readAt] is 0 for unread. / 在本机标为已读或未读，稍后发给 Miniflux；未读时 [readAt] 为 0。 */
+    suspend fun markRead(id: Long, read: Boolean, readAt: Long)
 
     suspend fun markStarred(id: Long, starred: Boolean)
-
-    /** Miniflux confirmed these read states; they stop being pending. / Miniflux 已确认这些已读状态，不再待发送。 */
-    suspend fun confirmRead(ids: List<Long>)
 
     suspend fun saveSummary(id: Long, summary: String, language: String)
 }

@@ -133,8 +133,8 @@ class PlacesTest {
                     {"displayName":{"text":"No location"}}]}""",
                 ),
             )
-            val search = GooglePlacesSearch(OkHttpClient(), apiKey = { "test-key" }, endpoint = server.url("/v1/places:searchText"))
-            val results = search.search("station a", "zh")
+            val search = GooglePlacesSearch(OkHttpClient(), endpoint = server.url("/v1/places:searchText"))
+            val results = search.search("station a", "zh", "test-key")
 
             assertEquals(listOf(PlaceCandidate("Station A", "Street 1, 0001 Town A, Norway", 59.1, 10.2, "NO")), results)
             val request = server.takeRequest()
@@ -145,7 +145,7 @@ class PlacesTest {
 
             server.enqueue(MockResponse().setResponseCode(403).setBody("""{"error":{"message":"Places API (New) has not been used"}}"""))
             val error = try {
-                search.search("station a", "en")
+                search.search("station a", "en", "test-key")
                 null
             } catch (e: AppError.Http) {
                 e
@@ -158,17 +158,22 @@ class PlacesTest {
 
     @Test
     fun `the finder takes coordinates as typed, Google with a key, Open-Meteo without`() = runTest {
-        val google = object : PlaceSearch {
-            override suspend fun search(query: String, language: String) = listOf(PlaceCandidate("google", "", 1.0, 1.0, ""))
+        val server = MockWebServer()
+        try {
+            server.enqueue(MockResponse().setBody("""{"places":[{"displayName":{"text":"google"},"location":{"latitude":1.0,"longitude":1.0}}]}"""))
+            val google = GooglePlacesSearch(OkHttpClient(), endpoint = server.url("/v1/places:searchText"))
+            val meteo = object : PlaceSearch {
+                override suspend fun search(query: String, language: String) = listOf(PlaceCandidate("meteo", "", 1.0, 1.0, ""))
+            }
+            var key = ""
+            val finder = PlaceFinder(google, meteo) { key }
+            assertEquals("meteo", finder.search("Town", "en").single().name)
+            key = "k"
+            assertEquals("google", finder.search("Town", "en").single().name)
+            assertEquals("1.5000, 2.5000", finder.search("1.5, 2.5", "en").single().name)
+            assertEquals("coordinates need no request", 1, server.requestCount)
+        } finally {
+            server.shutdown()
         }
-        val meteo = object : PlaceSearch {
-            override suspend fun search(query: String, language: String) = listOf(PlaceCandidate("meteo", "", 1.0, 1.0, ""))
-        }
-        var hasKey = false
-        val finder = PlaceFinder(google, meteo) { hasKey }
-        assertEquals("meteo", finder.search("Town", "en").single().name)
-        hasKey = true
-        assertEquals("google", finder.search("Town", "en").single().name)
-        assertEquals("1.5000, 2.5000", finder.search("1.5, 2.5", "en").single().name)
     }
 }

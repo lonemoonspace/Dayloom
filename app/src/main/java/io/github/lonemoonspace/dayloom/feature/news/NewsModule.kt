@@ -102,10 +102,12 @@ private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
     override val homeCards = listOf(
         HomeCard(key = "unread", title = R.string.news_title, defaultOrder = 300) {
             val snapshot by source.observe().collectAsStateWithLifecycle(initialValue = null)
+            // Counts come from the stored articles, so reading one updates the card at once. / 数量取自本地文章，读完一篇卡片立即更新。
+            val summary by remember { articles.observeSummary() }.collectAsStateWithLifecycle(initialValue = null)
             val status by ctx.coordinator.status.collectAsStateWithLifecycle()
             val isReady by ready.collectAsStateWithLifecycle(initialValue = true)
             val stale = snapshot?.let { source.isStale(it, ctx.clock.now().toInstant()) } == true
-            NewsCard(snapshot?.value, isReady, status[source.id]?.lastError, stale)
+            NewsCard(summary.takeIf { snapshot != null }, isReady, status[source.id]?.lastError, stale)
         },
     )
 
@@ -126,11 +128,13 @@ private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
 
     // Writes go to the app scope, so leaving the tab right after a tap does not cancel them. / 写入放在应用级作用域，点完立刻离开也不会被取消。
     private val actions = object : NewsActions {
-        override fun open(id: Long) = setRead(id, true)
+        override fun open(article: StoredArticle) {
+            if (!article.read) setRead(article.id, true)
+        }
 
         override fun setRead(id: Long, read: Boolean) {
             ctx.appScope.launch {
-                sync.markRead(id, read)
+                sync.markRead(id, read, ctx.clock.now().toInstant().toEpochMilli())
                 pushReadStates()
             }
         }
@@ -169,7 +173,7 @@ private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
         val isReady by ready.collectAsStateWithLifecycle(initialValue = true)
         val list by remember(filter) { articles.observe(filter) }.collectAsStateWithLifecycle(initialValue = null)
         val open by remember(openId) { openId?.let { articles.observe(it) } ?: flowOf(null) }.collectAsStateWithLifecycle(initialValue = null)
-        val snapshot by source.observe().collectAsStateWithLifecycle(initialValue = null)
+        val counts by remember { articles.observeSummary() }.collectAsStateWithLifecycle(initialValue = null)
         val status by ctx.coordinator.status.collectAsStateWithLifecycle()
         LaunchedEffect(Unit) {
             try {
@@ -187,12 +191,12 @@ private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
             articles = list,
             open = open,
             onClose = { openId = null },
-            counts = snapshot?.value,
+            counts = counts,
             error = status[source.id]?.lastError,
             actions = object : NewsActions by actions {
-                override fun open(id: Long) {
-                    openId = id
-                    actions.open(id)
+                override fun open(article: StoredArticle) {
+                    openId = article.id
+                    actions.open(article)
                 }
             },
         )

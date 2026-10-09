@@ -68,7 +68,8 @@ import kotlinx.coroutines.launch
 
 /** What the tab needs from the module. / 标签页需要模块提供的东西。 */
 internal interface NewsActions {
-    fun open(id: Long)
+    /** Opens an article and marks it read if it was not. / 打开文章，未读时标为已读。 */
+    fun open(article: StoredArticle)
     fun setRead(id: Long, read: Boolean)
     fun setStarred(id: Long, starred: Boolean)
 
@@ -152,7 +153,7 @@ internal fun NewsTab(
             articles.isEmpty() -> item {
                 Hint(stringResource(if (filter == ArticleFilter.UNREAD) R.string.news_all_read else R.string.news_none))
             }
-            else -> items(articles, key = { it.id }) { article -> ArticleRow(article, now) { actions.open(article.id) } }
+            else -> items(articles, key = { it.id }) { article -> ArticleRow(article, now) { actions.open(article) } }
         }
     }
 }

@@ -51,6 +51,7 @@
     <string name="weather_tip_layers">Dress in layers</string>
     <string name="weather_tip_pleasant">Pleasant day</string>
     <string name="weather_attribution">Weather data: MET Norway (CC BY 4.0)</string>
+    <string name="weather_brief_short">%1$s, %2$d°</string>
     <string name="weather_brief">%1$s, %2$d° · %3$s</string>
     <string name="weather_brief_umbrella">%1$s, %2$d° · %3$s · rain later, take an umbrella</string>
     <string name="weather_clear">Clear</string>

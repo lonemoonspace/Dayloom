@@ -102,6 +102,14 @@ class FootballPolicyTest {
     }
 
     @Test
+    fun `a status stuck at live stops counting after the match window`() {
+        val stuck = match(1, now.minusDays(2), MatchStatus.IN_PLAY, goals = 1 to 0)
+        assertNull(FootballPolicy.homeMatch(listOf(stuck), now.toInstant()))
+        assertEquals(Duration.ofHours(3), FootballPolicy.cadence(listOf(stuck), now.toInstant()).interval)
+        assertTrue(FootballPolicy.isLiveNow(match(2, now.minusMinutes(80), MatchStatus.IN_PLAY), now.toInstant()))
+    }
+
+    @Test
     fun `fixtures put live first and results are newest first`() {
         val a = match(1, now.plusDays(2), MatchStatus.TIMED)
         val b = match(2, now.minusMinutes(30), MatchStatus.IN_PLAY)

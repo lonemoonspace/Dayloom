@@ -17,6 +17,7 @@ import io.github.lonemoonspace.dayloom.feature.news.domain.SyncSummary
 import java.time.Duration
 import java.time.ZonedDateTime
 import java.util.Objects
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -24,53 +25,67 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * Two-way sync with Miniflux. Every write to the stored articles goes through the same lock, so a tap during a sync is
- * never overwritten by the sync's older view of that article.
- * 与 Miniflux 的双向同步。对本地文章的每次写入都经过同一把锁，同步期间的点按不会被同步手里更旧的数据覆盖。
+ * Two-way sync with Miniflux. Network calls run outside the lock, so a tap is never held up by a slow server; every read
+ * and write of the stored articles runs inside it, and the merge only clears a pending change whose value was the one sent.
+ * 与 Miniflux 的双向同步。网络调用在锁外进行，服务器慢时点按也不会卡住；对本地文章的每次读写都在锁内，合并时只清除值与已发送值
+ * 相同的待发送修改。
  */
 class NewsSync(private val store: ArticleStore, private val api: MinifluxApi, private val onPushError: (Exception) -> Unit = {}) {
     private val lock = Mutex()
 
+    /** Read states already sent since the last sync, so opening articles does not resend them. / 上次同步以来已发出的已读状态，打开文章时不再重复发送。 */
+    private val sentSinceSync = ConcurrentHashMap<Long, Boolean>()
+
     suspend fun sync(baseUrl: String, token: String, nowMillis: Long): SyncSummary {
         val unread = api.unread(baseUrl, token)
         val starred = api.starred(baseUrl, token)
+        val plan = lock.withLock { NewsSyncPolicy.pushPlan(store.all(), unread, starred) }
+        // A failed push keeps the changes pending for the next sync; the download still lands. / 推送失败时修改保留待发送，下载的内容照样写入。
+        val pushed = try {
+            api.setStatus(baseUrl, token, plan.markRead, read = true)
+            api.setStatus(baseUrl, token, plan.markUnread, read = false)
+            plan.toggleStar.forEach { api.toggleStar(baseUrl, token, it) }
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            onPushError(e)
+            false
+        }
         return lock.withLock {
-            val local = store.all()
-            val plan = NewsSyncPolicy.pushPlan(local, starred.mapTo(mutableSetOf()) { it.id })
-            // A failed push keeps the changes pending for the next sync; the download still lands. / 推送失败时修改保留待发送，下载的内容照样写入。
-            val pushed = try {
-                api.setStatus(baseUrl, token, plan.markRead, read = true)
-                api.setStatus(baseUrl, token, plan.markUnread, read = false)
-                plan.toggleStar.forEach { api.toggleStar(baseUrl, token, it) }
-                true
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                onPushError(e)
-                false
-            }
-            store.apply(NewsSyncPolicy.merge(local, unread, starred, pushed, nowMillis))
+            val result = NewsSyncPolicy.merge(
+                local = store.all(),
+                unread = unread,
+                starred = starred,
+                sentRead = if (pushed) plan.sentRead else emptyMap(),
+                sentStarred = if (pushed) plan.sentStarred else emptyMap(),
+                nowMillis = nowMillis,
+            )
+            store.apply(result)
+            sentSinceSync.clear()
             NewsSyncPolicy.summary(store.all())
         }
     }
 
-    suspend fun markRead(id: Long, read: Boolean) = lock.withLock { store.markRead(id, read) }
+    suspend fun markRead(id: Long, read: Boolean, nowMillis: Long) = lock.withLock { store.markRead(id, read, if (read) nowMillis else 0) }
 
     suspend fun markStarred(id: Long, starred: Boolean) = lock.withLock { store.markStarred(id, starred) }
 
     /**
-     * Sends pending read states right away, so another device sees them before the next sync. Stars wait for the sync:
-     * Miniflux only toggles them, which is safe only against the server's current state.
-     * 立即发送待发送的已读状态，其他设备不用等下一次同步就能看到。收藏等同步时再发：Miniflux 只能切换收藏，只有对照服务器当前状态
-     * 才安全。
+     * Sends pending read states right away, so another device sees them before the next sync. They stay pending: the next
+     * sync sends them once more and clears them, which is harmless because setting a state is idempotent. Stars wait for
+     * the sync: Miniflux only toggles them, which is safe only against the server's current state.
+     * 立即发送待发送的已读状态，其他设备不用等下一次同步就能看到。它们仍保持待发送：下一次同步会再发一次并清除——设置状态是幂等的，
+     * 重复发送无害。收藏等同步时再发：Miniflux 只能切换收藏，只有对照服务器当前状态才安全。
      */
-    suspend fun pushReadStates(baseUrl: String, token: String) = lock.withLock {
-        val local = store.all()
-        val read = local.filter { it.pendingRead == true }.map { it.id }
-        val unread = local.filter { it.pendingRead == false }.map { it.id }
-        api.setStatus(baseUrl, token, read, read = true)
-        api.setStatus(baseUrl, token, unread, read = false)
-        store.confirmRead(read + unread)
+    suspend fun pushReadStates(baseUrl: String, token: String) {
+        val pending = lock.withLock { store.all() }
+            .mapNotNull { a -> a.pendingRead?.let { a.id to it } }
+            .filter { (id, read) -> sentSinceSync[id] != read }
+        if (pending.isEmpty()) return
+        api.setStatus(baseUrl, token, pending.filter { it.second }.map { it.first }, read = true)
+        api.setStatus(baseUrl, token, pending.filterNot { it.second }.map { it.first }, read = false)
+        sentSinceSync.putAll(pending)
     }
 }
 

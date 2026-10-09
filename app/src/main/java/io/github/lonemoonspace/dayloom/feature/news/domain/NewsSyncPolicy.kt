@@ -2,10 +2,18 @@ package io.github.lonemoonspace.dayloom.feature.news.domain
 
 import java.time.Duration
 
-/** What to tell Miniflux before merging. / 合并之前要告诉 Miniflux 的修改。 */
-data class PushPlan(val markRead: List<Long>, val markUnread: List<Long>, val toggleStar: List<Long>) {
-    val isEmpty: Boolean get() = markRead.isEmpty() && markUnread.isEmpty() && toggleStar.isEmpty()
-}
+/**
+ * What to tell Miniflux before merging, and exactly which values were sent: after a successful push a pending change is
+ * cleared only if it still holds the value that went out, so a tap made during the sync survives it.
+ * 合并之前要告诉 Miniflux 的修改，以及具体发出了哪些值：推送成功后，只有仍等于已发出值的待发送修改才会清除，同步期间的点按因此不会丢。
+ */
+data class PushPlan(
+    val markRead: List<Long>,
+    val markUnread: List<Long>,
+    val toggleStar: List<Long>,
+    val sentRead: Map<Long, Boolean>,
+    val sentStarred: Map<Long, Boolean>,
+)
 
 data class MergeResult(val upsert: List<StoredArticle>, val delete: List<Long>)
 
@@ -17,46 +25,62 @@ object NewsSyncPolicy {
     /** Unread and starred entries fetched per sync; Miniflux pages beyond this are left for later. / 每次同步取的未读与收藏条数；更多的留到以后。 */
     const val FETCH_LIMIT = 200
 
-    /** Read, unstarred articles are kept this long so "All" still has something to show. / 已读且未收藏的文章保留这么久，「全部」里才有东西看。 */
+    /** Read, unstarred articles are kept this long after being read, so "All" still has something to show. / 已读且未收藏的文章在读过之后保留这么久，「全部」里才有东西看。 */
     val KEEP_READ: Duration = Duration.ofDays(14)
 
     /**
-     * Miniflux's bookmark call toggles, so a star is only sent when the server's state differs from the wanted one.
-     * [remoteStarred] are the ids the server listed as starred in this sync.
-     * Miniflux 的收藏接口是切换式的，所以只有服务器状态与想要的不同时才发送。[remoteStarred] 是本次同步服务器列为已收藏的 id。
+     * Read states go out as they are. Miniflux's bookmark call toggles, so a star is only sent when the server's state is
+     * known and differs: from the entry itself when the server listed it, else from a complete starred list; a star whose
+     * server state is unknown waits for a later sync.
+     * 已读状态按原样发送。Miniflux 的收藏接口是切换式的，所以只有确知服务器状态且与想要的不同时才发送：服务器列出了该条目就看
+     * 条目本身，否则看完整的收藏列表；服务器状态未知的收藏留到以后的同步。
      */
-    fun pushPlan(local: List<StoredArticle>, remoteStarred: Set<Long>): PushPlan = PushPlan(
-        markRead = local.filter { it.pendingRead == true }.map { it.id },
-        markUnread = local.filter { it.pendingRead == false }.map { it.id },
-        toggleStar = local.filter { it.pendingStarred != null && it.pendingStarred != (it.id in remoteStarred) }.map { it.id },
-    )
+    fun pushPlan(local: List<StoredArticle>, unread: List<RemoteEntry>, starred: List<RemoteEntry>): PushPlan {
+        val remote = (unread + starred).associate { it.id to it.starred }
+        val starredComplete = starred.size < FETCH_LIMIT
+        val reads = local.mapNotNull { a -> a.pendingRead?.let { a.id to it } }.toMap()
+        val stars = local.mapNotNull { a ->
+            val wanted = a.pendingStarred ?: return@mapNotNull null
+            val server = remote[a.id] ?: if (starredComplete) false else return@mapNotNull null
+            a.id to (wanted to server)
+        }.toMap()
+        return PushPlan(
+            markRead = reads.filterValues { it }.keys.toList(),
+            markUnread = reads.filterValues { !it }.keys.toList(),
+            toggleStar = stars.filterValues { (wanted, server) -> wanted != server }.keys.toList(),
+            sentRead = reads,
+            sentStarred = stars.mapValues { it.value.first },
+        )
+    }
 
     /**
-     * A local change wins until it has been pushed; after a successful push it is the truth and stops being pending. Remote
-     * entries refresh the stored text but keep the summary. An article that left a complete server list without a local
-     * change was read (or unstarred) elsewhere; a list cut off at [FETCH_LIMIT] proves nothing about the rest. Old read,
-     * unstarred articles go.
-     * 本地修改在推送之前优先；推送成功后它就是事实，不再待发送。服务器的条目更新本地正文，但保留摘要。没有本地修改、却从完整的
-     * 服务器列表里消失的文章，说明在别处读过（或取消了收藏）；被 [FETCH_LIMIT] 截断的列表对其余文章说明不了什么。旧的已读且未收藏
-     * 的文章删除。
+     * A local change wins until the value it holds has been pushed. Remote entries refresh the stored text but keep the
+     * summary. An article that left a complete server list without a local change was read (or unstarred) elsewhere; a list
+     * cut off at [FETCH_LIMIT] proves nothing about the rest. Read, unstarred articles go [KEEP_READ] after they were read.
+     * 本地修改在它的值被推送之前一直优先。服务器的条目更新本地正文，但保留摘要。没有本地修改、却从完整的服务器列表里消失的文章，
+     * 说明在别处读过（或取消了收藏）；被 [FETCH_LIMIT] 截断的列表对其余文章说明不了什么。已读且未收藏的文章在读过 [KEEP_READ] 后删除。
      */
     fun merge(
         local: List<StoredArticle>,
         unread: List<RemoteEntry>,
         starred: List<RemoteEntry>,
-        pushed: Boolean,
+        sentRead: Map<Long, Boolean>,
+        sentStarred: Map<Long, Boolean>,
         nowMillis: Long,
     ): MergeResult {
         val byId = local.associateBy { it.id }
         val remote = (unread + starred).associateBy { it.id }
-        val starredIds = starred.mapTo(mutableSetOf()) { it.id }
         val unreadComplete = unread.size < FETCH_LIMIT
         val starredComplete = starred.size < FETCH_LIMIT
         val upsert = mutableListOf<StoredArticle>()
         val delete = mutableListOf<Long>()
 
+        fun readAt(old: StoredArticle?, read: Boolean) = if (!read) 0 else old?.readAt?.takeIf { it > 0 } ?: nowMillis
+        fun stillPending(id: Long, pending: Boolean?, sent: Map<Long, Boolean>) = pending.takeUnless { it != null && sent[id] == it }
+
         for (entry in remote.values) {
             val old = byId[entry.id]
+            val read = old?.pendingRead ?: entry.read
             upsert += StoredArticle(
                 id = entry.id,
                 feedTitle = entry.feedTitle,
@@ -65,11 +89,12 @@ object NewsSyncPolicy {
                 author = entry.author,
                 contentHtml = entry.contentHtml,
                 publishedAt = entry.publishedAt,
-                read = old?.pendingRead ?: entry.read,
-                starred = old?.pendingStarred ?: (entry.id in starredIds),
+                read = read,
+                starred = old?.pendingStarred ?: entry.starred,
                 readingMinutes = entry.readingMinutes,
-                pendingRead = old?.pendingRead.takeUnless { pushed },
-                pendingStarred = old?.pendingStarred.takeUnless { pushed },
+                pendingRead = stillPending(entry.id, old?.pendingRead, sentRead),
+                pendingStarred = stillPending(entry.id, old?.pendingStarred, sentStarred),
+                readAt = readAt(old, read),
                 summary = old?.summary.orEmpty(),
                 summaryLanguage = old?.summaryLanguage.orEmpty(),
             )
@@ -79,13 +104,17 @@ object NewsSyncPolicy {
             if (old.id in remote) continue
             val read = old.pendingRead ?: if (unreadComplete) true else old.read
             val starred = old.pendingStarred ?: if (starredComplete) false else old.starred
-            val pendingRead = old.pendingRead.takeUnless { pushed }
-            val pendingStarred = old.pendingStarred.takeUnless { pushed }
-            val expired = read && !starred && nowMillis - old.publishedAt > KEEP_READ.toMillis()
+            val updated = old.copy(
+                read = read,
+                starred = starred,
+                pendingRead = stillPending(old.id, old.pendingRead, sentRead),
+                pendingStarred = stillPending(old.id, old.pendingStarred, sentStarred),
+                readAt = readAt(old, read),
+            )
+            val expired = read && !starred && nowMillis - updated.readAt > KEEP_READ.toMillis()
             when {
-                expired && pendingRead == null && pendingStarred == null -> delete += old.id
-                read != old.read || starred != old.starred || pendingRead != old.pendingRead || pendingStarred != old.pendingStarred ->
-                    upsert += old.copy(read = read, starred = starred, pendingRead = pendingRead, pendingStarred = pendingStarred)
+                expired && updated.pendingRead == null && updated.pendingStarred == null -> delete += old.id
+                updated != old -> upsert += updated
             }
         }
         return MergeResult(upsert, delete)

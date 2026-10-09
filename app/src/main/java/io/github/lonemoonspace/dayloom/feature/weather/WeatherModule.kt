@@ -64,9 +64,14 @@ private class WeatherInstance(private val ctx: ModuleContext) : ModuleInstance {
     override val brief = BriefContributor { now ->
         val snapshot = source.current()?.takeUnless { source.isStale(it, now.toInstant()) } ?: return@BriefContributor null
         val brief = WeatherBriefPolicy.brief(snapshot.value, now) ?: return@BriefContributor null
-        val clothing = UiText.Res(clothingText(brief.clothing ?: return@BriefContributor null))
         val condition = UiText.Res(conditionText(brief.condition))
-        UiText.Res(if (brief.umbrella) R.string.weather_brief_umbrella else R.string.weather_brief, listOf(condition, brief.temperature, clothing))
+        // Without an outlook for the day there is no clothing advice, but the reading itself is still worth a line.
+        // 没有当天概况就没有穿衣建议，但当前读数本身仍值得一行。
+        val clothing = brief.clothing ?: return@BriefContributor UiText.Res(R.string.weather_brief_short, listOf(condition, brief.temperature))
+        UiText.Res(
+            if (brief.umbrella) R.string.weather_brief_umbrella else R.string.weather_brief,
+            listOf(condition, brief.temperature, UiText.Res(clothingText(clothing))),
+        )
     }
 
     @Composable

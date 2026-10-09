@@ -38,6 +38,8 @@ data class StoredArticle(
     val readingMinutes: Int = 0,
     val pendingRead: Boolean? = null,
     val pendingStarred: Boolean? = null,
+    /** When it was first seen read here, epoch millis; 0 while unread. Read articles expire from this. / 在本机首次被看作已读的时刻（epoch 毫秒），未读时为 0；已读文章按它过期。 */
+    val readAt: Long = 0,
     /** AI summary and the language it was written in; kept across syncs. / AI 摘要及其语言；同步时保留。 */
     val summary: String = "",
     val summaryLanguage: String = "",

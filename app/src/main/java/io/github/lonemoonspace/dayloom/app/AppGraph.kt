@@ -102,9 +102,9 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
     val secrets: SecretStore = DataStoreSecretStore(appContext.secretsDataStore, SecretBox)
 
     val placeSearch: PlaceSearch = PlaceFinder(
-        google = GooglePlacesSearch(http, apiKey = { secrets.usable(SharedSecrets.GOOGLE_MAPS) }),
+        google = GooglePlacesSearch(http),
         fallback = OpenMeteoGeocoder(http),
-        hasGoogleKey = { secrets.usable(SharedSecrets.GOOGLE_MAPS).isNotBlank() },
+        googleKey = { secrets.usable(SharedSecrets.GOOGLE_MAPS) },
     )
 
     private val moduleSettings = ModuleSettingsStore(appContext.moduleSettingsDataStore) { moduleId, e ->

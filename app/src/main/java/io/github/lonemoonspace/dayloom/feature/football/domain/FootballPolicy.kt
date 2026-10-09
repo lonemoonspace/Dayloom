@@ -37,9 +37,20 @@ object FootballPolicy {
      * 不会迟到。其余时间每三小时一次。
      */
     fun cadence(matches: List<Match>, now: Instant): RefreshCadence = when {
-        matches.any { it.status.isLive || isUnderway(it, now) } -> RefreshCadence(interval = Duration.ofMinutes(1))
+        matches.any { isLiveNow(it, now) || isUnderway(it, now) } -> RefreshCadence(interval = Duration.ofMinutes(1))
         matches.any { isAround(it, now) } -> RefreshCadence(interval = Duration.ofMinutes(15))
         else -> RefreshCadence(interval = Duration.ofHours(3))
+    }
+
+    /**
+     * Live by its status and still within the time a match can last. A snapshot stuck at "in play" (the fetches after it
+     * failed) must not show a live match, or pin its card to the top, for days.
+     * 按状态在进行中，且仍在一场比赛可能持续的时间内。停在「进行中」的快照（之后的抓取都失败了）不能连续几天显示为直播，也不能
+     * 让卡片一直置顶。
+     */
+    fun isLiveNow(match: Match, now: Instant): Boolean {
+        val kickoff = Instant.ofEpochMilli(match.kickoff)
+        return match.status.isLive && now.isBefore(kickoff.plus(MATCH_SPAN).plus(Duration.ofHours(1)))
     }
 
     /** Should have started and not be over yet, even when the status lags behind. / 按时间应已开赛、还没结束，即使状态还没更新。 */
@@ -59,8 +70,8 @@ object FootballPolicy {
 
     /** Not finished yet, live first, then by kick-off; postponed and cancelled ones stay so the user sees why. / 未结束的比赛，进行中的在前，再按开球时间；延期与取消的保留，用户才知道原因。 */
     fun upcoming(matches: List<Match>, now: Instant, limit: Int = UPCOMING_SHOWN): List<Match> =
-        matches.filter { !it.status.isFinished && (it.status.isLive || it.kickoff >= now.minus(MATCH_SPAN).toEpochMilli()) }
-            .sortedWith(compareByDescending<Match> { it.status.isLive }.thenBy { it.kickoff })
+        matches.filter { !it.status.isFinished && (isLiveNow(it, now) || it.kickoff >= now.minus(MATCH_SPAN).toEpochMilli()) }
+            .sortedWith(compareByDescending<Match> { isLiveNow(it, now) }.thenBy { it.kickoff })
             .take(limit)
 
     /**
@@ -69,7 +80,7 @@ object FootballPolicy {
      * 值得占一张首页卡片的比赛：正在进行的；否则一天内要开的下一场；否则十二小时内刚结束的；为 null 时卡片不占位置。
      */
     fun homeMatch(matches: List<Match>, now: Instant): Match? {
-        matches.firstOrNull { it.status.isLive }?.let { return it }
+        matches.firstOrNull { isLiveNow(it, now) }?.let { return it }
         val nowMillis = now.toEpochMilli()
         matches.filter { it.status.isUpcoming && it.kickoff >= nowMillis - MATCH_SPAN.toMillis() && it.kickoff <= nowMillis + Duration.ofDays(1).toMillis() }
             .minByOrNull { it.kickoff }?.let { return it }

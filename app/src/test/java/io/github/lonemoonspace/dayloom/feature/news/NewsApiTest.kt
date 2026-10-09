@@ -103,9 +103,10 @@ class NewsApiTest {
         }
         override fun observe(filter: ArticleFilter): Flow<List<StoredArticle>> = rows.map { it.values.toList() }
         override fun observe(id: Long): Flow<StoredArticle?> = rows.map { it[id] }
-        override suspend fun markRead(id: Long, read: Boolean) = edit(id) { it.copy(read = read, pendingRead = read) }
+        override fun observeSummary(): Flow<io.github.lonemoonspace.dayloom.feature.news.domain.SyncSummary> =
+            rows.map { io.github.lonemoonspace.dayloom.feature.news.domain.NewsSyncPolicy.summary(it.values.toList()) }
+        override suspend fun markRead(id: Long, read: Boolean, readAt: Long) = edit(id) { it.copy(read = read, pendingRead = read, readAt = readAt) }
         override suspend fun markStarred(id: Long, starred: Boolean) = edit(id) { it.copy(starred = starred, pendingStarred = starred) }
-        override suspend fun confirmRead(ids: List<Long>) = ids.forEach { id -> edit(id) { it.copy(pendingRead = null) } }
         override suspend fun saveSummary(id: Long, summary: String, language: String) = edit(id) { it.copy(summary = summary, summaryLanguage = language) }
         private fun edit(id: Long, f: (StoredArticle) -> StoredArticle) {
             rows.value[id]?.let { rows.value = rows.value + (id to f(it)) }
@@ -121,7 +122,7 @@ class NewsApiTest {
         val first = sync.sync(base, "tok", nowMillis = java.time.Instant.parse("2026-10-09T12:00:00Z").toEpochMilli())
         assertEquals(2, first.unread)
 
-        sync.markRead(1, true)
+        sync.markRead(1, true, nowMillis = 0)
         sync.markStarred(2, true)
         server.enqueue(MockResponse().setBody(entries(1, 2)))
         server.enqueue(MockResponse().setBody(entries()))
@@ -140,5 +141,23 @@ class NewsApiTest {
         assertNull(store.rows.value.getValue(1).pendingRead)
         assertNull(store.rows.value.getValue(2).pendingStarred)
         assertTrue(store.rows.value.getValue(2).starred)
+    }
+
+    @Test
+    fun `read states go out right away, once, and stay pending until a sync confirms them`() = runTest {
+        val store = MemoryStore()
+        val sync = NewsSync(store, MinifluxApi(OkHttpClient()))
+        server.enqueue(MockResponse().setBody(entries(1)))
+        server.enqueue(MockResponse().setBody(entries()))
+        sync.sync(base, "tok", nowMillis = 0)
+        repeat(2) { server.takeRequest() }
+
+        sync.markRead(1, true, nowMillis = 5)
+        server.enqueue(MockResponse().setResponseCode(204))
+        sync.pushReadStates(base, "tok")
+        assertEquals("PUT", server.takeRequest().method)
+        sync.pushReadStates(base, "tok")
+        assertEquals("nothing new to send", 1 + 2, server.requestCount)
+        assertEquals(true, store.rows.value.getValue(1).pendingRead)
     }
 }

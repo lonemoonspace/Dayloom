@@ -67,7 +67,9 @@ internal fun FootballSettingsSection(
         FootballPolicy.FREE_COMPETITIONS.forEach { code ->
             FilterChip(
                 selected = saved.competition == code,
-                onClick = { update { it.copy(competition = code) } },
+                // The team is picked from a competition and its table is shown, so a new competition means picking again.
+                // 球队是从赛事里挑的，显示的也是该赛事的积分表，所以换赛事就要重新选球队。
+                onClick = { if (saved.competition != code) update { it.copy(competition = code, team = TeamRef()) } },
                 label = { Text(competitionName(code)?.let { stringResource(it) } ?: code) },
             )
         }

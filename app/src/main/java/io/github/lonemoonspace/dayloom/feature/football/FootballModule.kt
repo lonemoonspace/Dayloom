@@ -36,7 +36,9 @@ import io.github.lonemoonspace.dayloom.core.secret.SecretState
 import io.github.lonemoonspace.dayloom.core.ui.InfoCard
 import io.github.lonemoonspace.dayloom.core.ui.SkeletonLines
 import io.github.lonemoonspace.dayloom.core.ui.plusBars
+import io.github.lonemoonspace.dayloom.core.time.minuteTicks
 import io.github.lonemoonspace.dayloom.core.ui.rememberMinuteTick
+import io.github.lonemoonspace.dayloom.core.ui.updatedAgo
 import io.github.lonemoonspace.dayloom.feature.football.data.FootballDataApi
 import io.github.lonemoonspace.dayloom.feature.football.data.MatchesSource
 import io.github.lonemoonspace.dayloom.feature.football.data.StandingsSource
@@ -44,6 +46,7 @@ import io.github.lonemoonspace.dayloom.feature.football.domain.FootballBrief
 import io.github.lonemoonspace.dayloom.feature.football.domain.FootballNotifyTarget
 import io.github.lonemoonspace.dayloom.feature.football.domain.FootballPolicy
 import io.github.lonemoonspace.dayloom.feature.football.domain.KickoffRule
+import io.github.lonemoonspace.dayloom.feature.football.domain.Match
 import io.github.lonemoonspace.dayloom.feature.football.domain.ResultRule
 import io.github.lonemoonspace.dayloom.feature.football.domain.Standings
 import io.github.lonemoonspace.dayloom.feature.football.domain.TeamMatches
@@ -59,7 +62,6 @@ import io.github.lonemoonspace.dayloom.feature.football.ui.MatchRow
 import io.github.lonemoonspace.dayloom.feature.football.ui.Scoreboard
 import io.github.lonemoonspace.dayloom.feature.football.ui.TableRows
 import io.github.lonemoonspace.dayloom.feature.football.ui.competitionLabel
-import io.github.lonemoonspace.dayloom.feature.football.ui.updatedAgo
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -125,6 +127,17 @@ private class FootballInstance(private val ctx: ModuleContext) : ModuleInstance 
         api = api,
     )
 
+    /**
+     * The matches of the team in the settings; a snapshot of the previous team (until the new one is fetched) is ignored.
+     * 设置里那支球队的比赛；换队后新数据到来之前，旧球队的快照一律忽略。
+     */
+    private val teamMatches: Flow<List<Match>?> = combine(matches.observe(), store.flow) { snapshot, s ->
+        snapshot?.value?.takeIf { it.teamId == s.team.id }?.matches
+    }
+
+    private suspend fun currentTeamMatches(): List<Match>? =
+        matches.current()?.value?.takeIf { it.teamId == store.get().team.id }?.matches
+
     init {
         // The matches cadence follows the schedule; it learns it from the cached snapshot too, not only from a fetch.
         // 比赛来源的刷新节奏随赛程变化；它不只从抓取结果、也从缓存快照里得知赛程。
@@ -148,8 +161,8 @@ private class FootballInstance(private val ctx: ModuleContext) : ModuleInstance 
             title = R.string.football_title,
             defaultOrder = 250,
             // A live match moves above the user's order while it lasts. / 比赛进行期间卡片排到最前。
-            placement = matches.observe().map { s ->
-                if (s?.value?.matches.orEmpty().any { it.status.isLive }) CardPlacement.TOP else CardPlacement.NORMAL
+            placement = combine(teamMatches, ctx.clock.minuteTicks()) { list, now ->
+                if (list.orEmpty().any { FootballPolicy.isLiveNow(it, now.toInstant()) }) CardPlacement.TOP else CardPlacement.NORMAL
             }.distinctUntilChanged(),
         ) { HomeMatchCard() },
     )
@@ -171,6 +184,7 @@ private class FootballInstance(private val ctx: ModuleContext) : ModuleInstance 
 
     override val brief = BriefContributor { now ->
         val snapshot = matches.current()?.takeUnless { matches.isStale(it, now.toInstant()) } ?: return@BriefContributor null
+        if (snapshot.value.teamId != store.get().team.id) return@BriefContributor null
         FootballBrief.line(snapshot.value.matches, now)
     }
 
@@ -181,13 +195,13 @@ private class FootballInstance(private val ctx: ModuleContext) : ModuleInstance 
     override val notificationRules = listOf(
         KickoffRule(
             enabled = { store.get().notifyKickoff },
-            matches = { matches.current()?.value?.matches },
+            matches = { currentTeamMatches() },
             target = target,
         ),
         ResultRule(
             enabled = { store.get().notifyResult },
             refreshed = { report -> report.succeeded(matches.id) },
-            matches = { matches.current()?.value?.matches },
+            matches = { currentTeamMatches() },
             teamId = { store.get().team.id },
             target = target,
         ),

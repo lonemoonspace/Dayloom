@@ -22,15 +22,12 @@ import okhttp3.RequestBody.Companion.toRequestBody
  */
 class GooglePlacesSearch(
     private val http: OkHttpClient,
-    private val apiKey: suspend () -> String,
     private val endpoint: HttpUrl = "https://places.googleapis.com/v1/places:searchText".toHttpUrl(),
-) : PlaceSearch {
+) {
 
-    override suspend fun search(query: String, language: String): List<PlaceCandidate> {
+    fun search(query: String, language: String, key: String): List<PlaceCandidate> {
         val text = query.trim()
-        if (text.length < 2) return emptyList()
-        val key = apiKey()
-        if (key.isBlank()) return emptyList()
+        if (text.length < 2 || key.isBlank()) return emptyList()
         val payload = buildJsonObject {
             put("textQuery", text)
             put("languageCode", language)
@@ -98,12 +95,13 @@ class GooglePlacesSearch(
  * 设置页用的地点搜索：手动输入的坐标直接采用；否则有 Key 时用 Google，没有时用 Open-Meteo（只认城镇，不认街道地址）。
  */
 class PlaceFinder(
-    private val google: PlaceSearch,
+    private val google: GooglePlacesSearch,
     private val fallback: PlaceSearch,
-    private val hasGoogleKey: suspend () -> Boolean,
+    private val googleKey: suspend () -> String,
 ) : PlaceSearch {
     override suspend fun search(query: String, language: String): List<PlaceCandidate> {
         PlacesPolicy.parseCoordinates(query)?.let { return listOf(it) }
-        return if (hasGoogleKey()) google.search(query, language) else fallback.search(query, language)
+        val key = googleKey()
+        return if (key.isNotBlank()) google.search(query, language, key) else fallback.search(query, language)
     }
 }

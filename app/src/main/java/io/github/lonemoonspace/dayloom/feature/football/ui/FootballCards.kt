@@ -240,17 +240,6 @@ private fun NumberCell(text: String, weight: FontWeight?, modifier: Modifier) {
     Text(text, style = MaterialTheme.typography.bodySmall, fontWeight = weight, textAlign = TextAlign.Center, modifier = modifier)
 }
 
-/** "Just now", "3 min ago", then the clock time. / 「刚刚」「3 分钟前」，再久显示时刻。 */
-@Composable
-internal fun updatedAgo(fetchedAt: Long, now: ZonedDateTime): String {
-    val minutes = Duration.between(Instant.ofEpochMilli(fetchedAt), now.toInstant()).toMinutes().toInt()
-    return when {
-        minutes < 1 -> stringResource(R.string.common_updated_now)
-        minutes < 60 -> pluralStringResource(R.plurals.common_updated_minutes, minutes, minutes)
-        else -> Instant.ofEpochMilli(fetchedAt).atZone(now.zone).format(rememberTimeFormatter())
-    }
-}
-
 @Composable
 internal fun ErrorLine(error: AppError) {
     Text(error.userMessage().asString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.statusColors.red)

@@ -11,7 +11,9 @@ import androidx.room.Upsert
 import io.github.lonemoonspace.dayloom.feature.news.domain.ArticleFilter
 import io.github.lonemoonspace.dayloom.feature.news.domain.ArticleStore
 import io.github.lonemoonspace.dayloom.feature.news.domain.MergeResult
+import io.github.lonemoonspace.dayloom.feature.news.domain.NewsSyncPolicy
 import io.github.lonemoonspace.dayloom.feature.news.domain.StoredArticle
+import io.github.lonemoonspace.dayloom.feature.news.domain.SyncSummary
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -34,9 +36,12 @@ data class ArticleEntity(
     val readingMinutes: Int,
     val pendingRead: Boolean?,
     val pendingStarred: Boolean?,
+    val readAt: Long,
     val summary: String,
     val summaryLanguage: String,
 )
+
+data class ArticleHead(val id: Long, val feedTitle: String, val title: String, val publishedAt: Long, val read: Boolean, val starred: Boolean)
 
 @Dao
 interface ArticleDao {
@@ -68,14 +73,15 @@ interface ArticleDao {
     @Query("SELECT * FROM article WHERE id = :id")
     fun byId(id: Long): Flow<ArticleEntity?>
 
-    @Query("UPDATE article SET read = :read, pendingRead = :read WHERE id = :id")
-    suspend fun markRead(id: Long, read: Boolean)
+    /** Just what the home card needs, without the article text. / 只取首页卡片需要的字段，不带正文。 */
+    @Query("SELECT id, feedTitle, title, publishedAt, read, starred FROM article")
+    fun heads(): Flow<List<ArticleHead>>
+
+    @Query("UPDATE article SET read = :read, pendingRead = :read, readAt = :readAt WHERE id = :id")
+    suspend fun markRead(id: Long, read: Boolean, readAt: Long)
 
     @Query("UPDATE article SET starred = :starred, pendingStarred = :starred WHERE id = :id")
     suspend fun markStarred(id: Long, starred: Boolean)
-
-    @Query("UPDATE article SET pendingRead = NULL WHERE id IN (:ids)")
-    suspend fun confirmRead(ids: List<Long>)
 
     @Query("UPDATE article SET summary = :summary, summaryLanguage = :language WHERE id = :id")
     suspend fun saveSummary(id: Long, summary: String, language: String)
@@ -100,19 +106,21 @@ class RoomArticleStore(private val dao: ArticleDao) : ArticleStore {
 
     override fun observe(id: Long): Flow<StoredArticle?> = dao.byId(id).map { it?.toArticle() }
 
-    override suspend fun markRead(id: Long, read: Boolean) = dao.markRead(id, read)
+    override fun observeSummary(): Flow<SyncSummary> = dao.heads().map { heads ->
+        NewsSyncPolicy.summary(heads.map { StoredArticle(it.id, it.feedTitle, it.title, publishedAt = it.publishedAt, read = it.read, starred = it.starred) })
+    }
+
+    override suspend fun markRead(id: Long, read: Boolean, readAt: Long) = dao.markRead(id, read, readAt)
 
     override suspend fun markStarred(id: Long, starred: Boolean) = dao.markStarred(id, starred)
-
-    override suspend fun confirmRead(ids: List<Long>) = ids.chunked(500).forEach { dao.confirmRead(it) }
 
     override suspend fun saveSummary(id: Long, summary: String, language: String) = dao.saveSummary(id, summary, language)
 }
 
 private fun ArticleEntity.toArticle() = StoredArticle(
-    id, feedTitle, title, url, author, contentHtml, publishedAt, read, starred, readingMinutes, pendingRead, pendingStarred, summary, summaryLanguage,
+    id, feedTitle, title, url, author, contentHtml, publishedAt, read, starred, readingMinutes, pendingRead, pendingStarred, readAt, summary, summaryLanguage,
 )
 
 private fun StoredArticle.toEntity() = ArticleEntity(
-    id, feedTitle, title, url, author, contentHtml, publishedAt, read, starred, readingMinutes, pendingRead, pendingStarred, summary, summaryLanguage,
+    id, feedTitle, title, url, author, contentHtml, publishedAt, read, starred, readingMinutes, pendingRead, pendingStarred, readAt, summary, summaryLanguage,
 )

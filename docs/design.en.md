@@ -1,6 +1,6 @@
 # Dayloom (织日) Design Document
 
-> Status: **draft v0.3, under review**. No code is written until it is approved.
+> Status: **v1.0, approved** (2026-10-09). Later changes must update both documents and record the decision in §19.
 > Chinese version: [`design.md`](design.md). The two must stay identical in content; update both in the same change.
 
 ---
@@ -133,7 +133,7 @@ interface ModuleInstance {
     val notificationChannels: List<ChannelSpec>
     val notificationRules: List<NotificationRule<*>>
     val brief: BriefContributor?                   // One line in the morning brief
-    val backgroundWork: List<BackgroundWorkSpec>   // Extra background work (e.g. news sync)
+    val backgroundWork: List<BackgroundWorkSpec>   // Extra background work (e.g. news sync); added with the news module in M6, unused before
     val configured: Flow<ConfigState>              // Whether it is set up; if not, cards show a setup prompt
 }
 ```

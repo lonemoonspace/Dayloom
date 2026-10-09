@@ -1,0 +1,81 @@
+# Deletes temporary branches left by releases and test builds: release/*, testbuild/*, refactor/*, cleanup/*.
+# Only branches fully merged into the default branch are deleted; refactor/* also needs its last commit to be 7 days old
+# (a fresh branch is an ancestor too), and release/vX.Y.Z needs tag vX.Y.Z to exist (the release finished).
+# Triggers: weekly, manually, or by pushing any cleanup/* branch (cloud sessions can neither delete branches nor dispatch workflows).
+# 清理发版与测试包留下的临时分支：release/*、testbuild/*、refactor/*、cleanup/*。
+# 只删已完全并入默认分支的分支；refactor/* 还要求最后一次提交满 7 天（刚建的分支也是祖先），
+# release/vX.Y.Z 还要求 tag vX.Y.Z 已存在（发版已完成）。
+# 触发：每周一次、手动，或推任意 cleanup/* 分支（云端会话不能删分支，也不能手动触发 workflow）。
+
+name: Cleanup branches
+
+on:
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+  push:
+    branches: ['cleanup/**']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cleanup-branches
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Delete merged temporary branches
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Delete merged temporary branches
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          test -n "$DEFAULT_BRANCH"
+          base="origin/$DEFAULT_BRANCH"
+          deleted=0
+          kept=0
+          for ref in $(git for-each-ref --format='%(refname:strip=3)' refs/remotes/origin/); do
+            case "$ref" in
+              release/*|testbuild/*|refactor/*|cleanup/*) ;;
+              *) continue ;;
+            esac
+            if ! git merge-base --is-ancestor "origin/$ref" "$base"; then
+              echo "keep $ref: not merged into $DEFAULT_BRANCH"
+              kept=$((kept + 1))
+              continue
+            fi
+            case "$ref" in
+              refactor/*)
+                age=$(( $(date +%s) - $(git log -1 --format=%ct "origin/$ref") ))
+                if [ "$age" -lt $((7 * 24 * 3600)) ]; then
+                  echo "keep $ref: last commit is less than 7 days old"
+                  kept=$((kept + 1))
+                  continue
+                fi
+                ;;
+              release/v*)
+                tag="${ref#release/}"
+                if ! git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+                  echo "keep $ref: tag $tag does not exist yet"
+                  kept=$((kept + 1))
+                  continue
+                fi
+                ;;
+            esac
+            git push origin --delete "$ref"
+            echo "deleted $ref"
+            deleted=$((deleted + 1))
+          done
+          echo "### Branch cleanup" >> "$GITHUB_STEP_SUMMARY"
+          echo "deleted $deleted, kept $kept (see log)" >> "$GITHUB_STEP_SUMMARY"

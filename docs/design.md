@@ -1,6 +1,6 @@
 # Dayloom（织日）设计文档
 
-> 状态：**草稿 v0.3，待审**。审定前不写任何代码。
+> 状态：**v1.0，已审定**（2026-10-09）。之后的修改须同步更新两份文档，并在 §19 记录决策。
 > 英文版见 [`design.en.md`](design.en.md)；两份内容必须一致，修改时同时更新。
 
 ---
@@ -132,7 +132,7 @@ interface ModuleInstance {
     val notificationChannels: List<ChannelSpec>
     val notificationRules: List<NotificationRule<*>>
     val brief: BriefContributor?                   // 早间简报中的一行
-    val backgroundWork: List<BackgroundWorkSpec>   // 额外后台任务（如新闻同步）
+    val backgroundWork: List<BackgroundWorkSpec>   // 额外后台任务（如新闻同步）；M6 随新闻模块加入，在此之前没有使用者
     val configured: Flow<ConfigState>              // 是否已配置好；未配置时卡片显示引导
 }
 ```

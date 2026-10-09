@@ -1,7 +1,7 @@
 # Dayloom（织日）
 
-> Status: **draft**, pending review together with `docs/design.md`. No code exists yet.
-> 状态：**草稿**，与 `docs/design.md` 一起待审。目前还没有任何代码。
+> Design approved (`docs/design.md` / `docs/design.en.md`); built milestone by milestone, see §16 there.
+> 设计已审定（`docs/design.md` / `docs/design.en.md`），按其中 §16 的里程碑逐步实现。
 
 An extensible, bilingual (English / Chinese) Android daily dashboard: weather, Norwegian public transport,
 traffic, expiry reminders, calendar, football and news. Kotlin + Jetpack Compose, single Gradle module `:app`,
@@ -45,13 +45,13 @@ Commit format / 提交格式：
 
 - Packages: `core/*` (infrastructure), `feature/*` (one package per module), `app/*` (assembly: registry, navigation, home/settings shells, onboarding).
 - Dependencies point downwards only: `app → feature → core`. `core` never imports `feature` or `app`; a feature never imports another feature. `ArchitectureTest` enforces this — never weaken it to make a change pass.
-- Every module implements `FeatureModule` and is listed once in `app/ModuleRegistry.kt`. Adding a module must not require edits to the home screen, settings shell, navigation, refresh coordinator, notification engine or other modules; if it does, fix the architecture instead.
+- Every module implements `FeatureModule` and is listed once in `app/ModuleRegistry.kt` (debug-only modules such as the demo go in `src/debug/.../app/VariantModules.kt`). Adding a module must not require edits to the home screen, settings shell, navigation, refresh coordinator, notification engine or other modules; if it does, fix the architecture instead.
 - Each data source is a `CachedSource` with its own snapshot; all refreshes go through `RefreshCoordinator`; UI only observes snapshots.
 - Storage keys, snapshot names, secret ids and notification state keys are namespaced `<moduleId>.<name>` by `ModuleContext`; modules never build these names by hand.
 
 - 包分三层：`core/*`（基础设施）、`feature/*`（每个模块一个包）、`app/*`（组装：注册表、导航、首页/设置外壳、首次启动引导）。
 - 依赖只能向下：`app → feature → core`。`core` 不引用 `feature` 或 `app`；功能模块之间互不引用。由 `ArchitectureTest` 保证——不许为了让改动通过而放宽它。
-- 每个模块实现 `FeatureModule`，在 `app/ModuleRegistry.kt` 里登记一次。加模块不应该需要改首页、设置外壳、导航、刷新协调器、通知引擎或其他模块；如果需要，先修架构。
+- 每个模块实现 `FeatureModule`，在 `app/ModuleRegistry.kt` 里登记一次（演示这类只在 Debug 版出现的模块放在 `src/debug/.../app/VariantModules.kt`）。加模块不应该需要改首页、设置外壳、导航、刷新协调器、通知引擎或其他模块；如果需要，先修架构。
 - 每个数据来源是一个带独立快照的 `CachedSource`；刷新一律经 `RefreshCoordinator`；界面只观察快照。
 - 存储键、快照名、凭据 id、通知状态键由 `ModuleContext` 自动加 `<moduleId>.` 前缀；模块不得手工拼这些名字。
 

@@ -24,7 +24,7 @@
 使用 JDK 17 与仓库自带的 Gradle wrapper：
 
 ```bash
-./gradlew verify          # 单元测试 + Android Lint + Debug 包；每次提交前必须全绿
+./gradlew verify          # 单元测试 + Android Lint + Debug 包 + Release 编译；每次提交前必须全绿
 ./gradlew assembleDebug   # 只打 Debug 包
 ```
 

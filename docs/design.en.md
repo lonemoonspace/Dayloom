@@ -40,7 +40,7 @@
 | UI language | English (default resources) + Chinese; follow the system or switch in the app |
 | Code comments / commit messages / CHANGELOG | Bilingual, English first, Chinese below |
 | README | `README.md` (English) + `README.zh-CN.md` (Chinese), linking to each other |
-| CI / release | Same three-check gate and workflows as PersonalAssistant, renamed and adapted |
+| CI / release | Gate and workflows from PersonalAssistant, renamed and adapted; the gate also compiles the release sources (§19) |
 | minSdk | **33** (Android 13); targetSdk follows Google Play's requirement for the year |
 | Lunar calendar | `cn.6tail:lunar` (lunar-java, MIT) |
 | Freeze rules | Anything may change before v1.0.0; storage formats etc. are frozen from v1.0.0 (§15) |
@@ -496,6 +496,7 @@ Check every file before porting: remove personal information from defaults, test
 | Lunar data | Use lunar-java (MIT), accepting the slight risk that its upstream (sxwnl) license is not explicit; verify locally against the Observatory data (§11.5) |
 | minSdk | 33 (Android 13). The intended users all have recent phones; in return, blur and dynamic color work on every device, notification permission has a single flow, and per-app language uses the native system implementation |
 | Repository visibility | Public from M1 (2026-10-09) instead of M7: GitHub Actions minutes are free for public repositories. Code ported from PersonalAssistant (weather, holidays, icons) is published with the owner's consent; personal data is removed when porting (§18) |
+| Release compile in the gate | `verify` and CI also run `compileReleaseKotlin`: in M1 the release source set turned out to be missing a file that only debug had, which a debug-only gate cannot see. About a minute per CI run; R8 stays in the release workflows |
 | Daily windows | Shared by all modules (§8) with working days (default Monday–Friday); both ends are wall-clock times, so on DST change days a window is an hour shorter or longer, as in the original project |
 
 ### Rationale (archived)

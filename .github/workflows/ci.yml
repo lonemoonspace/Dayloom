@@ -1,5 +1,5 @@
-# Runs the same three checks as the local `verify` gate (test + lintDebug + assembleDebug) on every push.
-# 每次 push 运行与本地 `verify` 门禁相同的三项（test + lintDebug + assembleDebug）。
+# Runs the same checks as the local `verify` gate (test + lintDebug + assembleDebug + compileReleaseKotlin) on every push.
+# 每次 push 运行与本地 `verify` 门禁相同的检查（test + lintDebug + assembleDebug + compileReleaseKotlin）。
 
 name: CI
 
@@ -45,6 +45,10 @@ jobs:
 
       - name: Assemble debug APK
         run: ./gradlew assembleDebug --stacktrace
+
+      # Catches code that only exists in src/debug; no signing or R8 needed. / 发现只存在于 src/debug 的代码；不需要签名或 R8。
+      - name: Compile release sources
+        run: ./gradlew :app:compileReleaseKotlin --stacktrace
 
       - name: Upload test results
         if: always()

@@ -60,7 +60,7 @@ Commit format / 提交格式：
 JDK 17; use the Gradle wrapper. / JDK 17，用仓库自带的 Gradle wrapper。
 
 ```powershell
-.\gradlew.bat verify -q --console=plain 2>&1 | Select-Object -Last 40   # test + lintDebug + assembleDebug; must be green before every commit / 每次提交前必须全绿
+.\gradlew.bat verify -q --console=plain 2>&1 | Select-Object -Last 40   # test + lintDebug + assembleDebug + compileReleaseKotlin; must be green before every commit / 每次提交前必须全绿
 .\gradlew.bat :app:testDebugUnitTest --tests "io.github.lonemoonspace.dayloom.feature.weather.*"
 .\gradlew.bat :app:lintDebug --rerun-tasks                              # standalone lint needs --rerun-tasks / 单独跑 lint 必须加 --rerun-tasks
 ```
@@ -70,10 +70,10 @@ JDK 17; use the Gradle wrapper. / JDK 17，用仓库自带的 Gradle wrapper。
 ```
 
 - If a global `~/.gradle/gradle.properties` caps Metaspace at 320m, lint/KSP may hit `OutOfMemoryError: Metaspace`; pass `"-Dorg.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=2g -Dfile.encoding=UTF-8"`.
-- Unit tests run on the Debug variant only. CI (`.github/workflows/ci.yml`) runs the same three checks on every push.
+- Unit tests run on the Debug variant only. CI (`.github/workflows/ci.yml`) runs the same checks on every push.
 
 - 若全局 `~/.gradle/gradle.properties` 把 Metaspace 限在 320m，lint/KSP 可能报 `OutOfMemoryError: Metaspace`；命令加上 `"-Dorg.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=2g -Dfile.encoding=UTF-8"`。
-- 单元测试只跑 Debug 变体。CI（`.github/workflows/ci.yml`）对每次 push 运行同样三项。
+- 单元测试只跑 Debug 变体。CI（`.github/workflows/ci.yml`）对每次 push 运行同样的检查。
 
 ## Frozen from v1.0.0 / 从 v1.0.0 起冻结
 

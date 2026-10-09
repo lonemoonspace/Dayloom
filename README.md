@@ -26,7 +26,7 @@ football and news, each as a module you can turn on or off. The UI is available 
 JDK 17 and the bundled Gradle wrapper:
 
 ```bash
-./gradlew verify          # unit tests + Android Lint + debug APK; must be green before every commit
+./gradlew verify          # unit tests + Android Lint + debug APK + release compile; must be green before every commit
 ./gradlew assembleDebug   # debug APK only
 ```
 

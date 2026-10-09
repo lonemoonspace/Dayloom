@@ -117,12 +117,15 @@ afterEvaluate {
         }
     }
 
-    // Local gate, identical to CI: unit tests + Android Lint + Debug build. Must be green before every commit.
-    // 本地门禁，与 CI 相同：单元测试 + Android Lint + Debug 构建。每次提交前必须全绿。
+    // Local gate, identical to CI: unit tests + Android Lint + Debug build + compiling the release sources. Must be green
+    // before every commit. The last step catches code that only exists in src/debug, which otherwise surfaces only at the
+    // first signed build.
+    // 本地门禁，与 CI 相同：单元测试 + Android Lint + Debug 构建 + 编译 Release 源码。每次提交前必须全绿。
+    // 最后一项能发现只存在于 src/debug 的代码，否则要到第一次打签名包时才会暴露。
     tasks.register("verify") {
         group = "verification"
-        description = "test + lintDebug + assembleDebug"
-        dependsOn("test", "lintDebug", "assembleDebug")
+        description = "test + lintDebug + assembleDebug + compileReleaseKotlin"
+        dependsOn("test", "lintDebug", "assembleDebug", "compileReleaseKotlin")
     }
 
     // Used by the release workflows: gate, signed APK named by version, archived R8 mapping and SHA256SUMS in release/.

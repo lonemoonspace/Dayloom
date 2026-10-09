@@ -40,7 +40,7 @@
 | 界面语言 | 英文（默认资源）+ 中文；跟随系统或应用内手动切换 |
 | 代码注释 / 提交信息 / CHANGELOG | 双语，英文在上、中文在下 |
 | README | `README.md`（英文）+ `README.zh-CN.md`（中文），互相链接 |
-| CI / 发版 | 沿用 PersonalAssistant 的三项门禁与 workflow，改名适配 |
+| CI / 发版 | 沿用 PersonalAssistant 的门禁与 workflow，改名适配；门禁另外编译 Release 源码（§19） |
 | minSdk | **33**（Android 13）；targetSdk 跟随 Google Play 当年要求 |
 | 农历 | `cn.6tail:lunar`（lunar-java，MIT） |
 | 冻结规则 | v1.0.0 之前可自由改；v1.0.0 起冻结存储格式等（§15） |
@@ -495,6 +495,7 @@ val allModules: List<FeatureModule> = listOf(
 | 农历数据 | 用 lunar-java（MIT），接受其上游（寿星天文历）许可不够明确的轻微风险；用天文台数据做本地校验（§11.5） |
 | minSdk | 33（Android 13）。使用者的手机都是新机型；换来：毛玻璃模糊与动态取色在所有设备上都可用、通知权限只有一种流程、按应用语言用系统原生实现 |
 | 仓库公开时间 | 从 M1（2026-10-09）起公开，而不是等到 M7：公开仓库的 GitHub Actions 分钟数免费。从 PersonalAssistant 移植的代码（天气、节日、图标）经所有者同意公开；移植时去掉个人数据（§18） |
+| 门禁编译 Release | `verify` 与 CI 另外运行 `compileReleaseKotlin`：M1 时发现 Release 源集缺了一个只有 Debug 才有的文件，只编 Debug 的门禁看不出来。CI 每次多约一分钟；R8 仍只在发版 workflow 里跑 |
 | 日常时间窗 | 所有模块共用（§8），带工作日（默认周一到周五）；起止都是墙上时间，夏令时切换日的时间窗会短一小时或长一小时，与原项目一致 |
 
 ### 决策依据（存档）

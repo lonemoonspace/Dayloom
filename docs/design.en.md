@@ -497,6 +497,7 @@ Check every file before porting: remove personal information from defaults, test
 | minSdk | 33 (Android 13). The intended users all have recent phones; in return, blur and dynamic color work on every device, notification permission has a single flow, and per-app language uses the native system implementation |
 | Repository visibility | Public from M1 (2026-10-09) instead of M7: GitHub Actions minutes are free for public repositories. Code ported from PersonalAssistant (weather, holidays, icons) is published with the owner's consent; personal data is removed when porting (§18) |
 | Release compile in the gate | `verify` and CI also run `compileReleaseKotlin`: in M1 the release source set turned out to be missing a file that only debug had, which a debug-only gate cannot see. About a minute per CI run; R8 stays in the release workflows |
+| Expiry reminders | Reminded once per item and expiry time when the warning period starts, on the last day, and on expiring — the last only within a day of expiry, so an old date typed in stays quiet. The rule exists from M2; the opt-in switch arrives in M4 with the notification wiring and permission flow, so no switch exists that does nothing |
 | Daily windows | Shared by all modules (§8) with working days (default Monday–Friday); both ends are wall-clock times, so on DST change days a window is an hour shorter or longer, as in the original project |
 
 ### Rationale (archived)

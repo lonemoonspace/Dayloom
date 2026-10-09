@@ -209,6 +209,66 @@
         <item>Winter Solstice</item>
     </string-array>
 
+    <string name="secret_show">Show</string>
+    <string name="secret_hide">Hide</string>
+    <string name="secret_saved_encrypted">Saved, encrypted on this device.</string>
+    <string name="secret_unreadable_hint">The saved key can no longer be decrypted. Please enter it again.</string>
+    <string name="secret_ciphertext_rejected">This looks like encrypted text, not a key.</string>
+
+    <string name="reminders_title">Expiry reminders</string>
+    <string name="reminders_summary">Passes, permits and documents that expire</string>
+    <string name="reminders_empty">Nothing added yet. Add items in Settings.</string>
+    <string name="reminders_valid_until">Valid until %1$s</string>
+    <string name="reminders_expired">Expired</string>
+    <string name="reminders_today">Expires today</string>
+    <string name="reminders_tomorrow">Expires tomorrow</string>
+    <plurals name="reminders_days_left">
+        <item quantity="one">%1$d day left</item>
+        <item quantity="other">%1$d days left</item>
+    </plurals>
+    <string name="reminders_add">Add an item</string>
+    <string name="reminders_edit">Edit item</string>
+    <string name="reminders_delete">Delete</string>
+    <string name="reminders_name">Name, e.g. monthly pass</string>
+    <string name="reminders_pick_date">Pick the last day</string>
+    <string name="reminders_warn_days">Remind this many days ahead</string>
+    <plurals name="reminders_warn_days_range">
+        <item quantity="one">%1$d to %2$d day</item>
+        <item quantity="other">%1$d to %2$d days</item>
+    </plurals>
+    <string name="reminders_channel">Expiry reminders</string>
+    <string name="reminders_channel_description">When a saved item is about to expire or has expired</string>
+    <string name="reminders_notify_expired">%1$s has expired</string>
+    <string name="reminders_notify_today">%1$s expires today</string>
+    <string name="reminders_notify_tomorrow">%1$s expires tomorrow</string>
+    <plurals name="reminders_notify_days">
+        <item quantity="one">%1$s expires in %2$d day</item>
+        <item quantity="other">%1$s expires in %2$d days</item>
+    </plurals>
+    <string name="reminders_notify_body">Valid until %1$s. Renew it, then update the date in Dayloom.</string>
+
+    <string name="traffic_title">Traffic</string>
+    <string name="traffic_summary">Driving time with live traffic (needs your own Google key)</string>
+    <string name="traffic_card_title">Drive · %1$s → %2$s</string>
+    <string name="traffic_setup_places">Start and destination for traffic</string>
+    <string name="traffic_setup_key">Google Routes API key</string>
+    <string name="traffic_from">From</string>
+    <string name="traffic_to">To</string>
+    <string name="traffic_key">Google Routes API key</string>
+    <string name="traffic_key_note">Enable the Routes API for this key in Google Cloud. Requests beyond the free monthly quota are billed to your Google account. The key stays on this phone.</string>
+    <string name="traffic_open_maps">Open the route in a maps app</string>
+    <string name="traffic_free_flow">Without traffic %1$s</string>
+    <string name="traffic_slower">%1$s slower than usual</string>
+    <plurals name="traffic_minutes">
+        <item quantity="one">%1$d min</item>
+        <item quantity="other">%1$d min</item>
+    </plurals>
+    <string name="traffic_clear">Clear</string>
+    <string name="traffic_slight">Light traffic</string>
+    <string name="traffic_moderate">Moderate traffic</string>
+    <string name="traffic_severe">Heavy traffic</string>
+    <string name="traffic_unknown">Unknown</string>
+
     <string name="nav_home">Home</string>
     <string name="nav_settings">Settings</string>
 

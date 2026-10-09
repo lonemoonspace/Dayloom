@@ -204,6 +204,62 @@
         <item>冬至</item>
     </string-array>
 
+    <string name="secret_show">显示</string>
+    <string name="secret_hide">隐藏</string>
+    <string name="secret_saved_encrypted">已保存，在本机加密存储。</string>
+    <string name="secret_unreadable_hint">已保存的 Key 无法解密，请重新输入。</string>
+    <string name="secret_ciphertext_rejected">这看起来是加密后的文本，不是 Key。</string>
+
+    <string name="reminders_title">到期提醒</string>
+    <string name="reminders_summary">会到期的月票、停车证、证件等</string>
+    <string name="reminders_empty">还没有添加条目，请在设置里添加。</string>
+    <string name="reminders_valid_until">有效期至 %1$s</string>
+    <string name="reminders_expired">已过期</string>
+    <string name="reminders_today">今天到期</string>
+    <string name="reminders_tomorrow">明天到期</string>
+    <plurals name="reminders_days_left">
+        <item quantity="other">剩 %1$d 天</item>
+    </plurals>
+    <string name="reminders_add">添加条目</string>
+    <string name="reminders_edit">编辑条目</string>
+    <string name="reminders_delete">删除</string>
+    <string name="reminders_name">名称，例如乘车月票</string>
+    <string name="reminders_pick_date">选择截止日期</string>
+    <string name="reminders_warn_days">提前几天提醒</string>
+    <plurals name="reminders_warn_days_range">
+        <item quantity="other">%1$d 到 %2$d 天</item>
+    </plurals>
+    <string name="reminders_channel">到期提醒</string>
+    <string name="reminders_channel_description">已保存的条目快到期或已过期时</string>
+    <string name="reminders_notify_expired">%1$s已过期</string>
+    <string name="reminders_notify_today">%1$s今天到期</string>
+    <string name="reminders_notify_tomorrow">%1$s明天到期</string>
+    <plurals name="reminders_notify_days">
+        <item quantity="other">%1$s还剩 %2$d 天</item>
+    </plurals>
+    <string name="reminders_notify_body">有效期至 %1$s。续期后记得回到织日更新截止时间。</string>
+
+    <string name="traffic_title">路况</string>
+    <string name="traffic_summary">实时路况下的驾车时间（需要你自己的 Google Key）</string>
+    <string name="traffic_card_title">驾车 · %1$s → %2$s</string>
+    <string name="traffic_setup_places">路况的起点与终点</string>
+    <string name="traffic_setup_key">Google Routes API Key</string>
+    <string name="traffic_from">起点</string>
+    <string name="traffic_to">终点</string>
+    <string name="traffic_key">Google Routes API Key</string>
+    <string name="traffic_key_note">需要在 Google Cloud 里为这个 Key 启用 Routes API。超出每月免费额度的请求会向你的 Google 账号计费。Key 只保存在本机。</string>
+    <string name="traffic_open_maps">在地图 App 中打开路线</string>
+    <string name="traffic_free_flow">畅通时 %1$s</string>
+    <string name="traffic_slower">比平时慢 %1$s</string>
+    <plurals name="traffic_minutes">
+        <item quantity="other">%1$d 分钟</item>
+    </plurals>
+    <string name="traffic_clear">畅通</string>
+    <string name="traffic_slight">轻微拥堵</string>
+    <string name="traffic_moderate">中度拥堵</string>
+    <string name="traffic_severe">严重拥堵</string>
+    <string name="traffic_unknown">未知</string>
+
     <string name="nav_home">首页</string>
     <string name="nav_settings">设置</string>
 

@@ -32,6 +32,8 @@
     <string name="weather_rain_stops">Rain stops around %1$s</string>
     <string name="weather_rain_starts">Rain starts around %1$s</string>
     <string name="weather_attribution">Weather data: MET Norway (CC BY 4.0)</string>
+    <string name="weather_brief">%1$s, %2$d°</string>
+    <string name="weather_brief_umbrella">%1$s, %2$d° · rain on your commute, take an umbrella</string>
     <string name="weather_clear">Clear</string>
     <string name="weather_fair">Fair</string>
     <string name="weather_partly_cloudy">Partly cloudy</string>
@@ -246,6 +248,12 @@
         <item quantity="other">%1$s expires in %2$d days</item>
     </plurals>
     <string name="reminders_notify_body">Valid until %1$s. Renew it, then update the date in Dayloom.</string>
+    <string name="reminders_notify_switch">Remind me</string>
+    <string name="reminders_notify_switch_summary">When an item is about to expire, on its last day and when it expires (08:00–21:00)</string>
+    <plurals name="reminders_brief_more">
+        <item quantity="one">%1$s (and %2$d more)</item>
+        <item quantity="other">%1$s (and %2$d more)</item>
+    </plurals>
 
     <string name="traffic_title">Traffic</string>
     <string name="traffic_summary">Driving time with live traffic (needs your own Google key)</string>
@@ -268,6 +276,8 @@
     <string name="traffic_moderate">Moderate traffic</string>
     <string name="traffic_severe">Heavy traffic</string>
     <string name="traffic_unknown">Unknown</string>
+    <string name="traffic_brief">Drive to %1$s: %2$s · %3$s</string>
+    <string name="traffic_brief_plain">Drive to %1$s: %2$s</string>
 
     <string name="transit_title">Public transport</string>
     <string name="transit_summary">Commute trips and live departures in Norway, from Entur</string>
@@ -298,6 +308,7 @@
     </plurals>
     <string name="transit_no_realtime">No live data</string>
     <string name="transit_cancelled">Cancelled</string>
+    <string name="transit_brief">%1$s at %2$s · %3$s</string>
     <string name="transit_line_status">%1$s: %2$s</string>
     <string name="transit_attribution">Public transport data: Entur (NLOD)</string>
     <string name="transit_region_note">Your Home is outside Norway. Public transport currently covers Norway only (Entur).</string>
@@ -321,6 +332,8 @@
     <string name="transit_search_none">No stops found.</string>
     <string name="transit_channel">Commute disruptions</string>
     <string name="transit_channel_description">When the next trip in your commute window is cancelled or heavily delayed</string>
+    <string name="transit_notify_switch">Disruption alerts</string>
+    <string name="transit_notify_switch_summary">When the next trip in your commute window is cancelled or at least 5 minutes late</string>
     <string name="transit_notify_to_work">Disruption on your way to work</string>
     <string name="transit_notify_back_home">Disruption on your way home</string>
     <string name="transit_notify_cancelled">%1$s at %2$s is cancelled</string>
@@ -374,6 +387,26 @@
     <string name="settings_version">Version %1$s</string>
     <string name="settings_license">Open source under the Apache License 2.0</string>
     <string name="settings_source_code">Source code</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_notifications_note">Every notification is off until you turn it on. Module notifications are under each module below.</string>
+    <string name="brief_title">Morning brief</string>
+    <string name="brief_switch_summary">On working days, one summary from your modules when the to-work window starts</string>
+    <string name="brief_channel">Morning brief</string>
+    <string name="brief_channel_description">Once on working days, when your to-work window starts</string>
+    <string name="onboarding_step">Step %1$d of %2$d</string>
+    <string name="onboarding_welcome_title">Welcome to Dayloom</string>
+    <string name="onboarding_welcome_body">Your day at a glance: weather, your commute, things about to expire and more. Everything you enter stays on this phone.</string>
+    <string name="onboarding_home_title">Where is home?</string>
+    <string name="onboarding_home_body">Weather and your commute start from here. You can skip this and set it later under Places in Settings.</string>
+    <string name="onboarding_modules_title">What do you want to see?</string>
+    <string name="onboarding_modules_body">Modules that need your own key or only work in Norway start switched off. You can change all of this any time in Settings.</string>
+    <string name="onboarding_back">Back</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_done">Start</string>
+    <string name="notify_permission_denied">Dayloom may not send notifications. Allow them in the system settings.</string>
+    <string name="notify_channel_off">This kind of notification is turned off in the system settings, so nothing will arrive.</string>
+    <string name="notify_open_settings">Open system settings</string>
 
     <string name="error_offline">You are offline; showing the last saved data.</string>
     <string name="error_network">Network error, check your connection (%1$s)</string>

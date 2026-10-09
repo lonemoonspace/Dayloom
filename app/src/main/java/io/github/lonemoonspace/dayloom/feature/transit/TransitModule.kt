@@ -11,6 +11,7 @@ import io.github.lonemoonspace.dayloom.core.module.HomeCard
 import io.github.lonemoonspace.dayloom.core.module.ModuleContext
 import io.github.lonemoonspace.dayloom.core.module.ModuleInstance
 import io.github.lonemoonspace.dayloom.core.module.SettingsSection
+import io.github.lonemoonspace.dayloom.core.notify.BriefContributor
 import io.github.lonemoonspace.dayloom.core.notify.ChannelImportance
 import io.github.lonemoonspace.dayloom.core.notify.ChannelSpec
 import io.github.lonemoonspace.dayloom.core.time.minuteTicks
@@ -22,6 +23,7 @@ import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteMode
 import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteTrips
 import io.github.lonemoonspace.dayloom.feature.transit.domain.DisruptionRule
 import io.github.lonemoonspace.dayloom.feature.transit.domain.FavouriteBoard
+import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitBrief
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitPolicy
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitStop
 import io.github.lonemoonspace.dayloom.feature.transit.ui.BoardsCard
@@ -123,7 +125,13 @@ private class TransitInstance(private val ctx: ModuleContext) : ModuleInstance {
             provider = provider,
             // Entur covers Norway only; warn when Home is known to be elsewhere. / Entur 只覆盖挪威；已知家不在挪威时提示。
             outsideNorway = home?.countryCode?.let { it.isNotEmpty() && it != "NO" } == true,
+            channelId = ctx.channelId(channel.name),
         ) { transform -> ctx.appScope.launch { store.update(transform) } }
+    }
+
+    override val brief = BriefContributor { now ->
+        val snapshot = commute.current()?.takeUnless { commute.isStale(it, now.toInstant()) } ?: return@BriefContributor null
+        TransitBrief.line(snapshot.value, now)
     }
 
     override val notificationChannels = listOf(channel)

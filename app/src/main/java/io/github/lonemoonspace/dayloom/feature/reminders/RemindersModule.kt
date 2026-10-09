@@ -7,11 +7,13 @@ import io.github.lonemoonspace.dayloom.core.module.HomeCard
 import io.github.lonemoonspace.dayloom.core.module.ModuleContext
 import io.github.lonemoonspace.dayloom.core.module.ModuleInstance
 import io.github.lonemoonspace.dayloom.core.module.SettingsSection
+import io.github.lonemoonspace.dayloom.core.notify.BriefContributor
 import io.github.lonemoonspace.dayloom.core.notify.ChannelSpec
 import io.github.lonemoonspace.dayloom.core.time.minuteTicks
 import io.github.lonemoonspace.dayloom.feature.reminders.domain.ReminderItem
 import io.github.lonemoonspace.dayloom.feature.reminders.domain.ReminderPolicy
 import io.github.lonemoonspace.dayloom.feature.reminders.domain.ReminderRule
+import io.github.lonemoonspace.dayloom.feature.reminders.domain.briefLine
 import io.github.lonemoonspace.dayloom.feature.reminders.ui.RemindersCard
 import io.github.lonemoonspace.dayloom.feature.reminders.ui.RemindersSettingsSection
 import kotlinx.coroutines.flow.combine
@@ -62,8 +64,10 @@ private class RemindersInstance(private val ctx: ModuleContext) : ModuleInstance
     )
 
     override val settings = SettingsSection {
-        RemindersSettingsSection(store.flow) { transform -> ctx.appScope.launch { store.update(transform) } }
+        RemindersSettingsSection(store.flow, ctx.channelId(channel.name)) { transform -> ctx.appScope.launch { store.update(transform) } }
     }
+
+    override val brief = BriefContributor { now -> briefLine(store.get().items, now.toLocalDateTime()) }
 
     override val notificationChannels = listOf(channel)
 

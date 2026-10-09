@@ -32,6 +32,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.lonemoonspace.dayloom.R
+import io.github.lonemoonspace.dayloom.core.ui.NotifySwitch
 import io.github.lonemoonspace.dayloom.core.error.AppError
 import io.github.lonemoonspace.dayloom.core.error.toAppError
 import io.github.lonemoonspace.dayloom.core.i18n.asString
@@ -55,6 +56,7 @@ internal fun TransitSettingsSection(
     settings: Flow<TransitSettings>,
     provider: TransitProvider,
     outsideNorway: Boolean,
+    channelId: String,
     update: ((TransitSettings) -> TransitSettings) -> Unit,
 ) {
     val saved by settings.collectAsStateWithLifecycle(initialValue = TransitSettings())
@@ -78,6 +80,12 @@ internal fun TransitSettingsSection(
             enabled = saved.options < TransitPolicy.OPTIONS_RANGE.last,
         ) { Text("+") }
     }
+    NotifySwitch(
+        label = stringResource(R.string.transit_notify_switch),
+        summary = stringResource(R.string.transit_notify_switch_summary),
+        checked = saved.notify,
+        channelId = channelId,
+    ) { on -> update { it.copy(notify = on) } }
 
     Label(stringResource(R.string.transit_boards_title))
     saved.boards.forEach { board ->

@@ -1,6 +1,7 @@
 package io.github.lonemoonspace.dayloom.app
 
 import io.github.lonemoonspace.dayloom.core.module.ModuleIds
+import io.github.lonemoonspace.dayloom.core.notify.CoreNotifications
 
 /**
  * Pure rules about the module list: validity of the registry and which modules are on.
@@ -27,6 +28,10 @@ object ModulePolicy {
             if (m.id in RESERVED_IDS) problems += "reserved module id: ${m.id}"
         }
         val ranged = modules.filterNot { it.notificationIds.isEmpty() }
+        val core = CoreNotifications.RESERVED_IDS
+        ranged.filter { it.notificationIds.first <= core.last && core.first <= it.notificationIds.last }.forEach {
+            problems += "notification ids of ${it.id} ${it.notificationIds} overlap the shell's $core"
+        }
         for (i in ranged.indices) {
             for (j in i + 1 until ranged.size) {
                 val a = ranged[i]

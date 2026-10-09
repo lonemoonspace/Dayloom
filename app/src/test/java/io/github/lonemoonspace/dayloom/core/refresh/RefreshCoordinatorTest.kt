@@ -6,6 +6,7 @@ import io.github.lonemoonspace.dayloom.core.storage.InMemorySnapshotStore
 import io.github.lonemoonspace.dayloom.core.storage.Snapshot
 import io.github.lonemoonspace.dayloom.core.time.FixedClock
 import java.io.IOException
+import java.time.Duration
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
@@ -490,6 +491,56 @@ class RefreshCoordinatorTest {
         c.refresh(setOf(source.id), Trigger.USER)
 
         assertEquals(listOf<String?>("fetch-pool"), source.fetchedIn)
+    }
+
+    // ---- Due refreshes / 按节奏刷新 ----
+
+    private val hourly = RefreshCadence(interval = Duration.ofMinutes(60), busyInterval = Duration.ofMinutes(5), busyInWindows = true)
+
+    private fun fetchedMinutesAgo(minutes: Long) =
+        InMemorySnapshotStore(Snapshot("A#0", clock.current.minusMinutes(minutes).toInstant().toEpochMilli(), "A", 1))
+
+    @Test
+    fun `only due sources are refreshed, and windows use the busy interval`() = runTest {
+        val fresh = FakeSource("fresh", clock, store = fetchedMinutesAgo(20), cadence = hourly)
+        val old = FakeSource("old", clock, store = fetchedMinutesAgo(90), cadence = hourly)
+        val never = FakeSource("never", clock, cadence = hourly)
+        val c = coordinator(fresh, old, never)
+        val all = setOf(fresh.id, old.id, never.id)
+
+        val report = c.refreshDue(all, Trigger.BACKGROUND, inWindow = false, throttleFailures = false)
+        assertEquals(setOf(old.id, never.id), report.results.keys)
+        assertEquals(0, fresh.fetchCount)
+
+        c.refreshDue(all, Trigger.BACKGROUND, inWindow = true, throttleFailures = false)
+        assertEquals("20 minutes is past the 5-minute busy interval", 1, fresh.fetchCount)
+    }
+
+    @Test
+    fun `a snapshot for other inputs counts as never fetched`() = runTest {
+        val source = FakeSource("weather", clock, store = fetchedMinutesAgo(1), initialParam = "B", cadence = hourly)
+        val c = coordinator(source)
+        c.refreshDue(setOf(source.id), Trigger.BACKGROUND, inWindow = false, throttleFailures = false)
+        assertEquals(listOf("B"), source.fetchedWith)
+    }
+
+    @Test
+    fun `polling waits an interval after a failure, the background worker does not`() = runTest {
+        val source = FakeSource("weather", clock, cadence = hourly).apply { failWith = AppError.Network(IOException("down")) }
+        val c = coordinator(source)
+        val ids = setOf(source.id)
+
+        c.refreshDue(ids, Trigger.LIVE_POLL, inWindow = false, throttleFailures = true)
+        clock.current = clock.current.plusMinutes(1)
+        c.refreshDue(ids, Trigger.LIVE_POLL, inWindow = false, throttleFailures = true)
+        assertEquals("the failed attempt throttles polling", 1, source.fetchCount)
+
+        c.refreshDue(ids, Trigger.BACKGROUND, inWindow = false, throttleFailures = false)
+        assertEquals("a worker retry refetches", 2, source.fetchCount)
+
+        clock.current = clock.current.plusMinutes(60)
+        c.refreshDue(ids, Trigger.LIVE_POLL, inWindow = false, throttleFailures = true)
+        assertEquals(3, source.fetchCount)
     }
 
     @Test

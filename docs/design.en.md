@@ -207,7 +207,7 @@ Snapshot files: `snapshot_<sourceId>` (dots replaced by underscores). Snapshots 
 
 | File | Type | Contents |
 |---|---|---|
-| `app_settings` | DataStore (JSON) | Global settings: language, time zone override, enabled modules, card order, onboarding done, notification master switch |
+| `app_settings` | DataStore (JSON) | Global settings: language, time zone override, enabled modules, card order, onboarding done, morning brief switch |
 | `module_settings` | DataStore Preferences | One key per module (= module id); the value is that module's settings as JSON |
 | `shared_data` | DataStore (JSON) | Saved places (home / work / custom), daily windows |
 | `secrets` | DataStore Preferences | All credentials, encrypted with `SecretBox`; key = `<moduleId>.<name>` |
@@ -239,11 +239,13 @@ First-version credentials: `traffic.google_maps`, `football.football_data`, `new
 
 - Channel ids: `<moduleId>.<name>`, declared by the module and created centrally by `NotificationChannels`.
 - Notification ids: each module declares an id range at registration (e.g. weather 1000–1999, transit 2000–2999…); a registry test ensures the ranges do not overlap.
+- 1–999 are kept for the shell itself (morning brief: id 1, channel `core.brief`, state key `core.morning_brief`); module ranges must stay out of it, also checked with the registry.
 
 ### 7.3 Morning brief
 
 - Implemented in core; it is the only cross-module notification. Each enabled module with a `BriefContributor` supplies one structured line (e.g. "Rain today, take an umbrella", "First departure on time", "Traffic is light, 22 min"), combined in module order into one notification.
 - A new module appears in the brief automatically just by implementing `BriefContributor`.
+- When it goes out: on the first background round inside the to-work window on a working day, once per day by the day the window belongs to. When no module has anything to say (data too old, or nothing to report) the day is not used up, so a later round in the same window can still send it. A module that fails only loses its own line.
 
 ### 7.4 Notifications in the first version
 
@@ -390,6 +392,8 @@ Module settings refer to these shared items — weather defaults to "Home", traf
 ## 12. Background work
 
 - One generic periodic refresh worker (unique work name `dayloom.refresh`): picks the sources due according to their `RefreshCadence` → refreshes them → hands the result to `NotificationEngine` to evaluate the rules of all enabled modules.
+- No network constraint: rules that only depend on the clock (expiry reminders) must run offline too, and offline sources are skipped without a request. WorkManager is asked to retry only when every source actually attempted failed.
+- While the home screen is visible it checks every minute with the same cadences and refreshes the due sources; a source that failed waits an interval before the next try, so a broken service is not hit every minute.
 - Extra module work (e.g. `news.sync`) is declared by the module and scheduled centrally by `app`; disabling a module cancels its work.
 - Worker class names and unique work names are frozen from v1.0 (WorkManager instantiates scheduled work by class name).
 
@@ -500,6 +504,9 @@ Check every file before porting: remove personal information from defaults, test
 | Expiry reminders | Reminded once per item and expiry time when the warning period starts, on the last day, and on expiring — the last only within a day of expiry, so an old date typed in stays quiet. The rule exists from M2; the opt-in switch arrives in M4 with the notification wiring and permission flow, so no switch exists that does nothing |
 | Public transport | Entur only for now; validated before implementation (§11.2). The commute card follows the daily windows (one direction inside a window, the next option both ways outside); favourite-stop boards filter by line code and destination on the client. The disruption rule exists from M3; its opt-in switch arrives with the notification wiring in M4 |
 | Daily windows | Shared by all modules (§8) with working days (default Monday–Friday); both ends are wall-clock times, so on DST change days a window is an hour shorter or longer, as in the original project |
+| Notification switches | No master switch: each kind of notification has its own switch, off by default, and "turn everything off" is left to the system settings. The notification permission is requested only when the user turns a switch on; when the permission or the channel is off the switch says so and links to the system settings |
+| Background refresh | WorkManager every 15 minutes without a network constraint, each source throttled by its own `RefreshCadence`; the visible home screen checks every minute (§12) |
+| Morning brief | Sent on the first background round inside the to-work window on working days, with a line each from weather, public transport, traffic and expiry reminders; modules whose data is too old are left out (§7.3) |
 
 ### Rationale (archived)
 

@@ -4,6 +4,7 @@ import io.github.lonemoonspace.dayloom.core.module.FeatureModule
 import io.github.lonemoonspace.dayloom.core.module.ModuleContext
 import io.github.lonemoonspace.dayloom.core.module.ModuleInstance
 import io.github.lonemoonspace.dayloom.core.notify.ChannelSpec
+import io.github.lonemoonspace.dayloom.core.notify.CoreNotifications
 import io.github.lonemoonspace.dayloom.core.notify.ScopedRule
 import io.github.lonemoonspace.dayloom.core.refresh.RefreshCoordinator
 import io.github.lonemoonspace.dayloom.core.refresh.SourceId
@@ -66,8 +67,12 @@ class ModuleHost(
         fun rules(active: List<ActiveModule>): List<ScopedRule> =
             active.flatMap { a -> a.instance.notificationRules.map { ScopedRule("${a.module.id}.${it.name}", it) } }
 
-        /** Channels keyed by their full id `<moduleId>.<name>`. / 以完整 id `<模块id>.<名称>` 为键的渠道。 */
+        /**
+         * Channels keyed by their full id `<moduleId>.<name>`, plus the shell's own morning brief channel.
+         * 以完整 id `<模块id>.<名称>` 为键的渠道，加上外壳自己的早间简报渠道。
+         */
         fun channels(active: List<ActiveModule>): Map<String, ChannelSpec> =
-            active.flatMap { a -> a.instance.notificationChannels.map { "${a.module.id}.${it.name}" to it } }.toMap()
+            active.flatMap { a -> a.instance.notificationChannels.map { "${a.module.id}.${it.name}" to it } }.toMap() +
+                (CoreNotifications.BRIEF_CHANNEL_ID to CoreNotifications.BRIEF_CHANNEL)
     }
 }

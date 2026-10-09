@@ -2,8 +2,10 @@ package io.github.lonemoonspace.dayloom
 
 import android.app.Application
 import android.content.Context
+import android.content.res.Configuration
 import io.github.lonemoonspace.dayloom.app.AppGraph
 import io.github.lonemoonspace.dayloom.app.ModuleHost
+import io.github.lonemoonspace.dayloom.app.work.RefreshWorker
 import io.github.lonemoonspace.dayloom.core.notify.NotificationChannels
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
@@ -24,6 +26,17 @@ class DayloomApp : Application() {
                 NotificationChannels.ensure(this@DayloomApp, ModuleHost.channels(active))
             }
         }
+        RefreshWorker.schedule(this)
+    }
+
+    /**
+     * Channel names are shown in system settings; after a language switch they are renamed in the new language.
+     * 渠道名称显示在系统设置里；切换语言后用新语言重新命名。
+     */
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        val active = graph.host.active.value ?: return
+        NotificationChannels.ensure(this, ModuleHost.channels(active))
     }
 
     companion object {

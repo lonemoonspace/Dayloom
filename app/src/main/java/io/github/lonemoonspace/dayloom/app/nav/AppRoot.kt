@@ -29,8 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -48,6 +47,7 @@ import io.github.lonemoonspace.dayloom.R
 import io.github.lonemoonspace.dayloom.app.AppGraph
 import io.github.lonemoonspace.dayloom.app.home.HomeScreen
 import io.github.lonemoonspace.dayloom.app.home.HomeViewModel
+import io.github.lonemoonspace.dayloom.app.onboarding.OnboardingScreen
 import io.github.lonemoonspace.dayloom.app.settings.PlacesCard
 import io.github.lonemoonspace.dayloom.app.settings.RoutineCard
 import io.github.lonemoonspace.dayloom.app.settings.SettingsScreen
@@ -69,12 +69,73 @@ private object Routes {
 }
 
 /**
+ * Shows the onboarding until it has been finished once, then the app. Nothing is drawn before the settings are read, so a
+ * returning user never sees the onboarding flash by.
+ * 首次启动引导完成之前显示引导，之后显示 App。设置读出来之前什么都不画，老用户不会看到引导一闪而过。
+ */
+@Composable
+fun AppRoot(graph: AppGraph, pendingIntent: Intent?) {
+    val settings by graph.appSettings.flow.collectAsStateWithLifecycle(initialValue = null)
+    when (settings?.onboardingDone) {
+        null -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+        false -> {
+            val vm = settingsViewModel(graph)
+            val sharedVm = sharedDataViewModel(graph)
+            val state by vm.state.collectAsStateWithLifecycle()
+            val places by sharedVm.placeList.collectAsStateWithLifecycle()
+            val editor by sharedVm.editor.collectAsStateWithLifecycle()
+            OnboardingScreen(
+                state = state,
+                onLanguage = vm::setLanguage,
+                onModuleEnabled = vm::setModuleEnabled,
+                places = places,
+                editor = editor,
+                sharedVm = sharedVm,
+                onFinish = vm::finishOnboarding,
+            )
+        }
+        true -> MainShell(graph, pendingIntent)
+    }
+}
+
+@Composable
+private fun settingsViewModel(graph: AppGraph): SettingsViewModel = viewModel(
+    factory = viewModelFactory {
+        initializer {
+            SettingsViewModel(
+                modules = graph.host.modules,
+                settings = graph.appSettings,
+                active = graph.host.active,
+                zone = graph.zone,
+                language = graph.language,
+            )
+        }
+    },
+)
+
+@Composable
+private fun sharedDataViewModel(graph: AppGraph): SharedDataViewModel = viewModel(
+    factory = viewModelFactory {
+        initializer {
+            SharedDataViewModel(
+                places = graph.places,
+                sharedData = graph.sharedData,
+                search = graph.placeSearch,
+                locator = graph.deviceLocator,
+                appScope = graph.appScope,
+                ioContext = Dispatchers.IO,
+            )
+        }
+    },
+)
+
+/**
  * The navigation root: glass top bar, floating bottom bar (Home + module tabs + Settings) and the NavHost.
  * Tabs come from the enabled modules, so a new module with a tab appears here without changes.
  * 导航根：玻璃顶栏、悬浮底栏（首页 + 模块标签页 + 设置）与 NavHost。标签页来自已开启的模块，新模块的标签页无需改这里就会出现。
  */
 @Composable
-fun AppRoot(graph: AppGraph, pendingIntent: Intent?) {
+private fun MainShell(graph: AppGraph, pendingIntent: Intent?) {
     val navController = rememberNavController()
     val active by graph.host.active.collectAsStateWithLifecycle()
     val tabModules = active.orEmpty().filter { it.instance.tab != null }
@@ -95,7 +156,7 @@ fun AppRoot(graph: AppGraph, pendingIntent: Intent?) {
 
     val homeVm: HomeViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { HomeViewModel(graph.host.active, graph.appSettings, graph.coordinator) }
+            initializer { HomeViewModel(graph.host.active, graph.appSettings, graph.coordinator, graph.routine, graph.clock) }
         },
     )
     val homeState by homeVm.state.collectAsStateWithLifecycle()
@@ -169,7 +230,10 @@ fun AppRoot(graph: AppGraph, pendingIntent: Intent?) {
                 CompositionLocalProvider(LocalBarInsets provides padding) {
                     NavHost(navController = navController, startDestination = Routes.HOME, modifier = Modifier.fillMaxSize()) {
                         composable(Routes.HOME) {
-                            LifecycleEventEffect(Lifecycle.Event.ON_START) { homeVm.onForeground() }
+                            LifecycleStartEffect(homeVm) {
+                                homeVm.startPolling()
+                                onStopOrDispose { homeVm.stopPolling() }
+                            }
                             HomeScreen(
                                 state = homeState,
                                 editing = editing && homeState.cards.isNotEmpty(),
@@ -178,39 +242,15 @@ fun AppRoot(graph: AppGraph, pendingIntent: Intent?) {
                             )
                         }
                         composable(Routes.SETTINGS) {
-                            val vm: SettingsViewModel = viewModel(
-                                factory = viewModelFactory {
-                                    initializer {
-                                        SettingsViewModel(
-                                            modules = graph.host.modules,
-                                            settings = graph.appSettings,
-                                            active = graph.host.active,
-                                            zone = graph.zone,
-                                            language = graph.language,
-                                        )
-                                    }
-                                },
-                            )
-                            val sharedVm: SharedDataViewModel = viewModel(
-                                factory = viewModelFactory {
-                                    initializer {
-                                        SharedDataViewModel(
-                                            places = graph.places,
-                                            sharedData = graph.sharedData,
-                                            search = graph.placeSearch,
-                                            locator = graph.deviceLocator,
-                                            appScope = graph.appScope,
-                                            ioContext = Dispatchers.IO,
-                                        )
-                                    }
-                                },
-                            )
+                            val vm = settingsViewModel(graph)
+                            val sharedVm = sharedDataViewModel(graph)
                             val state by vm.state.collectAsStateWithLifecycle()
                             SettingsScreen(
                                 state = state,
                                 onLanguage = vm::setLanguage,
                                 onTimeZone = vm::setTimeZone,
                                 onModuleEnabled = vm::setModuleEnabled,
+                                onMorningBrief = vm::setMorningBrief,
                             ) {
                                 val places by sharedVm.placeList.collectAsStateWithLifecycle()
                                 val editor by sharedVm.editor.collectAsStateWithLifecycle()

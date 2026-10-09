@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.datastore.dataStoreFile
 import io.github.lonemoonspace.dayloom.BuildConfig
+import io.github.lonemoonspace.dayloom.app.work.BackgroundRound
 import io.github.lonemoonspace.dayloom.core.i18n.AppLanguage
 import io.github.lonemoonspace.dayloom.core.i18n.SystemAppLanguage
 import io.github.lonemoonspace.dayloom.core.location.AndroidDeviceLocator
@@ -151,6 +152,16 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
         },
         coordinator = coordinator,
         scope = appScope,
+    )
+
+    val backgroundRound = BackgroundRound(
+        active = host.active,
+        routine = routine,
+        clock = clock,
+        coordinator = coordinator,
+        engine = notificationEngine,
+        morningBrief = { appSettings.get().morningBrief },
+        onBriefError = { Log.w(TAG, "a morning brief line failed", it) },
     )
 
     private companion object {

@@ -116,13 +116,15 @@ internal fun TrafficCard(
 }
 
 /** Whole minutes, at least 1, so a short trip never reads "0 min". / 整分钟，至少 1，短途不会显示「0 分钟」。 */
+internal fun wholeMinutes(seconds: Long): Int = (seconds / 60.0).roundToInt().coerceAtLeast(1)
+
 @Composable
 private fun minutes(seconds: Long): String {
-    val value = (seconds / 60.0).roundToInt().coerceAtLeast(1)
+    val value = wholeMinutes(seconds)
     return pluralStringResource(R.plurals.traffic_minutes, value, value)
 }
 
-private fun levelText(level: TrafficLevel): Int = when (level) {
+internal fun levelText(level: TrafficLevel): Int = when (level) {
     TrafficLevel.CLEAR -> R.string.traffic_clear
     TrafficLevel.SLIGHT -> R.string.traffic_slight
     TrafficLevel.MODERATE -> R.string.traffic_moderate

@@ -83,6 +83,23 @@ fun PlacesCard(
     if (editor != null) PlaceEditorDialog(editor, places.firstOrNull { it.id == editor.id }, vm)
 }
 
+/**
+ * Only the Home slot, for the onboarding: the same editor as [PlacesCard] without the rest of the list.
+ * 只有「家」这一项，供首次启动引导使用：与 [PlacesCard] 同一个编辑对话框，只是不列出其他地点。
+ */
+@Composable
+fun HomePlaceCard(places: List<Place>, editor: PlaceEditor?, vm: SharedDataViewModel) {
+    val home = places.firstOrNull { it.id == Place.HOME }
+    InfoCard(title = stringResource(R.string.place_home)) {
+        PlaceRow(
+            title = home?.name ?: stringResource(R.string.places_not_set),
+            subtitle = stringResource(R.string.places_search_hint),
+            onClick = { vm.edit(home, presetId = Place.HOME) },
+        )
+    }
+    if (editor != null) PlaceEditorDialog(editor, places.firstOrNull { it.id == editor.id }, vm)
+}
+
 @Composable
 private fun PlaceRow(title: String, subtitle: String, onClick: () -> Unit) {
     Column(

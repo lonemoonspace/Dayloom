@@ -26,6 +26,9 @@ sealed interface UiText {
      * 不应翻译的文字：专有名词、服务端消息、用户输入。
      */
     data class Raw(val text: String) : UiText
+
+    /** Several texts, one per line (the morning brief). / 多段文字，每段一行（早间简报）。 */
+    data class Lines(val lines: List<UiText>) : UiText
 }
 
 fun uiText(@StringRes id: Int, vararg args: Any): UiText = UiText.Res(id, args.toList())
@@ -34,6 +37,7 @@ fun UiText.resolve(resources: Resources): String = when (this) {
     is UiText.Raw -> text
     is UiText.Res -> if (args.isEmpty()) resources.getString(id) else resources.getString(id, *resolveArgs(args, resources))
     is UiText.Plural -> resources.getQuantityString(id, count, *resolveArgs(args, resources))
+    is UiText.Lines -> lines.joinToString("\n") { it.resolve(resources) }
 }
 
 private fun resolveArgs(args: List<Any>, resources: Resources): Array<Any> =

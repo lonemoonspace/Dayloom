@@ -7,6 +7,203 @@
     <string name="common_loading">加载中</string>
     <string name="common_save">保存</string>
 
+    <string name="common_today">今天</string>
+    <string name="common_tomorrow">明天</string>
+
+    <string name="place_home">家</string>
+    <string name="place_work">公司</string>
+    <string name="places_none_saved">还没有保存的地点。请先在设置的「地点」里添加。</string>
+
+    <string name="weather_title">天气</string>
+    <string name="weather_summary">现在与通勤时段的天气，数据来自挪威气象局</string>
+    <string name="weather_setup_place">天气地点</string>
+    <string name="weather_settings_place">显示哪里的天气</string>
+    <string name="weather_wind_precip">风 %1$d m/s · 降水 %2$s mm</string>
+    <string name="weather_leg_to_work">去程</string>
+    <string name="weather_leg_back_home">返程</string>
+    <string name="weather_leg_on_day">%1$s%2$s</string>
+    <string name="weather_leg_no_data">暂无逐小时预报</string>
+    <string name="weather_umbrella">带伞</string>
+    <string name="weather_dry">无雨</string>
+    <string name="weather_rain_stops">雨会在 %1$s 前后停</string>
+    <string name="weather_rain_starts">%1$s 前后开始下雨</string>
+    <string name="weather_attribution">天气数据：挪威气象局 MET Norway（CC BY 4.0）</string>
+    <string name="weather_clear">晴</string>
+    <string name="weather_fair">少云</string>
+    <string name="weather_partly_cloudy">多云</string>
+    <string name="weather_cloudy">阴</string>
+    <string name="weather_fog">雾</string>
+    <string name="weather_wind">大风</string>
+    <string name="weather_light_rain">小雨</string>
+    <string name="weather_rain">雨</string>
+    <string name="weather_heavy_rain">大雨</string>
+    <string name="weather_light_rain_showers">小阵雨</string>
+    <string name="weather_rain_showers">阵雨</string>
+    <string name="weather_heavy_rain_showers">大阵雨</string>
+    <string name="weather_light_sleet">小冰雨</string>
+    <string name="weather_sleet">雨夹雪</string>
+    <string name="weather_heavy_sleet">大冰雨</string>
+    <string name="weather_sleet_showers">冰雨阵雨</string>
+    <string name="weather_light_snow">小雪</string>
+    <string name="weather_snow">雪</string>
+    <string name="weather_heavy_snow">大雪</string>
+    <string name="weather_snow_showers">阵雪</string>
+    <string name="weather_thunder">雷暴</string>
+    <string name="weather_unknown">未知</string>
+
+    <string name="calendar_title">日历</string>
+    <string name="calendar_summary">时钟、日期、周数、农历与节日</string>
+    <string name="calendar_date_week">%1$s · 第%2$d周</string>
+    <string name="calendar_show_lunar">中国农历</string>
+    <string name="calendar_show_lunar_summary">农历日期、干支年与二十四节气</string>
+    <string name="calendar_holidays_of">%1$s节日</string>
+    <string name="calendar_country_china">中国</string>
+    <string name="calendar_country_norway">挪威</string>
+    <string name="calendar_solar_term_today">今日%1$s</string>
+    <string name="calendar_lunar_leap_month">闰%1$s</string>
+    <string name="calendar_lunar_date">%1$s%2$s</string>
+    <string name="calendar_lunar_year">%1$s%2$s%3$s年</string>
+    <string name="calendar_countdown_tomorrow">%1$s 明天</string>
+    <plurals name="calendar_countdown_days">
+        <item quantity="other">%1$s 还有 %2$d 天</item>
+    </plurals>
+    <string name="holiday_new_year">元旦</string>
+    <string name="holiday_labour_day">劳动节</string>
+    <string name="holiday_new_years_eve">除夕</string>
+    <string name="holiday_spring_festival">春节</string>
+    <string name="holiday_lantern">元宵节</string>
+    <string name="holiday_dragon_head">龙抬头</string>
+    <string name="holiday_qingming">清明节</string>
+    <string name="holiday_dragon_boat">端午节</string>
+    <string name="holiday_qixi">七夕</string>
+    <string name="holiday_ghost">中元节</string>
+    <string name="holiday_mid_autumn">中秋节</string>
+    <string name="holiday_double_ninth">重阳节</string>
+    <string name="holiday_national_day">国庆节</string>
+    <string name="holiday_laba">腊八节</string>
+    <string name="holiday_maundy_thursday">圣周四</string>
+    <string name="holiday_good_friday">受难日</string>
+    <string name="holiday_easter_sunday">复活节</string>
+    <string name="holiday_easter_monday">复活节次日</string>
+    <string name="holiday_constitution_day">宪法日</string>
+    <string name="holiday_ascension_day">耶稣升天节</string>
+    <string name="holiday_whit_sunday">圣灵降临节</string>
+    <string name="holiday_whit_monday">圣灵降临节次日</string>
+    <string name="holiday_christmas_day">圣诞节</string>
+    <string name="holiday_boxing_day">圣诞节次日</string>
+    <string-array name="calendar_lunar_months">
+        <item>正月</item>
+        <item>二月</item>
+        <item>三月</item>
+        <item>四月</item>
+        <item>五月</item>
+        <item>六月</item>
+        <item>七月</item>
+        <item>八月</item>
+        <item>九月</item>
+        <item>十月</item>
+        <item>冬月</item>
+        <item>腊月</item>
+    </string-array>
+    <string-array name="calendar_lunar_days">
+        <item>初一</item>
+        <item>初二</item>
+        <item>初三</item>
+        <item>初四</item>
+        <item>初五</item>
+        <item>初六</item>
+        <item>初七</item>
+        <item>初八</item>
+        <item>初九</item>
+        <item>初十</item>
+        <item>十一</item>
+        <item>十二</item>
+        <item>十三</item>
+        <item>十四</item>
+        <item>十五</item>
+        <item>十六</item>
+        <item>十七</item>
+        <item>十八</item>
+        <item>十九</item>
+        <item>二十</item>
+        <item>廿一</item>
+        <item>廿二</item>
+        <item>廿三</item>
+        <item>廿四</item>
+        <item>廿五</item>
+        <item>廿六</item>
+        <item>廿七</item>
+        <item>廿八</item>
+        <item>廿九</item>
+        <item>三十</item>
+    </string-array>
+    <string-array name="calendar_heavenly_stems">
+        <item>甲</item>
+        <item>乙</item>
+        <item>丙</item>
+        <item>丁</item>
+        <item>戊</item>
+        <item>己</item>
+        <item>庚</item>
+        <item>辛</item>
+        <item>壬</item>
+        <item>癸</item>
+    </string-array>
+    <string-array name="calendar_earthly_branches">
+        <item>子</item>
+        <item>丑</item>
+        <item>寅</item>
+        <item>卯</item>
+        <item>辰</item>
+        <item>巳</item>
+        <item>午</item>
+        <item>未</item>
+        <item>申</item>
+        <item>酉</item>
+        <item>戌</item>
+        <item>亥</item>
+    </string-array>
+    <string-array name="calendar_zodiac">
+        <item>鼠</item>
+        <item>牛</item>
+        <item>虎</item>
+        <item>兔</item>
+        <item>龙</item>
+        <item>蛇</item>
+        <item>马</item>
+        <item>羊</item>
+        <item>猴</item>
+        <item>鸡</item>
+        <item>狗</item>
+        <item>猪</item>
+    </string-array>
+    <string-array name="calendar_solar_terms">
+        <item>小寒</item>
+        <item>大寒</item>
+        <item>立春</item>
+        <item>雨水</item>
+        <item>惊蛰</item>
+        <item>春分</item>
+        <item>清明</item>
+        <item>谷雨</item>
+        <item>立夏</item>
+        <item>小满</item>
+        <item>芒种</item>
+        <item>夏至</item>
+        <item>小暑</item>
+        <item>大暑</item>
+        <item>立秋</item>
+        <item>处暑</item>
+        <item>白露</item>
+        <item>秋分</item>
+        <item>寒露</item>
+        <item>霜降</item>
+        <item>立冬</item>
+        <item>小雪</item>
+        <item>大雪</item>
+        <item>冬至</item>
+    </string-array>
+
     <string name="nav_home">首页</string>
     <string name="nav_settings">设置</string>
 
@@ -20,6 +217,25 @@
     <string name="home_empty_body">在设置里打开需要的模块。</string>
     <string name="home_open_settings">打开设置</string>
 
+    <string name="common_cancel">取消</string>
+    <string name="settings_places">地点</string>
+    <string name="places_not_set">未设置</string>
+    <string name="places_add">添加地点</string>
+    <string name="places_label">地点名称</string>
+    <string name="places_search_hint">搜索城市或地址</string>
+    <string name="places_search">搜索</string>
+    <string name="places_use_location">使用当前位置</string>
+    <string name="places_no_results">没有找到地点。</string>
+    <string name="places_locate_failed">无法获取位置，请确认定位已打开。</string>
+    <string name="places_attribution">地点搜索由 Open-Meteo 提供（CC BY 4.0）。位置只读取一次，不会持续定位。</string>
+    <string name="places_remove">删除</string>
+    <string name="settings_routine">日常作息</string>
+    <string name="routine_commute">工作日需要通勤</string>
+    <string name="routine_commute_summary">天气与公交会重点关注这些时段</string>
+    <string name="routine_to_work">去程</string>
+    <string name="routine_back_home">返程</string>
+    <string name="routine_window_invalid">开始与结束不能是同一时间。</string>
+    <string name="routine_working_days">工作日</string>
     <string name="settings_language">语言</string>
     <string name="settings_language_system">跟随系统</string>
     <string name="settings_time_zone">时区</string>

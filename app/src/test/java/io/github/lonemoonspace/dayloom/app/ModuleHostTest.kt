@@ -2,6 +2,7 @@ package io.github.lonemoonspace.dayloom.app
 
 import io.github.lonemoonspace.dayloom.R
 import io.github.lonemoonspace.dayloom.app.home.HomeViewModel
+import io.github.lonemoonspace.dayloom.core.location.PlaceBook
 import io.github.lonemoonspace.dayloom.core.module.CardPlacement
 import io.github.lonemoonspace.dayloom.core.module.FeatureModule
 import io.github.lonemoonspace.dayloom.core.module.HomeCard
@@ -21,10 +22,12 @@ import io.github.lonemoonspace.dayloom.core.refresh.RefreshCoordinator
 import io.github.lonemoonspace.dayloom.core.refresh.SourceId
 import io.github.lonemoonspace.dayloom.core.refresh.SourceInput
 import io.github.lonemoonspace.dayloom.core.refresh.Trigger
+import io.github.lonemoonspace.dayloom.core.routine.Routine
 import io.github.lonemoonspace.dayloom.core.secret.SecretState
 import io.github.lonemoonspace.dayloom.core.storage.AppSettings
 import io.github.lonemoonspace.dayloom.core.storage.InMemorySnapshotStore
 import io.github.lonemoonspace.dayloom.core.storage.InMemoryValueStore
+import io.github.lonemoonspace.dayloom.core.storage.SharedData
 import io.github.lonemoonspace.dayloom.core.storage.Snapshot
 import io.github.lonemoonspace.dayloom.core.storage.SnapshotStore
 import io.github.lonemoonspace.dayloom.core.storage.ValueStore
@@ -128,6 +131,8 @@ class ModuleHostTest {
     ) : ModuleContext {
         override val http = OkHttpClient()
         override val connectivity = FakeNetworkStatus()
+        override val places = PlaceBook(InMemoryValueStore(SharedData()))
+        override val routine = flowOf(Routine())
         override fun <T> settings(serializer: KSerializer<T>, default: T): ValueStore<T> = InMemoryValueStore(default)
         override fun <T> snapshots(sourceId: SourceId, serializer: KSerializer<T>): SnapshotStore<T> = InMemorySnapshotStore()
         override fun secret(name: String) = object : ModuleSecret {

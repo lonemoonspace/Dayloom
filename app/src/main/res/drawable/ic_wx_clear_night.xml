@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Weather icon: clear sky (night). Full colour, shown with Image, not tinted. / 天气图标：晴（夜间）。彩色图标，用 Image 显示，不着色。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <path android:fillColor="#FFF2D27A" android:pathData="M19,5A11,11 0,1 0,27,22A9,9 0,0 1,19,5Z" />
+</vector>

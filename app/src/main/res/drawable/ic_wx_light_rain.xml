@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Weather icon: light rain and showers. Full colour, shown with Image, not tinted. / 天气图标：小雨、小阵雨。彩色图标，用 Image 显示，不着色。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <path android:fillColor="#FFF4B740" android:pathData="M11.5,5.4A4.6,4.6 0,1 1,11.49,5.4Z" />
+    <path android:fillColor="#FFB9C6D4" android:pathData="M8.5,20H23.5A5,5 0,0 0,24.1,10.04A7,7 0,0 0,10.6,9A5.6,5.6 0,0 0,8.5,20Z" />
+    <path android:strokeColor="#FF3E8EDE" android:strokeWidth="1.8" android:strokeLineCap="round" android:pathData="M12,23.5L11,26M17,23.5L16,26M22,23.5L21,26" />
+</vector>

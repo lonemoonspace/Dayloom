@@ -176,6 +176,8 @@ dependencies {
     implementation(libs.haze)
     // Drag-to-reorder for home cards. / 首页卡片的拖动排序。
     implementation(libs.reorderable)
+    // Lunar dates and solar terms for the calendar module, behind its LunarProvider. / 日历模块的农历与节气，藏在 LunarProvider 后面。
+    implementation(libs.lunar)
 
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.work.runtime.ktx)

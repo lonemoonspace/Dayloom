@@ -44,6 +44,8 @@ fun SettingsScreen(
     onLanguage: (LanguageChoice) -> Unit,
     onTimeZone: (String) -> Boolean,
     onModuleEnabled: (String, Boolean) -> Unit,
+    /** The shared places and daily-routine cards. / 共用的地点与日常作息卡片。 */
+    sharedData: @Composable () -> Unit = {},
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -52,6 +54,7 @@ fun SettingsScreen(
     ) {
         item(key = "language") { LanguageCard(state.language, onLanguage) }
         item(key = "timezone") { TimeZoneCard(state.timeZoneOverride, state.effectiveZone, onTimeZone) }
+        item(key = "shared") { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { sharedData() } }
         item(key = "modules") { ModulesCard(state.modules, onModuleEnabled) }
         items(state.sections, key = { "section:${it.module.id}" }) { active ->
             InfoCard(title = stringResource(active.module.title)) {

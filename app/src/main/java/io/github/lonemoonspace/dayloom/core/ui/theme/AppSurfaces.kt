@@ -22,6 +22,12 @@ val LightAppSurfaces = AppSurfaces(card = Color(0xFFD8E8FF), tile = Color(0xFFE8
 
 val DarkAppSurfaces = AppSurfaces(card = Color(0xFF0B3A66), tile = Color(0xFF0E2740))
 
+/**
+ * Rain colour over a tile, marking a wet commute window; low enough that text on it keeps its contrast.
+ * 叠在小块上的雨色，用来标出要带伞的通勤时段；足够淡，上面的文字仍保持对比度。
+ */
+const val WET_TILE_RAIN_ALPHA = 0.14f
+
 val LocalAppSurfaces = staticCompositionLocalOf { LightAppSurfaces }
 
 val MaterialTheme.appSurfaces: AppSurfaces

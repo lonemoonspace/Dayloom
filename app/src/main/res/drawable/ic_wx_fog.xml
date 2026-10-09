@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Weather icon: fog. Full colour, shown with Image, not tinted. / 天气图标：雾。彩色图标，用 Image 显示，不着色。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <path android:fillColor="#FFA9B6C6" android:pathData="M8.5,20H23.5A5,5 0,0 0,24.1,10.04A7,7 0,0 0,10.6,9A5.6,5.6 0,0 0,8.5,20Z" />
+    <path android:strokeColor="#FF8E9DB0" android:strokeWidth="2.2" android:strokeLineCap="round" android:pathData="M7,24H25M10,28H22" />
+</vector>

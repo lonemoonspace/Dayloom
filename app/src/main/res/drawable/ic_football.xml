@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Football module icon: a ball with its centre panel, tinted by the Icon. / 足球模块图标：带中心块的足球，由 Icon 着色。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M12,12m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0M12,8.2l3.6,2.6l-1.4,4.2h-4.4l-1.4,-4.2zM12,8.2V3.2M15.6,10.8l4.6,-1.5M14.2,15l2.8,3.9M9.8,15l-2.8,3.9M8.4,10.8l-4.6,-1.5" />
+</vector>

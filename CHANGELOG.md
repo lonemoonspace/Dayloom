@@ -49,6 +49,10 @@ looks it up literally.
   hours, rain, clothing and tip pills and the next four days; train and bus cards have line icons, the route and the update
   time in their title row and one dense row per trip with lines, arrival, duration, transfers, platform and a status pill;
   the solar term is a pill beside the clock; expiry reminders take one row per item.
+- Football module (M5): follow one team with your own free football-data.org key. Its own tab shows the match of the moment,
+  fixtures, results with win/draw/loss and the league table; a home card appears around match time with a live score.
+  Refreshing follows the schedule (every minute while a match is on). Opt-in kick-off reminders and final scores, and a
+  morning-brief line on match days.
 
 - 项目骨架（M0）：带注册表、宿主与命名空间存储的模块系统；从 PersonalAssistant 移植并泛化的刷新协调器与通知引擎；
   卡片可拖动排序的首页；语言、时区与模块开关设置；中英文资源；架构测试与字符串一致性测试；CI 与发版 workflow。
@@ -79,3 +83,6 @@ looks it up literally.
 - 新外观（方向 B）：颜色跟随壁纸（Material You）；天气是一整块主题色的主卡，包含几个时间点、降雨、穿衣与提示胶囊以及之后四天；
   火车与公交卡片的标题行有线条图标、路线与更新时间，每个方案一行，含线路、到达、用时、换乘、站台与状态胶囊；节气是时钟旁的
   小胶囊；到期提醒每个条目一行。
+- 足球模块（M5）：用你自己的免费 football-data.org Key 关注一支球队。独立标签页显示当下的比赛、赛程、带胜平负的赛果与联赛积分榜；
+  比赛前后首页出现一张带实时比分的卡片。刷新节奏随赛程变化（比赛进行中每分钟一次）。需要主动打开的开赛提醒与终场比分，比赛日的
+  早间简报里有一行。

@@ -375,6 +375,7 @@ val allModules: List<FeatureModule> = listOf(
 - **通知**：开赛提醒、终场比分。
 - **移植**：`FootballDataOrgApi`、`FootballStatusBuilder`、比分/点球大战判定、实时轮询策略；`isRealMadrid` 改为 `isFollowedTeam`。
 - **不移植**：皇马队徽图片（商标）；队徽改为从接口返回的 URL 加载。
+- **实现（M5）**：原项目代码在实现时不可用，按接口文档重写，并用模拟服务器测试。`football.matches` 取今天往前四周、往后五周的比赛，刷新节奏随赛程变化（`FootballPolicy.cadence`：进行中每分钟、比赛前后每 15 分钟、其余每三小时），所以首页卡片与标签页的比分是实时的；`football.standings` 每六小时一次，只取总表。v4 把点球大战计入 `fullTime`，比赛比分取常规时间加加时（或全场减点球）。首页卡片只在比赛前后出现（进行中、24 小时内开赛、12 小时内刚结束），进行中时置顶。两条通知规则 `kickoff`（开球前一小时内）与 `result`（只看本轮刷新成功的快照、开球后 11 小时内）共用一个通知 id，终场比分替换开赛提醒。队徽：Android 画不了 SVG，同一主机上有并列的 PNG，所以改取 PNG，失败时显示三字母代码。赛事名称（十二项免费赛事）放在资源里双语显示。
 
 ### 11.7 新闻 `news`
 

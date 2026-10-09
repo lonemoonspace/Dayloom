@@ -1,0 +1,486 @@
+# Dayloom（织日）设计文档
+
+> 状态：**草稿 v0.1，待审**。审定前不写任何代码。
+> 本文档先用中文写，便于审阅；审定后补英文版（`docs/design.en.md`），两份内容保持一致。
+
+---
+
+## 1. 目标与非目标
+
+**目标**
+
+1. 一个开箱即用、谁都能配置的 Android 日常看板：天气、公共交通、路况、到期提醒、日历、足球、新闻。
+2. **可扩展**：加一个新模块 = 新建一个功能包 + 在注册表加一行；首页、设置、导航、刷新、通知、后台任务都不用改。
+3. **可精简**：用户可以关闭任意模块；关闭的模块不发请求、不占首页、不出现在导航与设置里。
+4. **中英双语**：界面、通知、错误提示全部走资源；应用内可切换语言。
+5. 不依赖任何自建后端；不内置任何 API Key；不收集任何数据。
+
+**非目标（第一版不做）**
+
+- 挪威以外的公共交通（只做接口，不做第二个实现）。
+- iOS / 桌面 / 小组件（Widget）。
+- 账号体系、云同步、从 PersonalAssistant 自动导入设置。
+- Gradle 多模块（见 §3.3，以后需要时再拆）。
+
+---
+
+## 2. 已确定的决策
+
+| 项目 | 决定 |
+|---|---|
+| 名称 | 英文 **Dayloom**，中文 **织日** |
+| 仓库 | `lonemoonspace/Dayloom`，全新初始提交、不带旧历史；先私有，第一个可用版本后公开 |
+| 许可证 | Apache-2.0 |
+| applicationId / 包名 | `io.github.lonemoonspace.dayloom` |
+| 工程结构 | 单 Gradle 模块 `:app` + 按包分层 + **架构测试**守边界 |
+| 模块范围（第一版） | 天气、公共交通、路况、到期提醒、日历、足球、新闻，全部通用化 |
+| 公共交通 | Entur Journey Planner 通用规划，仅挪威；经 `TransitProvider` 接口可插拔 |
+| 天气 | MET Norway，全球可用 |
+| 时区 | 默认跟随设备，可在设置里手动指定 |
+| 界面语言 | 英文（默认资源）+ 中文；跟随系统或应用内手动切换 |
+| 代码注释 / 提交信息 / CHANGELOG | 双语，英文在上、中文在下 |
+| README | `README.md`（英文）+ `README.zh-CN.md`（中文），互相链接 |
+| CI / 发版 | 沿用 PersonalAssistant 的三项门禁与 workflow，改名适配 |
+| 冻结规则 | v1.0.0 之前可自由改；v1.0.0 起冻结存储格式等（§15） |
+
+---
+
+## 3. 总体架构
+
+### 3.1 分层
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ app        组装层：DayloomApp、MainActivity、AppGraph、      │
+│            ModuleRegistry、导航外壳、首页/设置外壳、首次启动引导 │
+├──────────────────────────────────────────────────────────┤
+│ feature/*  功能模块：weather、transit、traffic、reminders、   │
+│            calendar、football、news（各自 data/domain/ui）    │
+├──────────────────────────────────────────────────────────┤
+│ core/*     基础设施：module(接口)、refresh、notify、storage、  │
+│            secret、network、time、location、routine、i18n、  │
+│            error、json、work、ui                            │
+└──────────────────────────────────────────────────────────┘
+依赖只能向下：app → feature → core；feature 之间互不依赖。
+```
+
+### 3.2 包结构
+
+```
+io.github.lonemoonspace.dayloom
+├── DayloomApp.kt                // Application
+├── MainActivity.kt
+├── app/
+│   ├── AppGraph.kt              // 手写依赖注入：共享的 OkHttp、时钟、存储、协调器
+│   ├── ModuleRegistry.kt        // 唯一列出所有模块的地方
+│   ├── nav/                     // 底部导航、路由（由注册表生成）
+│   ├── home/                    // 首页外壳：按顺序渲染各模块卡片
+│   ├── settings/                // 设置外壳：通用设置 + 各模块设置分区
+│   └── onboarding/              // 首次启动引导
+├── core/
+│   ├── module/                  // FeatureModule、ModuleContext、HomeCard、ModuleTab…
+│   ├── refresh/                 // CachedSource、RefreshCoordinator、刷新节奏
+│   ├── notify/                  // NotificationRule、NotificationEngine、渠道、早间简报
+│   ├── storage/                 // DataStore、快照、模块设置存储
+│   ├── secret/                  // SecretStore、SecretBox
+│   ├── network/                 // OkHttp、联网状态、凭据重定向防护
+│   ├── time/                    // AppClock、时区
+│   ├── location/                // 地点（Place）、地点搜索、设备定位
+│   ├── routine/                 // 日常时间窗（上班/下班）、常用地点（家/公司）
+│   ├── i18n/                    // UiText、语言切换
+│   ├── error/  json/  work/  ui/
+└── feature/
+    ├── weather/   transit/   traffic/   reminders/
+    ├── calendar/  football/  news/
+    └── <每个模块内>：data/（接口与数据源）domain/（模型与 Policy）ui/（卡片、页面、设置分区）
+```
+
+### 3.3 为什么是单模块 + 架构测试
+
+- 项目规模约两百个文件，多模块的构建提速体现不出来，反而多出 convention plugin、逐模块 lint/测试配置等维护负担。
+- 边界由一组 JVM 单测（`ArchitectureTest`）保证，**违反即 CI 红**。它直接扫描 `src/main/java` 里每个文件的 `import`，不引入第三方库：
+  1. `core/**` 不得 import `feature/**` 或 `app/**`；
+  2. `feature/X/**` 不得 import `feature/Y/**`（X ≠ Y）或 `app/**`；
+  3. 名为 `*Policy` 的文件不得 import `android.*` / `androidx.*`（保证可纯 JVM 单测）；
+  4. 只有 `app/ModuleRegistry.kt` 可以引用各模块的 `XxxModule` 入口类。
+- 以后要拆 Gradle 多模块时，边界已经干净，基本只是搬目录、加构建配置。
+
+---
+
+## 4. 模块系统（核心）
+
+### 4.1 接口草图
+
+```kotlin
+/** 一个功能模块的静态描述；未启用时不创建实例，不产生任何开销。 */
+interface FeatureModule {
+    val id: ModuleId                    // 例："weather"；v1.0 起冻结
+    @get:StringRes val title: Int
+    @get:DrawableRes val icon: Int
+    val defaultEnabled: Boolean
+    fun create(ctx: ModuleContext): ModuleInstance
+}
+
+/** 启用后的模块实例：向外声明它贡献的一切。每一项都可以为空。 */
+interface ModuleInstance {
+    val sources: List<CachedSource<*, *>>          // 数据源，统一注册到 RefreshCoordinator
+    val homeCards: List<HomeCard>                  // 首页卡片
+    val tab: ModuleTab?                            // 独立标签页（足球、新闻）
+    val settings: SettingsSection?                 // 设置页分区
+    val notificationChannels: List<ChannelSpec>
+    val notificationRules: List<NotificationRule<*>>
+    val brief: BriefContributor?                   // 早间简报中的一行
+    val backgroundWork: List<BackgroundWorkSpec>   // 额外后台任务（如新闻同步）
+    val configured: Flow<ConfigState>              // 是否已配置好；未配置时卡片显示引导
+}
+```
+
+**ModuleContext**（core 提供给模块的能力，模块只能通过它拿依赖）：
+
+| 能力 | 说明 |
+|---|---|
+| `http` | 共享的 OkHttpClient |
+| `clock` / `zone` | 注入的时钟与当前时区（Flow） |
+| `settings<T>(serializer, default)` | 本模块的设置存储（§6.2），只能读写自己的 |
+| `snapshots<T>(sourceName, serializer)` | 本模块的快照存储，文件名自动加模块前缀 |
+| `secret(name)` | 本模块的凭据，id 自动加模块前缀 |
+| `notifyState(name)` | 本模块通知规则的状态存储，键自动加模块前缀 |
+| `places` / `routine` | 共享的常用地点与日常时间窗（§8） |
+| `connectivity` | 联网状态 |
+| `appScope` | 进程级协程作用域 |
+
+**命名空间**：模块拿到的所有存储键、快照文件名、凭据 id、通知状态键都由 core 自动加上 `<moduleId>.` 前缀，模块之间不可能撞名。
+
+### 4.2 注册表
+
+```kotlin
+// app/ModuleRegistry.kt —— 加模块只改这一个文件
+val allModules: List<FeatureModule> = listOf(
+    CalendarModule, WeatherModule, TransitModule, TrafficModule,
+    RemindersModule, FootballModule, NewsModule,
+)
+```
+
+注册表自带单测：模块 id 唯一、通知 id 段不重叠（§7.2）、通知渠道 id 唯一、后台任务名唯一。
+
+### 4.3 首页卡片与标签页
+
+- `HomeCard`：`key`、默认排序、`placement: Flow<CardPlacement>`（如到期提醒「快到期」时置顶）、`@Composable Content()`。
+- 首页外壳按「用户自定义顺序 → 默认顺序」渲染所有已启用模块的卡片；用户可在设置里拖动排序（第一版可先做上下移动按钮）。
+- `ModuleTab`：路由、图标、标签文字、`@Composable Content()`、可选深链。底部导航 = 首页 + 已启用模块的标签页 + 设置。
+- 标签页的 ViewModel 只在用户首次进入时创建（沿用原项目做法，冷启动不请求足球/新闻接口）。
+
+### 4.4 加一个新模块的完整步骤（验收标准）
+
+1. 新建 `feature/<id>/`，实现 `FeatureModule` 与 `ModuleInstance`；
+2. 在 `values/` 与 `values-zh/` 加该模块的字符串；
+3. 在 `ModuleRegistry` 加一行；
+4. 写该模块的 Policy 单测。
+
+**不需要改**：首页、设置外壳、导航、刷新协调器、通知引擎、后台 Worker、任何其他模块。若做不到，视为架构缺陷。
+
+---
+
+## 5. 刷新机制
+
+从 PersonalAssistant 移植 `CachedSource` 与 `RefreshCoordinator` 的核心语义（并行刷新、按来源 single-flight、离线跳过、静默触发、失败保留旧快照），以及它们的全部单测，改动如下：
+
+| 原项目 | 新项目 |
+|---|---|
+| `enum class SourceId` | `SourceId(value: String)`，形如 `"weather.forecast"`，由模块 id + 来源名组成 |
+| `paramsKey(settings: UserSettings)` | `CachedSource<P, T>`：`P` 是该来源自己的参数类型，由模块从自己的设置里算出，core 只看到泛型 |
+| `commuteSources()` 写死天气/火车/路况/公交 | 每个来源声明 `RefreshCadence`（前台间隔、后台是否刷新、是否只在日常时间窗内高频）；协调器按节奏挑选来源 |
+| 路况去程/回程两个来源 + `activeTraffic` 特判 | 路况模块内部按日常时间窗决定方向，对 core 只有一个来源 |
+| `Trigger.LIVE_POLL` 为足球专设 | 保留为通用的「静默高频轮询」触发，任何模块可用 |
+
+快照文件：`snapshot_<sourceId>`（点号替换为下划线），快照带 `schemaVersion`，不兼容时直接作废重拉。
+
+---
+
+## 6. 设置与存储
+
+### 6.1 存储文件一览
+
+| 文件 | 类型 | 内容 |
+|---|---|---|
+| `app_settings` | DataStore（JSON） | 全局设置：语言、时区覆盖、已启用模块、卡片顺序、引导是否完成、通知总开关 |
+| `module_settings` | DataStore Preferences | 每个模块一个键（= 模块 id），值是该模块设置的 JSON |
+| `shared_data` | DataStore（JSON） | 常用地点（家/公司/自定义）、日常时间窗 |
+| `secrets` | DataStore Preferences | 所有凭据，`SecretBox` 加密；键 = `<moduleId>.<name>` |
+| `notify_state` | DataStore Preferences | 通知规则状态；键 = `<moduleId>.<rule>` |
+| `snapshot_*` | DataStore（JSON） | 各数据源快照 |
+| `dayloom.db` | Room | 只有新闻模块使用，schema 从 v1 开始导出到 `app/schemas/` |
+
+### 6.2 模块设置
+
+- 每个模块一个 `@Serializable` 设置类，**所有字段必须有默认值**；带 `version: Int` 字段，为 v1.0 之后的迁移预留。
+- 解码失败：v1.0 前直接回退默认值并记日志；v1.0 起必须写迁移并有测试。
+- 不再有一个装下所有功能的 `UserSettings`。
+
+### 6.3 凭据
+
+沿用 `SecretStore` / `SecretBox`（`v1:` 密文格式、Android Keystore），规则不变：发请求只用 `usable(id)`，输入框只回填 `display`，永远不把密文当凭据发出或显示。
+第一版的凭据：`traffic.google_maps`、`football.football_data`、`news.miniflux_token`、`news.llm_api_key`。
+
+---
+
+## 7. 通知
+
+### 7.1 规则
+
+- `NotificationRule<S>` 移到各模块内部；规则只能读本模块的快照与设置（通过 `RuleInput` 提供的、按本模块收窄的读取器），不再有全局的 `SnapshotsView`。
+- 通知文案在发送时按**当前应用语言**从资源取（Worker 里用带语言的 `Context`，见 §10.4）。规则返回结构化的 `NotificationContent`，不返回拼好的字符串。
+
+### 7.2 渠道与 id
+
+- 渠道 id：`<moduleId>.<name>`，由模块声明，`NotificationChannels` 统一创建。
+- 通知 id：每个模块在注册时声明一个号段（如天气 1000–1999、交通 2000–2999…），注册表单测保证不重叠。
+
+### 7.3 早间简报
+
+- 由 core 实现，是唯一跨模块的通知：每个启用了 `BriefContributor` 的模块提供一行结构化内容（如「今天有雨，带伞」「首班车准点」「路况畅通，22 分钟」），按模块顺序拼成一条通知。
+- 新模块只要实现 `BriefContributor` 就会自动出现在简报里。
+
+### 7.4 第一版的通知
+
+| 模块 | 通知 | 默认 |
+|---|---|---|
+| 公共交通 | 通勤行程取消/大晚点 | 关 |
+| 到期提醒 | 快到期 / 已到期 | 关 |
+| 足球 | 开赛提醒、终场比分 | 关 |
+| 新闻 | 无（后台同步不发通知） | — |
+| core | 早间简报 | 关 |
+
+所有通知默认关闭（选择加入），理由同原项目：不替用户做打扰型决定。
+
+---
+
+## 8. 共享概念：地点与日常时间窗
+
+天气、公共交通、路况、早间简报都需要「家在哪、公司在哪、什么时候出门」。为避免每个模块各问一遍，放在 core 里共享：
+
+- **常用地点（`core/location`）**：`Place(id, label, name, lat, lon, countryCode?)`。预置「家」「公司」两个槽位，可加自定义地点。
+  - 搜索：**Open-Meteo Geocoding**（全球、免费、无需 Key）；挪威地址可额外用 Entur Geocoder 提高精度。
+  - 「使用当前位置」：用系统 `LocationManager`（不依赖 Google Play 服务，便于以后上 F-Droid），只要粗略定位权限，可选。
+- **日常时间窗（`core/routine`）**：上班窗口、下班窗口（支持跨午夜，沿用原项目校验规则）、工作日（默认周一至周五）。
+
+各模块的设置里引用这些共享项，比如天气默认「家」、路况默认「家 → 公司」，也可以改成别的地点。
+
+---
+
+## 9. 时间与时区
+
+- `AppClock` 提供 `now()` 与 `zone: Flow<ZoneId>`；`zone` = 设置里的覆盖值，否则跟随设备（监听系统时区变化）。
+- 所有 Policy 把 `now: ZonedDateTime` 当参数，测试里传固定时间与固定时区。
+- 新代码禁止直接调用 `ZonedDateTime.now()` / `ZoneId.systemDefault()`；由架构测试或 lint 规则检查。
+- 外部数据（Entur、football-data.org）返回带偏移的时间，统一换算到当前时区再展示。
+
+---
+
+## 10. 国际化（中英双语）
+
+### 10.1 资源
+
+- `values/strings.xml` = 英文（默认），`values-zh/strings.xml` = 中文。
+- 每个模块的字符串用前缀分组：`weather_*`、`transit_*`…，便于查找和以后拆分。
+- 复数用 `plurals`；带参数的一律用位置参数 `%1$s`。
+
+### 10.2 规则
+
+1. **Policy / domain 层只返回结构化结果**（枚举、密封类、数字、时间），不拼任何界面文案。
+2. ViewModel 需要传文字给界面时用 `UiText`（`Res(id, args)` / `Plural(id, n, args)` / `Raw(string)`），界面层再解析。
+3. 错误文案集中在 `core/ui/ErrorText`，按 `AppError` 类型映射到资源。
+4. 节假日名、天气描述、星期、农历月日名全部走资源。
+5. 不把任何拼好的文案存进快照或设置。
+
+### 10.3 语言切换
+
+- 设置里「跟随系统 / English / 中文」，用 `AppCompatDelegate.setApplicationLocales`（Android 13+ 走系统的按应用语言，旧版本由 AppCompat 保存并应用）；声明 `locales_config.xml`。
+
+### 10.4 后台与通知
+
+- Worker 与通知发送时用 `context.createConfigurationContext(带应用语言的 Configuration)` 取字符串，保证通知语言和界面一致。
+
+### 10.5 检查
+
+- 单测：解析两份 `strings.xml`，**键集合必须完全一致**，占位符个数与类型一致。
+- lint：`MissingTranslation`、`ExtraTranslation` 设为 error。
+
+---
+
+## 11. 各模块设计
+
+> 每个模块列出：功能、数据源、设置、来源、通知、从原项目移植什么。
+
+### 11.1 天气 `weather`
+
+- **功能**：当前天气、未来几小时逐时、明早预报；在日常时间窗内显示「出门/回家时的天气」与降雨开始/停止时间（移植 `CommuteWeatherPolicy`，去掉对通勤设置的直接依赖，改为读共享的时间窗）。
+- **数据源**：MET Norway Locationforecast 2.0（全球）。
+- **设置**：地点（默认「家」）。
+- **来源**：`weather.forecast`。
+- **移植**：`MetApi`、`WeatherPointPicker`、`DailyForecastBuilder`、`CommuteWeatherPolicy`、天气图标（原项目自绘的 `ic_wx_*` 矢量图）。
+- **注意**：MET 要求 User-Agent 带联系方式，改为 `Dayloom/<版本> (+https://github.com/lonemoonspace/Dayloom)`；界面需注明数据来源（CC BY 4.0）。
+
+### 11.2 公共交通 `transit`（第一版最大的一块）
+
+- **功能**
+  1. **通勤行程**：起点站 → 终点站（任意线路），在上班窗口显示去程、下班窗口显示回程，窗口外显示双向最近一班。列出接下来 N 个方案：出发/到达时间、换乘次数与换乘站、每段的实时状态（准点/晚点 N 分/取消）。
+  2. **收藏站点发车板**：任意站点的实时发车，可按线路、终点、方向筛选（例：某站只看某条公交线路、开往某个终点的班次，可还原原项目「只显示全程车」的效果）。
+- **数据源**：Entur Journey Planner v3（GraphQL）`trip` 与 `stopPlace.estimatedCalls`；站点搜索用 Entur Geocoder。请求头 `ET-Client-Name: lonemoonspace-dayloom`。
+- **可插拔**：`TransitProvider` 接口（`searchStops`、`planTrips`、`departures`），第一版只有 `EnturProvider`。设置里地点不在挪威时提示「暂不支持该地区」。
+- **设置**：通勤起点站、终点站、显示方案数；收藏站点列表（站点 + 筛选条件）。
+- **来源**：`transit.commute`、`transit.boards`。
+- **通知**：通勤窗口内，接下来的方案出现取消或大晚点时提醒（移植 `CommuteDisruptionPolicy` 的指纹去重思路）。
+- **移植**：`EnturApi` 的请求与解析基础、`StationMatcher`/`TransferMatcher` 中通用的部分、状态标签的判定规则（准点/晚点/取消/实时未知）。
+- **不移植**：`L1Stations`、L1/R14 专用的换乘对比、`UpcomingL1Policy`、`Bus280*`。
+- **风险**：结果可能与原项目不完全一致（方案排序、取消班次的处理、换乘大晚点判定）。实现前先做一次 Entur 接口验证（§16 M3 第一步），确认能拿到这些细节。
+
+### 11.3 路况 `traffic`
+
+- **功能**：起点 → 终点的预计用时、畅通用时、距离、拥堵等级；按日常时间窗自动切换去程/回程。
+- **数据源**：Google Routes API，**用户自己的 Key**（设置页明确提示需在 Google Cloud 开通、可能产生费用）。
+- **设置**：起点、终点（默认「家 → 公司」）、Google Key。
+- **来源**：`traffic.route`。
+- **默认关闭**：没有 Key 的用户不会看到一张报错的卡片。
+
+### 11.4 到期提醒 `reminders`
+
+- **功能**：用户自定义条目列表，每条有名称、截止时间、提前提醒天数；快到期/已到期时卡片置顶。
+- **设置**：条目增删改。
+- **来源**：无（纯本地数据）。
+- **通知**：快到期、已到期，每条每个阶段只提醒一次。
+- **移植**：`TicketPolicy` 的判定逻辑，改为对任意条目生效。
+
+### 11.5 日历 `calendar`
+
+- **功能**：首页顶部的日期头：时间、日期、ISO 周数；可选农历（干支生肖、节气）；所选国家的节假日与倒计时。
+- **节假日**：`HolidayProvider` 接口，第一版内置**中国**（法定节假日 + 农历传统节日）与**挪威**（含复活节浮动假日）两个实现，可多选、同名同日合并（沿用原项目规则）。以后可加更多国家，或接 Nager.Date 等开放数据。
+- **设置**：显示农历（开关）、节假日国家（多选）。
+- **来源**：无（全部本地计算）。
+- **移植**：`LunarCalendar`、`LunarData`（及 `scripts/generate_lunar_data.py`）、`Holidays`、`NorwayHolidays`、`CountdownText` 的判定部分；所有名称改为资源。
+
+### 11.6 足球 `football`
+
+- **功能**：独立标签页，显示所关注球队的最近赛果、未来赛程、所在联赛积分榜；比赛进行中静默轮询比分。
+- **数据源**：football-data.org v4，**用户自己的 Key**（免费档即可）。
+- **设置**：关注的球队（先选赛事、再从该赛事的球队列表里选，因为免费档没有全局球队搜索）、Key。
+- **来源**：`football.matches`、`football.standings`。
+- **通知**：开赛提醒、终场比分。
+- **移植**：`FootballDataOrgApi`、`FootballStatusBuilder`、比分/点球大战判定、实时轮询策略；`isRealMadrid` 改为 `isFollowedTeam`。
+- **不移植**：皇马队徽图片（商标）；队徽改为从接口返回的 URL 加载。
+
+### 11.7 新闻 `news`
+
+- **功能**：独立标签页，Miniflux 订阅的文章列表、详情、已读/收藏，以及 OpenAI 兼容接口的 AI 摘要。
+- **数据源**：用户自己的 Miniflux 服务器与 LLM 接口。
+- **设置**：Miniflux 地址与 Token、LLM 地址/模型/Key。
+- **存储**：Room `dayloom.db`（schema v1 起导出）。
+- **后台任务**：`news.sync`（模块通过 `backgroundWork` 声明）。
+- **摘要语言**：跟随应用语言（提示词中英两套）。
+- **移植**：基本整体移植（它本来就是通用的），主要工作是文案双语化与接入模块接口。
+
+---
+
+## 12. 后台任务
+
+- 一个通用的周期刷新 Worker（唯一任务名 `dayloom.refresh`）：按各来源的 `RefreshCadence` 挑选需要刷新的来源 → 刷新 → 交给 `NotificationEngine` 评估所有已启用模块的规则。
+- 模块的额外任务（如 `news.sync`）由模块声明，`app` 统一排期；模块关闭时取消对应任务。
+- Worker 的类名与唯一任务名从 v1.0 起冻结（WorkManager 按类名实例化已排期的任务）。
+
+---
+
+## 13. 首次启动引导
+
+1. 欢迎 + 语言选择；
+2. 设置「家」（搜索或当前位置），可跳过；
+3. 勾选要启用的模块（默认：日历、天气、到期提醒；需要 Key 或仅限挪威的模块默认不勾，并注明原因）；
+4. 进入首页。未配置完的模块卡片显示「去设置」引导。
+
+---
+
+## 14. 安全、隐私与数据来源
+
+- APK 不含任何 API Key；凭据只存在手机上，用 Keystore 加密。
+- 无统计、无崩溃上报、无广告；网络请求只发往用户启用的模块对应的服务。
+- 权限：`INTERNET`、`ACCESS_NETWORK_STATE`、`POST_NOTIFICATIONS`（可选）、`ACCESS_COARSE_LOCATION`（可选）。
+- 凭据只随请求发往其所属服务；沿用 `CredentialRedirectGuard` 防止重定向泄露。
+- 设置页增加「关于 / 数据来源」：
+
+| 数据 | 来源 | 许可 / 要求 |
+|---|---|---|
+| 天气 | MET Norway | CC BY 4.0，需注明来源；User-Agent 带联系方式 |
+| 公共交通 | Entur | NLOD，需注明来源；请求头 `ET-Client-Name` |
+| 地点搜索 | Open-Meteo Geocoding | CC BY 4.0，需注明来源 |
+| 路况 | Google Routes | 用户自己的 Key，受 Google 服务条款约束 |
+| 足球 | football-data.org | 用户自己的 Key，受其条款约束 |
+| 农历 | 香港天文台公历农历对照表 | **待核实**能否随开源项目分发 |
+
+---
+
+## 15. 冻结规则
+
+**v1.0.0 之前**：以下内容都可以自由改，不需要迁移。
+
+**v1.0.0 起冻结**（改了会丢用户数据或产生重复通知；要改必须写迁移并有测试）：
+
+- applicationId `io.github.lonemoonspace.dayloom`；
+- 模块 id、来源 id、凭据 id、通知渠道 id、通知 id 号段、通知状态键；
+- 存储文件名（§6.1）与 `@Serializable` 类型的 JSON 格式（多态子类必须有 `@SerialName`）；
+- Room 数据库名与 schema；
+- WorkManager 唯一任务名与 Worker 全限定类名；
+- `MainActivity` / `DayloomApp` 全限定类名；深链 scheme `dayloom://`；
+- `SecretBox` 的密文格式与 Keystore alias。
+
+---
+
+## 16. 里程碑
+
+每个里程碑一个 PR（或几个），合入 `main` 前 `verify` 必须全绿。
+
+| 里程碑 | 内容 | 完成标准 |
+|---|---|---|
+| **M0 骨架** | Gradle 工程、包结构、移植 core（time/json/error/network/storage/secret/refresh/notify）并泛化；模块接口与注册表；导航/首页/设置外壳；双语基础设施与语言切换；`ArchitectureTest`、字符串一致性测试；CI 与发版 workflow；LICENSE、README、CLAUDE.md | 空壳 App 能运行、能切换语言；加一个测试用的「示例模块」验证 §4.4 的步骤成立；`verify` 全绿 |
+| **M1 地点 + 天气 + 日历** | `core/location`、`core/routine`；天气模块；日历模块 | 两个模块可用、双语 |
+| **M2 到期提醒 + 路况** | 两个模块 | 同上 |
+| **M3 公共交通** | 第一步：Entur 接口验证（能否拿到取消、晚点、换乘细节）；然后通勤行程、收藏站点、中断通知 | 用你自己的配置能替代原项目的火车与公交卡片 |
+| **M4 后台与通知** | 后台刷新 Worker、通知引擎接入、早间简报、首次启动引导 | 第一个测试包（`0.1.0-rc.1`） |
+| **M5 足球** | 足球模块 | 可用、双语 |
+| **M6 新闻** | 新闻模块（含 Room v1） | 可用、双语 |
+| **M7 打磨与公开** | 「关于/数据来源」页、README 截图、许可核查、隐私说明 | **第一个可用版本 → 仓库公开** |
+| v1.0.0 | 稳定一段时间后发布 | 冻结规则生效 |
+
+你在 M3 之后就可以开始在手机上和原 App 并行使用；M6 完成后功能追平，可以考虑让原 App 退役。
+
+---
+
+## 17. 测试策略
+
+- **Policy 纯 JVM 单测**：所有判定逻辑（天气点挑选、行程状态、到期判定、节假日、农历、比分…），`now` 当参数。
+- **移植的单测一起带过来**：`RefreshCoordinatorTest`、`SecretBox`/`SecretStore`、各 Policy 的现有测试，按新接口改写。
+- **架构测试**：§3.3 的四条规则。
+- **注册表测试**：id 唯一、通知号段不重叠。
+- **字符串一致性测试**：§10.5。
+- **Robolectric**：只用于 DataStore / Room 迁移测试（v1.0 之后才会有）。
+
+---
+
+## 18. 从 PersonalAssistant 移植清单
+
+| 分类 | 内容 |
+|---|---|
+| **基本原样移植** | `SecretBox`、`SecretStore`、`AppError`、`AppJson`、`HttpCalls`、`SharedHttpClient`、`CredentialRedirectGuard`、`ConnectivityMonitor`、`AppClock`、UI 组件（`InfoCard`、`Glass`、`Skeleton`、`StatusWidgets`、主题） |
+| **泛化后移植** | `CachedSource`、`RefreshCoordinator`、`RefreshCadencePolicy`、`BackgroundRefreshPolicy`、`NotificationEngine`、`NotificationRule`、天气全套、日历全套、足球全套、新闻全套、`TicketPolicy` |
+| **重写** | 首页、设置、导航（改为注册表驱动）；公共交通（改为通用规划） |
+| **不移植** | `L1Stations`、L1/R14 换乘对比、`Bus280*`、皇马队徽、`LegacySecretsMigration`、原项目的所有数据迁移代码、个人默认值与预览数据里的地址 |
+
+移植前逐个文件检查：默认值、测试数据、预览数据、注释里的个人信息一律清除。
+
+---
+
+## 19. 待定问题
+
+1. **农历数据许可**：香港天文台对照表能否随 Apache-2.0 项目分发？如不能，改为用算法计算或换数据源。（M1 前确认）
+2. **卡片排序交互**：第一版用「上移/下移」按钮，还是直接做拖动排序？
+3. **英文版设计文档**：审定后补，还是这份直接改为双语？
+4. **minSdk**：沿用 26（Android 8.0）？
+5. **设备定位**：只做「一次性取当前位置填入地点」，还是支持「天气始终跟随当前位置」？后者需要后台定位，隐私与耗电成本更高，我建议第一版只做前者。

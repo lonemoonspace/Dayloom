@@ -1,7 +1,7 @@
 # Dayloom（织日）设计文档
 
-> 状态：**草稿 v0.1，待审**。审定前不写任何代码。
-> 本文档先用中文写，便于审阅；审定后补英文版（`docs/design.en.md`），两份内容保持一致。
+> 状态：**草稿 v0.2，待审**。审定前不写任何代码。
+> 英文版见 [`design.en.md`](design.en.md)；两份内容必须一致，修改时同时更新。
 
 ---
 
@@ -29,7 +29,7 @@
 | 项目 | 决定 |
 |---|---|
 | 名称 | 英文 **Dayloom**，中文 **织日** |
-| 仓库 | `lonemoonspace/Dayloom`，全新初始提交、不带旧历史；先私有，第一个可用版本后公开 |
+| 仓库 | `lonemoonspace/dayloom`，全新初始提交、不带旧历史；先私有，第一个可用版本后公开 |
 | 许可证 | Apache-2.0 |
 | applicationId / 包名 | `io.github.lonemoonspace.dayloom` |
 | 工程结构 | 单 Gradle 模块 `:app` + 按包分层 + **架构测试**守边界 |
@@ -166,7 +166,8 @@ val allModules: List<FeatureModule> = listOf(
 ### 4.3 首页卡片与标签页
 
 - `HomeCard`：`key`、默认排序、`placement: Flow<CardPlacement>`（如到期提醒「快到期」时置顶）、`@Composable Content()`。
-- 首页外壳按「用户自定义顺序 → 默认顺序」渲染所有已启用模块的卡片；用户可在设置里拖动排序（第一版可先做上下移动按钮）。
+- 首页外壳按「用户自定义顺序 → 默认顺序」渲染所有已启用模块的卡片。
+- **排序**：首页进入编辑模式后长按卡片拖动排序；同时为每张卡片提供「上移 / 下移」无障碍操作，保证 TalkBack 用户也能排序。顺序存在 `app_settings`。
 - `ModuleTab`：路由、图标、标签文字、`@Composable Content()`、可选深链。底部导航 = 首页 + 已启用模块的标签页 + 设置。
 - 标签页的 ViewModel 只在用户首次进入时创建（沿用原项目做法，冷启动不请求足球/新闻接口）。
 
@@ -261,7 +262,7 @@ val allModules: List<FeatureModule> = listOf(
 
 - **常用地点（`core/location`）**：`Place(id, label, name, lat, lon, countryCode?)`。预置「家」「公司」两个槽位，可加自定义地点。
   - 搜索：**Open-Meteo Geocoding**（全球、免费、无需 Key）；挪威地址可额外用 Entur Geocoder 提高精度。
-  - 「使用当前位置」：用系统 `LocationManager`（不依赖 Google Play 服务，便于以后上 F-Droid），只要粗略定位权限，可选。
+  - 「使用当前位置」：**只做一次性定位**——用户点按钮时取一次当前位置填进地点，之后地点固定不变。用系统 `LocationManager`（不依赖 Google Play 服务，便于以后上 F-Droid），只申请前台粗略定位权限，可选；不做持续跟随定位，不申请后台定位权限。
 - **日常时间窗（`core/routine`）**：上班窗口、下班窗口（支持跨午夜，沿用原项目校验规则）、工作日（默认周一至周五）。
 
 各模块的设置里引用这些共享项，比如天气默认「家」、路况默认「家 → 公司」，也可以改成别的地点。
@@ -319,7 +320,7 @@ val allModules: List<FeatureModule> = listOf(
 - **设置**：地点（默认「家」）。
 - **来源**：`weather.forecast`。
 - **移植**：`MetApi`、`WeatherPointPicker`、`DailyForecastBuilder`、`CommuteWeatherPolicy`、天气图标（原项目自绘的 `ic_wx_*` 矢量图）。
-- **注意**：MET 要求 User-Agent 带联系方式，改为 `Dayloom/<版本> (+https://github.com/lonemoonspace/Dayloom)`；界面需注明数据来源（CC BY 4.0）。
+- **注意**：MET 要求 User-Agent 带联系方式，改为 `Dayloom/<版本> (+https://github.com/lonemoonspace/dayloom)`；界面需注明数据来源（CC BY 4.0）。
 
 ### 11.2 公共交通 `transit`（第一版最大的一块）
 
@@ -354,10 +355,11 @@ val allModules: List<FeatureModule> = listOf(
 ### 11.5 日历 `calendar`
 
 - **功能**：首页顶部的日期头：时间、日期、ISO 周数；可选农历（干支生肖、节气）；所选国家的节假日与倒计时。
+- **农历数据来源**：不能沿用原项目内置的香港天文台对照表（许可不允许，见 §19 第 1 条）；待定方案见 §19。
 - **节假日**：`HolidayProvider` 接口，第一版内置**中国**（法定节假日 + 农历传统节日）与**挪威**（含复活节浮动假日）两个实现，可多选、同名同日合并（沿用原项目规则）。以后可加更多国家，或接 Nager.Date 等开放数据。
 - **设置**：显示农历（开关）、节假日国家（多选）。
 - **来源**：无（全部本地计算）。
-- **移植**：`LunarCalendar`、`LunarData`（及 `scripts/generate_lunar_data.py`）、`Holidays`、`NorwayHolidays`、`CountdownText` 的判定部分；所有名称改为资源。
+- **移植**：`Holidays`、`NorwayHolidays`、`CountdownText` 的判定部分；所有名称改为资源。**不移植** `LunarData` 与 `scripts/generate_lunar_data.py`（数据许可问题）。
 
 ### 11.6 足球 `football`
 
@@ -413,7 +415,7 @@ val allModules: List<FeatureModule> = listOf(
 | 地点搜索 | Open-Meteo Geocoding | CC BY 4.0，需注明来源 |
 | 路况 | Google Routes | 用户自己的 Key，受 Google 服务条款约束 |
 | 足球 | football-data.org | 用户自己的 Key，受其条款约束 |
-| 农历 | 香港天文台公历农历对照表 | **待核实**能否随开源项目分发 |
+| 农历 | 待定（§19 第 1 条） | 不使用香港天文台对照表 |
 
 ---
 
@@ -469,18 +471,54 @@ val allModules: List<FeatureModule> = listOf(
 | 分类 | 内容 |
 |---|---|
 | **基本原样移植** | `SecretBox`、`SecretStore`、`AppError`、`AppJson`、`HttpCalls`、`SharedHttpClient`、`CredentialRedirectGuard`、`ConnectivityMonitor`、`AppClock`、UI 组件（`InfoCard`、`Glass`、`Skeleton`、`StatusWidgets`、主题） |
-| **泛化后移植** | `CachedSource`、`RefreshCoordinator`、`RefreshCadencePolicy`、`BackgroundRefreshPolicy`、`NotificationEngine`、`NotificationRule`、天气全套、日历全套、足球全套、新闻全套、`TicketPolicy` |
+| **泛化后移植** | `CachedSource`、`RefreshCoordinator`、`RefreshCadencePolicy`、`BackgroundRefreshPolicy`、`NotificationEngine`、`NotificationRule`、天气全套、日历（节假日部分）、足球全套、新闻全套、`TicketPolicy` |
 | **重写** | 首页、设置、导航（改为注册表驱动）；公共交通（改为通用规划） |
-| **不移植** | `L1Stations`、L1/R14 换乘对比、`Bus280*`、皇马队徽、`LegacySecretsMigration`、原项目的所有数据迁移代码、个人默认值与预览数据里的地址 |
+| **不移植** | `L1Stations`、L1/R14 换乘对比、`Bus280*`、皇马队徽、`LunarData` 与其生成脚本、`LegacySecretsMigration`、原项目的所有数据迁移代码、个人默认值与预览数据里的地址 |
 
 移植前逐个文件检查：默认值、测试数据、预览数据、注释里的个人信息一律清除。
 
 ---
 
-## 19. 待定问题
+## 19. 决策记录与待定问题
 
-1. **农历数据许可**：香港天文台对照表能否随 Apache-2.0 项目分发？如不能，改为用算法计算或换数据源。（M1 前确认）
-2. **卡片排序交互**：第一版用「上移/下移」按钮，还是直接做拖动排序？
-3. **英文版设计文档**：审定后补，还是这份直接改为双语？
-4. **minSdk**：沿用 26（Android 8.0）？
-5. **设备定位**：只做「一次性取当前位置填入地点」，还是支持「天气始终跟随当前位置」？后者需要后台定位，隐私与耗电成本更高，我建议第一版只做前者。
+### 已决
+
+| 问题 | 决定 |
+|---|---|
+| 卡片排序 | 直接做拖动排序，并提供无障碍的上移/下移（§4.3） |
+| 英文版设计文档 | 补 `docs/design.en.md`，与中文版保持一致 |
+| 设备定位 | 只做一次性取当前位置填进地点；不做持续跟随、不申请后台定位（§8） |
+
+### 待定
+
+**1. 农历数据来源**
+
+调查结论：原项目的 `LunarData.kt` 由脚本从香港天文台网站的 1901–2100 年对照表（`hko.gov.hk/.../T{年份}e.txt`）生成。
+
+- 天文台网站的使用条件只允许**非商业用途**，要求复制时附上其知识产权声明与使用条件，明确禁止任何形式的出售或换取利益，并保留随时撤回许可的权利。Apache-2.0 允许任何人商用，两者冲突，**不能把这份数据放进开源仓库或 APK**。
+- DATA.GOV.HK 上同一数据集的条款允许商用与再分发（需注明来源），但那里的 CSV **只有 2023–2028 年**；另有按日期查询的在线接口，要联网，不适合离线日历。
+
+可选方案：
+
+| 方案 | 说明 | 评价 |
+|---|---|---|
+| **A. 用 `cn.6tail:lunar`（lunar-java，MIT）**（推荐） | 无第三方依赖的 Java 库，节气与朔望用寿星天文历（sxwnl）算法，精度高；支持农历、干支、生肖、节气 | 许可兼容 Apache-2.0；省掉自己维护数据表。顾虑：它移植自寿星天文历，而寿星原项目没有明确的许可证（只写「开放所有源代码，供爱好者学习参考」），存在轻微的上游许可模糊；功能远多于我们所需，靠 R8 裁剪体积 |
+| B. 同作者的 Kotlin 版 `tyme4kt`（MIT） | API 更新、Kotlin 原生 | 较新，生态与资料少于 lunar-java；上游顾虑同 A |
+| C. 自己实现高精度算法 | 按公开的天文算法（太阳黄经 + 朔望月）自己写 | 工作量大；原项目已验证低精度算法在零点附近会错一天，要做到天文台级别精度并不容易 |
+| D. 向香港天文台申请书面授权 | 发邮件到 mailbox@hko.gov.hk | 周期不确定，且授权可随时撤回，不适合开源项目 |
+
+不论选哪个方案，都可以用天文台数据做**本地校验**：写一个只在开发机运行的脚本，临时下载对照表、逐日比对结果，数据本身不入库、不进 APK。
+
+**2. minSdk**
+
+可选值与取舍：
+
+| minSdk | 对应系统 | 收益 | 代价 |
+|---|---|---|---|
+| 24 | Android 7.0 | 多覆盖少量老设备 | `java.time` 要开 core library desugaring；通知渠道、自适应图标都要写兼容分支 |
+| **26**（推荐） | Android 8.0 | 与原项目一致；`java.time`、通知渠道、自适应图标都是原生支持 | 无明显代价 |
+| 28 / 29 | Android 9 / 10 | 几乎没有可以删掉的兼容代码 | 白白少覆盖一部分设备 |
+| 31 | Android 12 | 动态取色（Material You）不必判断版本 | 代价明显；而且动态取色本来就可以运行时判断版本后启用 |
+| 33 | Android 13 | 系统原生的按应用语言、通知权限不必判断版本 | 代价最大；AppCompat 已经能在旧版本上实现按应用语言 |
+
+targetSdk 跟随 Google Play 当年的要求设置，实施时再核对。

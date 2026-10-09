@@ -4,7 +4,8 @@
 build/
 *.apk
 *.aab
-release/
+# Output of publishVersionedRelease at the root only; app/src/release is source. / 只忽略根目录下 publishVersionedRelease 的输出；app/src/release 是源码。
+/release/
 
 # Machine-specific config and signing material (never commit)
 # 机器相关配置与签名材料（绝不入库）

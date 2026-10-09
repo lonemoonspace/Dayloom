@@ -6,6 +6,11 @@ import androidx.datastore.dataStoreFile
 import io.github.lonemoonspace.dayloom.BuildConfig
 import io.github.lonemoonspace.dayloom.core.i18n.AppLanguage
 import io.github.lonemoonspace.dayloom.core.i18n.SystemAppLanguage
+import io.github.lonemoonspace.dayloom.core.location.AndroidDeviceLocator
+import io.github.lonemoonspace.dayloom.core.location.DeviceLocator
+import io.github.lonemoonspace.dayloom.core.location.OpenMeteoGeocoder
+import io.github.lonemoonspace.dayloom.core.location.PlaceBook
+import io.github.lonemoonspace.dayloom.core.location.PlaceSearch
 import io.github.lonemoonspace.dayloom.core.module.FeatureModule
 import io.github.lonemoonspace.dayloom.core.network.ConnectivityMonitor
 import io.github.lonemoonspace.dayloom.core.network.SharedHttpClient
@@ -14,6 +19,7 @@ import io.github.lonemoonspace.dayloom.core.notify.NotificationSender
 import io.github.lonemoonspace.dayloom.core.notify.PrefsNotificationStateStore
 import io.github.lonemoonspace.dayloom.core.refresh.RefreshCoordinator
 import io.github.lonemoonspace.dayloom.core.refresh.SourceId
+import io.github.lonemoonspace.dayloom.core.routine.Routine
 import io.github.lonemoonspace.dayloom.core.secret.DataStoreSecretStore
 import io.github.lonemoonspace.dayloom.core.secret.SecretBox
 import io.github.lonemoonspace.dayloom.core.secret.SecretStore
@@ -21,6 +27,7 @@ import io.github.lonemoonspace.dayloom.core.storage.AppSettings
 import io.github.lonemoonspace.dayloom.core.storage.AppStores
 import io.github.lonemoonspace.dayloom.core.storage.DataStoreSnapshotStore
 import io.github.lonemoonspace.dayloom.core.storage.ModuleSettingsStore
+import io.github.lonemoonspace.dayloom.core.storage.SharedData
 import io.github.lonemoonspace.dayloom.core.storage.SnapshotStore
 import io.github.lonemoonspace.dayloom.core.storage.ValueStore
 import io.github.lonemoonspace.dayloom.core.storage.moduleSettingsDataStore
@@ -35,6 +42,7 @@ import java.time.ZoneId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -61,6 +69,17 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
         onDecodeError = { Log.w(TAG, "app_settings unreadable, using defaults", it) },
     ) { appContext.dataStoreFile(AppStores.APP_SETTINGS_FILE) }
 
+    val sharedData: ValueStore<SharedData> = AppStores.jsonValueStore(
+        serializer = SharedData.serializer(),
+        default = SharedData(),
+        scope = ioScope,
+        onDecodeError = { Log.w(TAG, "shared_data unreadable, using defaults", it) },
+    ) { appContext.dataStoreFile(AppStores.SHARED_DATA_FILE) }
+
+    val places = PlaceBook(sharedData)
+
+    val routine: Flow<Routine> = sharedData.flow.map { it.routine }.distinctUntilChanged()
+
     val zone: StateFlow<ZoneId> = combine(
         appSettings.flow.map { it.timeZoneOverride }.distinctUntilChanged(),
         deviceZoneFlow(appContext),
@@ -74,6 +93,10 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
     val http = SharedHttpClient.build(BuildConfig.VERSION_NAME, debugLogging = BuildConfig.DEBUG)
 
     val connectivity = ConnectivityMonitor(appContext)
+
+    val placeSearch: PlaceSearch = OpenMeteoGeocoder(http)
+
+    val deviceLocator: DeviceLocator = AndroidDeviceLocator(appContext)
 
     val secrets: SecretStore = DataStoreSecretStore(appContext.secretsDataStore, SecretBox)
 
@@ -119,6 +142,8 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
                 connectivity = connectivity,
                 coordinator = coordinator,
                 appScope = appScope,
+                places = places,
+                routine = routine,
                 moduleSettings = moduleSettings,
                 secrets = secrets,
                 snapshotFactory = snapshotFactory,

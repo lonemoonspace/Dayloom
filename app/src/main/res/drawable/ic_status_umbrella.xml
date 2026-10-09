@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Umbrella: canopy and handle, tinted like the other status icons. / 带伞：伞面与伞柄，与其他状态图标一样由 tint 着色。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12,2.5C6.75,2.5 2.5,6.4 2.5,11.25h19C21.5,6.4 17.25,2.5 12,2.5z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:pathData="M12,11.25v7.25a2.25,2.25 0,0 1,-4.5 0" />
+</vector>

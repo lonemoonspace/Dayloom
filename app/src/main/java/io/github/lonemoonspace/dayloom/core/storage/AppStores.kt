@@ -18,4 +18,5 @@ object AppStores {
     ): ValueStore<T> = DataStoreValueStore(jsonFileDataStore(serializer, default, scope, onDecodeError, produceFile))
 
     const val APP_SETTINGS_FILE = "app_settings"
+    const val SHARED_DATA_FILE = "shared_data"
 }

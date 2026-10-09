@@ -11,6 +11,204 @@
     <string name="common_loading">Loading</string>
     <string name="common_save">Save</string>
 
+    <string name="common_today">Today</string>
+    <string name="common_tomorrow">Tomorrow</string>
+
+    <string name="place_home">Home</string>
+    <string name="place_work">Work</string>
+    <string name="places_none_saved">No saved places yet. Add them under Places in Settings.</string>
+
+    <string name="weather_title">Weather</string>
+    <string name="weather_summary">Weather now and on your commute, from MET Norway</string>
+    <string name="weather_setup_place">Weather location</string>
+    <string name="weather_settings_place">Show the weather for</string>
+    <string name="weather_wind_precip">Wind %1$d m/s · Precipitation %2$s mm</string>
+    <string name="weather_leg_to_work">To work</string>
+    <string name="weather_leg_back_home">Back home</string>
+    <string name="weather_leg_on_day">%1$s %2$s</string>
+    <string name="weather_leg_no_data">No hourly forecast yet</string>
+    <string name="weather_umbrella">Umbrella</string>
+    <string name="weather_dry">Dry</string>
+    <string name="weather_rain_stops">Rain stops around %1$s</string>
+    <string name="weather_rain_starts">Rain starts around %1$s</string>
+    <string name="weather_attribution">Weather data: MET Norway (CC BY 4.0)</string>
+    <string name="weather_clear">Clear</string>
+    <string name="weather_fair">Fair</string>
+    <string name="weather_partly_cloudy">Partly cloudy</string>
+    <string name="weather_cloudy">Cloudy</string>
+    <string name="weather_fog">Fog</string>
+    <string name="weather_wind">Strong wind</string>
+    <string name="weather_light_rain">Light rain</string>
+    <string name="weather_rain">Rain</string>
+    <string name="weather_heavy_rain">Heavy rain</string>
+    <string name="weather_light_rain_showers">Light rain showers</string>
+    <string name="weather_rain_showers">Rain showers</string>
+    <string name="weather_heavy_rain_showers">Heavy rain showers</string>
+    <string name="weather_light_sleet">Light sleet</string>
+    <string name="weather_sleet">Sleet</string>
+    <string name="weather_heavy_sleet">Heavy sleet</string>
+    <string name="weather_sleet_showers">Sleet showers</string>
+    <string name="weather_light_snow">Light snow</string>
+    <string name="weather_snow">Snow</string>
+    <string name="weather_heavy_snow">Heavy snow</string>
+    <string name="weather_snow_showers">Snow showers</string>
+    <string name="weather_thunder">Thunder</string>
+    <string name="weather_unknown">Unknown</string>
+
+    <string name="calendar_title">Calendar</string>
+    <string name="calendar_summary">Clock, date, week number, lunar calendar and holidays</string>
+    <string name="calendar_date_week">%1$s · Week %2$d</string>
+    <string name="calendar_show_lunar">Chinese lunar calendar</string>
+    <string name="calendar_show_lunar_summary">Lunar date, stem-branch year and solar terms</string>
+    <string name="calendar_holidays_of">Holidays in %1$s</string>
+    <string name="calendar_country_china">China</string>
+    <string name="calendar_country_norway">Norway</string>
+    <string name="calendar_solar_term_today">%1$s today</string>
+    <string name="calendar_lunar_leap_month">leap %1$s</string>
+    <string name="calendar_lunar_date">Lunar %1$s, %2$s</string>
+    <string name="calendar_lunar_year">%1$s-%2$s, year of the %3$s</string>
+    <string name="calendar_countdown_tomorrow">%1$s tomorrow</string>
+    <plurals name="calendar_countdown_days">
+        <item quantity="one">%1$s in %2$d day</item>
+        <item quantity="other">%1$s in %2$d days</item>
+    </plurals>
+    <string name="holiday_new_year">New Year\'s Day</string>
+    <string name="holiday_labour_day">Labour Day</string>
+    <string name="holiday_new_years_eve">Chinese New Year\'s Eve</string>
+    <string name="holiday_spring_festival">Spring Festival</string>
+    <string name="holiday_lantern">Lantern Festival</string>
+    <string name="holiday_dragon_head">Dragon Head Raising</string>
+    <string name="holiday_qingming">Qingming Festival</string>
+    <string name="holiday_dragon_boat">Dragon Boat Festival</string>
+    <string name="holiday_qixi">Qixi Festival</string>
+    <string name="holiday_ghost">Ghost Festival</string>
+    <string name="holiday_mid_autumn">Mid-Autumn Festival</string>
+    <string name="holiday_double_ninth">Double Ninth Festival</string>
+    <string name="holiday_national_day">National Day</string>
+    <string name="holiday_laba">Laba Festival</string>
+    <string name="holiday_maundy_thursday">Maundy Thursday</string>
+    <string name="holiday_good_friday">Good Friday</string>
+    <string name="holiday_easter_sunday">Easter Sunday</string>
+    <string name="holiday_easter_monday">Easter Monday</string>
+    <string name="holiday_constitution_day">Constitution Day</string>
+    <string name="holiday_ascension_day">Ascension Day</string>
+    <string name="holiday_whit_sunday">Whit Sunday</string>
+    <string name="holiday_whit_monday">Whit Monday</string>
+    <string name="holiday_christmas_day">Christmas Day</string>
+    <string name="holiday_boxing_day">Boxing Day</string>
+    <string-array name="calendar_lunar_months">
+        <item>month 1</item>
+        <item>month 2</item>
+        <item>month 3</item>
+        <item>month 4</item>
+        <item>month 5</item>
+        <item>month 6</item>
+        <item>month 7</item>
+        <item>month 8</item>
+        <item>month 9</item>
+        <item>month 10</item>
+        <item>month 11</item>
+        <item>month 12</item>
+    </string-array>
+    <string-array name="calendar_lunar_days">
+        <item>day 1</item>
+        <item>day 2</item>
+        <item>day 3</item>
+        <item>day 4</item>
+        <item>day 5</item>
+        <item>day 6</item>
+        <item>day 7</item>
+        <item>day 8</item>
+        <item>day 9</item>
+        <item>day 10</item>
+        <item>day 11</item>
+        <item>day 12</item>
+        <item>day 13</item>
+        <item>day 14</item>
+        <item>day 15</item>
+        <item>day 16</item>
+        <item>day 17</item>
+        <item>day 18</item>
+        <item>day 19</item>
+        <item>day 20</item>
+        <item>day 21</item>
+        <item>day 22</item>
+        <item>day 23</item>
+        <item>day 24</item>
+        <item>day 25</item>
+        <item>day 26</item>
+        <item>day 27</item>
+        <item>day 28</item>
+        <item>day 29</item>
+        <item>day 30</item>
+    </string-array>
+    <string-array name="calendar_heavenly_stems">
+        <item>Jia</item>
+        <item>Yi</item>
+        <item>Bing</item>
+        <item>Ding</item>
+        <item>Wu</item>
+        <item>Ji</item>
+        <item>Geng</item>
+        <item>Xin</item>
+        <item>Ren</item>
+        <item>Gui</item>
+    </string-array>
+    <string-array name="calendar_earthly_branches">
+        <item>zi</item>
+        <item>chou</item>
+        <item>yin</item>
+        <item>mao</item>
+        <item>chen</item>
+        <item>si</item>
+        <item>wu</item>
+        <item>wei</item>
+        <item>shen</item>
+        <item>you</item>
+        <item>xu</item>
+        <item>hai</item>
+    </string-array>
+    <string-array name="calendar_zodiac">
+        <item>Rat</item>
+        <item>Ox</item>
+        <item>Tiger</item>
+        <item>Rabbit</item>
+        <item>Dragon</item>
+        <item>Snake</item>
+        <item>Horse</item>
+        <item>Goat</item>
+        <item>Monkey</item>
+        <item>Rooster</item>
+        <item>Dog</item>
+        <item>Pig</item>
+    </string-array>
+    <string-array name="calendar_solar_terms">
+        <item>Minor Cold</item>
+        <item>Major Cold</item>
+        <item>Start of Spring</item>
+        <item>Rain Water</item>
+        <item>Awakening of Insects</item>
+        <item>Spring Equinox</item>
+        <item>Clear and Bright</item>
+        <item>Grain Rain</item>
+        <item>Start of Summer</item>
+        <item>Grain Buds</item>
+        <item>Grain in Ear</item>
+        <item>Summer Solstice</item>
+        <item>Minor Heat</item>
+        <item>Major Heat</item>
+        <item>Start of Autumn</item>
+        <item>End of Heat</item>
+        <item>White Dew</item>
+        <item>Autumn Equinox</item>
+        <item>Cold Dew</item>
+        <item>Frost\'s Descent</item>
+        <item>Start of Winter</item>
+        <item>Minor Snow</item>
+        <item>Major Snow</item>
+        <item>Winter Solstice</item>
+    </string-array>
+
     <string name="nav_home">Home</string>
     <string name="nav_settings">Settings</string>
 
@@ -24,6 +222,25 @@
     <string name="home_empty_body">Turn on the modules you want in Settings.</string>
     <string name="home_open_settings">Open settings</string>
 
+    <string name="common_cancel">Cancel</string>
+    <string name="settings_places">Places</string>
+    <string name="places_not_set">Not set</string>
+    <string name="places_add">Add a place</string>
+    <string name="places_label">Name of this place</string>
+    <string name="places_search_hint">Search for a city or address</string>
+    <string name="places_search">Search</string>
+    <string name="places_use_location">Use current location</string>
+    <string name="places_no_results">No places found.</string>
+    <string name="places_locate_failed">Could not get your location. Is location turned on?</string>
+    <string name="places_attribution">Place search by Open-Meteo (CC BY 4.0). Your location is read once and never tracked.</string>
+    <string name="places_remove">Remove</string>
+    <string name="settings_routine">Daily routine</string>
+    <string name="routine_commute">I commute on working days</string>
+    <string name="routine_commute_summary">Weather and transport focus on these times</string>
+    <string name="routine_to_work">To work</string>
+    <string name="routine_back_home">Back home</string>
+    <string name="routine_window_invalid">Start and end cannot be the same time.</string>
+    <string name="routine_working_days">Working days</string>
     <string name="settings_language">Language</string>
     <string name="settings_language_system">Follow system</string>
     <string name="settings_time_zone">Time zone</string>

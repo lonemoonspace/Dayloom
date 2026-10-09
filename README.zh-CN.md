@@ -5,7 +5,7 @@
 织日是一个可扩展的 Android 日常看板：天气、挪威公共交通、路况、到期提醒、日历、足球与新闻，每一项都是可以单独开关的模块。
 界面支持中英双语。
 
-> **状态：早期开发中。**模块系统、首页、设置与构建流程已经就位（里程碑 M0），正式模块从 M1 起陆续加入。
+> **状态：早期开发中。**模块系统、首页、设置与构建流程已经就位（里程碑 M0），共用的地点与日常作息、天气与日历也已加入（M1）。
 > 计划见[设计文档](docs/design.md)。
 
 ## 原则
@@ -24,7 +24,7 @@
 使用 JDK 17 与仓库自带的 Gradle wrapper：
 
 ```bash
-./gradlew verify          # 单元测试 + Android Lint + Debug 包；每次提交前必须全绿
+./gradlew verify          # 单元测试 + Android Lint + Debug 包 + Release 编译；每次提交前必须全绿
 ./gradlew assembleDebug   # 只打 Debug 包
 ```
 

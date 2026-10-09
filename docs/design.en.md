@@ -29,7 +29,7 @@
 | Topic | Decision |
 |---|---|
 | Name | English **Dayloom**, Chinese **织日** |
-| Repository | `lonemoonspace/dayloom`, fresh initial commit without old history; private first, public after the first usable version |
+| Repository | `lonemoonspace/dayloom`, fresh initial commit without old history; public since M1 (see §19) |
 | License | Apache-2.0 |
 | applicationId / package | `io.github.lonemoonspace.dayloom` |
 | Project structure | Single Gradle module `:app`, layered by package, boundaries guarded by an **architecture test** |
@@ -40,7 +40,7 @@
 | UI language | English (default resources) + Chinese; follow the system or switch in the app |
 | Code comments / commit messages / CHANGELOG | Bilingual, English first, Chinese below |
 | README | `README.md` (English) + `README.zh-CN.md` (Chinese), linking to each other |
-| CI / release | Same three-check gate and workflows as PersonalAssistant, renamed and adapted |
+| CI / release | Gate and workflows from PersonalAssistant, renamed and adapted; the gate also compiles the release sources (§19) |
 | minSdk | **33** (Android 13); targetSdk follows Google Play's requirement for the year |
 | Lunar calendar | `cn.6tail:lunar` (lunar-java, MIT) |
 | Freeze rules | Anything may change before v1.0.0; storage formats etc. are frozen from v1.0.0 (§15) |
@@ -359,7 +359,7 @@ Module settings refer to these shared items — weather defaults to "Home", traf
 
 - **Features**: the date header at the top of the home screen: time, date, ISO week number; optional Chinese lunar calendar (stem-branch year, zodiac, solar terms); holidays of the selected countries with countdowns.
 - **Lunar data source**: `cn.6tail:lunar` (lunar-java, MIT), wrapped behind a `LunarProvider` interface so the calendar module depends only on the interface and the implementation can be swapped later. The Hong Kong Observatory table bundled in the original project is not reused (its terms do not allow it, see §19).
-- **Local verification**: `scripts/verify_lunar.py` runs only on a developer machine; it temporarily downloads the Observatory's 1901–2100 tables and compares them day by day with lunar-java (lunar date, leap month, solar terms). The Observatory data is never committed or shipped in the APK.
+- **Local verification**: `scripts/verify_lunar.py` runs only on a developer machine; it temporarily downloads the Observatory's 1901–2100 tables and compares them day by day with lunar-java (lunar date, leap month, solar terms). The Observatory data is never committed or shipped in the APK. Result on 2026-10-09: 42 of 73,029 days differ, none in 1980–2056 — six solar terms a day apart (1912–1979) and the 9th month of 2057, whose new moon falls minutes from midnight China Standard Time; these are listed as known differences in `LunarReferenceTest`.
 - **Holidays**: `HolidayProvider` interface; the first version ships **China** (statutory holidays + traditional lunar festivals) and **Norway** (including Easter-based movable holidays). Multiple countries can be selected; same-name, same-day holidays are merged (same rule as the original project). More countries can be added later, or open data such as Nager.Date.
 - **Settings**: show lunar calendar (toggle), holiday countries (multi-select).
 - **Sources**: none (all computed locally).
@@ -453,7 +453,7 @@ Each milestone is one PR (or a few); `verify` must be green before merging into 
 | **M4 Background work and notifications** | Background refresh worker, notification engine wiring, morning brief, onboarding | First test build (`0.1.0-rc.1`) |
 | **M5 Football** | Football module | Works, bilingual |
 | **M6 News** | News module (including Room v1) | Works, bilingual |
-| **M7 Polish and go public** | "About / Data sources" page, README screenshots, license review, privacy statement | **First usable version → repository goes public** |
+| **M7 Polish** | "About / Data sources" page, README screenshots, license review, privacy statement | **First usable version** |
 | v1.0.0 | Released after a period of stability | Freeze rules take effect |
 
 After M3 you can start using it on your phone alongside the original app; after M6 it reaches parity and the original app can be retired.
@@ -495,6 +495,9 @@ Check every file before porting: remove personal information from defaults, test
 | Device location | One-shot only: read the current position once into a place; no continuous tracking, no background location (§8) |
 | Lunar data | Use lunar-java (MIT), accepting the slight risk that its upstream (sxwnl) license is not explicit; verify locally against the Observatory data (§11.5) |
 | minSdk | 33 (Android 13). The intended users all have recent phones; in return, blur and dynamic color work on every device, notification permission has a single flow, and per-app language uses the native system implementation |
+| Repository visibility | Public from M1 (2026-10-09) instead of M7: GitHub Actions minutes are free for public repositories. Code ported from PersonalAssistant (weather, holidays, icons) is published with the owner's consent; personal data is removed when porting (§18) |
+| Release compile in the gate | `verify` and CI also run `compileReleaseKotlin`: in M1 the release source set turned out to be missing a file that only debug had, which a debug-only gate cannot see. About a minute per CI run; R8 stays in the release workflows |
+| Daily windows | Shared by all modules (§8) with working days (default Monday–Friday); both ends are wall-clock times, so on DST change days a window is an hour shorter or longer, as in the original project |
 
 ### Rationale (archived)
 

@@ -95,7 +95,7 @@ jobs:
           } > keystore.properties
           if [ -n "${ANDROID_SDK_ROOT:-}" ]; then echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties; fi
 
-          # verify (test + lintDebug + assembleDebug) + assembleRelease + mapping + SHA256SUMS
+          # verify (test + lintDebug + assembleDebug + compileReleaseKotlin) + assembleRelease + mapping + SHA256SUMS
           ./gradlew publishVersionedRelease --stacktrace
 
           apk="release/Dayloom-v${{ steps.meta.outputs.version }}.apk"

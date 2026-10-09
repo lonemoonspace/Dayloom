@@ -20,6 +20,8 @@ serializationJson = "1.11.0"
 okhttp = "5.5.0"
 haze = "1.7.3"
 reorderable = "3.1.0"
+# Chinese lunar calendar and solar terms (MIT); see design §11.5. / 农历与节气（MIT），见设计文档 §11.5。
+lunar = "1.7.7"
 
 junit = "4.13.2"
 
@@ -49,6 +51,7 @@ okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 
 haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
+lunar = { module = "cn.6tail:lunar", version.ref = "lunar" }
 
 junit = { module = "junit:junit", version.ref = "junit" }
 okhttp-mockwebserver = { module = "com.squareup.okhttp3:mockwebserver", version.ref = "okhttp" }

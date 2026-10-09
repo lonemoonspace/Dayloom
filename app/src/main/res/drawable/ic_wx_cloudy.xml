@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Weather icon: cloudy. Full colour, shown with Image, not tinted. / 天气图标：阴。彩色图标，用 Image 显示，不着色。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <path android:fillColor="#FFA9B6C6" android:pathData="M8.5,25H24.5A5.5,5.5 0,0 0,25.2,14.05A7.5,7.5 0,0 0,10.6,12A6.5,6.5 0,0 0,8.5,25Z" />
+</vector>

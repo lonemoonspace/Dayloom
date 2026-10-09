@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Weather icon: fair or partly cloudy (night). Full colour, shown with Image, not tinted. / 天气图标：少云、多云（夜间）。彩色图标，用 Image 显示，不着色。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <path android:fillColor="#FFF2D27A" android:pathData="M12.5,3A8,8 0,1 0,19,16A6.5,6.5 0,0 1,12.5,3Z" />
+    <path android:fillColor="#FFBCC7D4" android:pathData="M10,26H24A5,5 0,0 0,24.6,16.04A6.8,6.8 0,0 0,11.8,15A5.6,5.6 0,0 0,10,26Z" />
+</vector>

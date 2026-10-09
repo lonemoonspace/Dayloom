@@ -48,14 +48,18 @@ import io.github.lonemoonspace.dayloom.R
 import io.github.lonemoonspace.dayloom.app.AppGraph
 import io.github.lonemoonspace.dayloom.app.home.HomeScreen
 import io.github.lonemoonspace.dayloom.app.home.HomeViewModel
+import io.github.lonemoonspace.dayloom.app.settings.PlacesCard
+import io.github.lonemoonspace.dayloom.app.settings.RoutineCard
 import io.github.lonemoonspace.dayloom.app.settings.SettingsScreen
 import io.github.lonemoonspace.dayloom.app.settings.SettingsViewModel
+import io.github.lonemoonspace.dayloom.app.settings.SharedDataViewModel
 import io.github.lonemoonspace.dayloom.core.ui.CompactNavBar
 import io.github.lonemoonspace.dayloom.core.ui.CompactTopBar
 import io.github.lonemoonspace.dayloom.core.ui.LocalAppClock
 import io.github.lonemoonspace.dayloom.core.ui.LocalBarInsets
 import io.github.lonemoonspace.dayloom.core.ui.LocalHazeState
 import io.github.lonemoonspace.dayloom.core.ui.NavTab
+import kotlinx.coroutines.Dispatchers
 
 private object Routes {
     const val HOME = "home"
@@ -187,13 +191,33 @@ fun AppRoot(graph: AppGraph, pendingIntent: Intent?) {
                                     }
                                 },
                             )
+                            val sharedVm: SharedDataViewModel = viewModel(
+                                factory = viewModelFactory {
+                                    initializer {
+                                        SharedDataViewModel(
+                                            places = graph.places,
+                                            sharedData = graph.sharedData,
+                                            search = graph.placeSearch,
+                                            locator = graph.deviceLocator,
+                                            appScope = graph.appScope,
+                                            ioContext = Dispatchers.IO,
+                                        )
+                                    }
+                                },
+                            )
                             val state by vm.state.collectAsStateWithLifecycle()
                             SettingsScreen(
                                 state = state,
                                 onLanguage = vm::setLanguage,
                                 onTimeZone = vm::setTimeZone,
                                 onModuleEnabled = vm::setModuleEnabled,
-                            )
+                            ) {
+                                val places by sharedVm.placeList.collectAsStateWithLifecycle()
+                                val editor by sharedVm.editor.collectAsStateWithLifecycle()
+                                val routine by sharedVm.routine.collectAsStateWithLifecycle()
+                                PlacesCard(places, editor, sharedVm)
+                                RoutineCard(routine, sharedVm)
+                            }
                         }
                         composable(
                             Routes.MODULE,

@@ -1,6 +1,8 @@
 package io.github.lonemoonspace.dayloom.app
 
 import io.github.lonemoonspace.dayloom.core.module.FeatureModule
+import io.github.lonemoonspace.dayloom.feature.calendar.CalendarModule
+import io.github.lonemoonspace.dayloom.feature.weather.WeatherModule
 
 /**
  * The only place that lists the app's modules; the order here is the default order of cards, tabs and settings sections.
@@ -10,6 +12,7 @@ import io.github.lonemoonspace.dayloom.core.module.FeatureModule
  */
 object ModuleRegistry {
     val modules: List<FeatureModule> = listOf<FeatureModule>(
-        // Real modules arrive from M1 on. / 正式模块从 M1 起加入。
+        CalendarModule,
+        WeatherModule,
     ) + variantModules
 }

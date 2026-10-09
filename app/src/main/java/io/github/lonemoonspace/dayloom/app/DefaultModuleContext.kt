@@ -62,10 +62,5 @@ class DefaultModuleContext(
         }
     }
 
-    override fun notificationId(offset: Int): Int {
-        val range = module.notificationIds
-        val id = range.first + offset
-        require(offset >= 0 && id in range) { "notification offset $offset outside $range of module $moduleId" }
-        return id
-    }
+    override fun notificationId(offset: Int): Int = ModulePolicy.notificationId(moduleId, module.notificationIds, offset)
 }

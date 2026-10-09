@@ -10,6 +10,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.emitAll
@@ -473,6 +474,22 @@ class RefreshCoordinatorTest {
         val unsetReport = unset.refresh(setOf(unsetSource.id), Trigger.BACKGROUND)
         assertEquals(SourceResult.Skipped(SkipReason.NOT_CONFIGURED), unsetReport.results[unsetSource.id])
         assertNull(unset.statusOf(unsetSource).lastError)
+    }
+
+    @Test
+    fun `fetches run in the given fetch context, not the caller's`() = runTest {
+        val source = FakeSource("weather", clock)
+        val c = RefreshCoordinator(
+            FakeNetworkStatus(),
+            clock,
+            backgroundScope,
+            watchInputs = false,
+            fetchContext = CoroutineName("fetch-pool"),
+        ).apply { register(listOf(source)) }
+
+        c.refresh(setOf(source.id), Trigger.USER)
+
+        assertEquals(listOf<String?>("fetch-pool"), source.fetchedIn)
     }
 
     @Test

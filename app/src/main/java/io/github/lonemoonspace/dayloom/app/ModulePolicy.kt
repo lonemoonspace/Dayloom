@@ -1,5 +1,7 @@
 package io.github.lonemoonspace.dayloom.app
 
+import io.github.lonemoonspace.dayloom.core.module.ModuleIds
+
 /**
  * Pure rules about the module list: validity of the registry and which modules are on.
  * 关于模块列表的纯规则：注册表是否合法、哪些模块处于开启状态。
@@ -8,8 +10,6 @@ object ModulePolicy {
 
     /** What the policy needs to know about a module. / Policy 需要知道的模块信息。 */
     data class ModuleInfo(val id: String, val defaultEnabled: Boolean, val notificationIds: IntRange)
-
-    private val ID_PATTERN = Regex("[a-z][a-z0-9_]*")
 
     // `app` and `core` would collide with storage keys and deep links the shell itself uses.
     // `app` 与 `core` 会和外壳自己使用的存储键、深链冲突。
@@ -23,7 +23,7 @@ object ModulePolicy {
         val problems = mutableListOf<String>()
         modules.groupBy { it.id }.filterValues { it.size > 1 }.keys.forEach { problems += "duplicate module id: $it" }
         modules.forEach { m ->
-            if (!ID_PATTERN.matches(m.id)) problems += "invalid module id: ${m.id}"
+            if (!ModuleIds.MODULE_ID.matches(m.id)) problems += "invalid module id: ${m.id}"
             if (m.id in RESERVED_IDS) problems += "reserved module id: ${m.id}"
         }
         val ranged = modules.filterNot { it.notificationIds.isEmpty() }
@@ -45,4 +45,17 @@ object ModulePolicy {
      */
     fun enabledIds(modules: List<ModuleInfo>, overrides: Map<String, Boolean>): List<String> =
         modules.filter { overrides[it.id] ?: it.defaultEnabled }.map { it.id }
+
+    /**
+     * The [offset]-th notification id of a module's [range]. A module that declared no range gets a message saying so,
+     * instead of the confusing "offset 0 outside 1..0" that the bare range check would give.
+     * 模块号段 [range] 中第 [offset] 个通知 id。没有声明号段的模块会得到直接说明这一点的报错，
+     * 而不是单纯检查号段时那句令人费解的「offset 0 outside 1..0」。
+     */
+    fun notificationId(moduleId: String, range: IntRange, offset: Int): Int {
+        require(!range.isEmpty()) { "module $moduleId declares no notification ids (FeatureModule.notificationIds)" }
+        val id = range.first + offset
+        require(offset >= 0 && id in range) { "notification offset $offset outside $range of module $moduleId" }
+        return id
+    }
 }

@@ -5,6 +5,8 @@ import io.github.lonemoonspace.dayloom.core.error.toAppError
 import io.github.lonemoonspace.dayloom.core.network.NetworkStatus
 import io.github.lonemoonspace.dayloom.core.time.AppClock
 import java.time.Instant
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -68,6 +70,13 @@ class RefreshCoordinator(
      * 监听出错时调用（生产环境记日志）；不属于某个来源的失败 [SourceId] 为 null。
      */
     private val onWatchError: (SourceId?, Throwable) -> Unit = { _, _ -> },
+    /**
+     * Where fetches run; production passes Dispatchers.IO, because fetches make blocking network calls (OkHttp `execute()`)
+     * that must not occupy the CPU-bound Default pool. Tests keep the default so virtual time still applies.
+     * 抓取在哪里运行；生产环境传 Dispatchers.IO，因为抓取里是阻塞的网络调用（OkHttp `execute()`），不能占用面向 CPU 的
+     * Default 线程池。测试保留默认值，虚拟时间才仍然有效。
+     */
+    private val fetchContext: CoroutineContext = EmptyCoroutineContext,
 ) {
     private val registered = MutableStateFlow<Map<SourceId, CachedSource<*, *>>>(emptyMap())
     private val _status = MutableStateFlow<Map<SourceId, SourceStatus>>(emptyMap())
@@ -203,7 +212,7 @@ class RefreshCoordinator(
     /** Caller holds [lock]. / 调用方需持有 [lock]。 */
     private fun <P> startFlight(source: CachedSource<P, *>, input: SourceInput.Ready<P>, visible: Boolean): Flight {
         val flight = Flight(input.key, visible)
-        flight.result = appScope.async(start = CoroutineStart.LAZY) { execute(source, input, flight) }
+        flight.result = appScope.async(fetchContext, start = CoroutineStart.LAZY) { execute(source, input, flight) }
         inFlight[source.id] = flight
         if (visible) updateStatus(source.id) { it.copy(refreshing = true) }
         flight.result.start()

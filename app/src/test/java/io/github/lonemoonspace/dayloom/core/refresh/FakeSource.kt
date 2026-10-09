@@ -7,6 +7,8 @@ import io.github.lonemoonspace.dayloom.core.time.AppClock
 import java.time.Duration
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -44,11 +46,14 @@ class FakeSource(
         private set
     val fetchedWith = mutableListOf<String>()
     val previousSeen = mutableListOf<Snapshot<String>?>()
+    /** [CoroutineName] each fetch ran under, to check where fetches are dispatched. / 每次抓取所在的 [CoroutineName]，用来检查抓取被派发到哪里。 */
+    val fetchedIn = mutableListOf<String?>()
 
     override suspend fun fetch(params: String, now: ZonedDateTime, previous: Snapshot<String>?): String {
         fetchCount++
         fetchedWith += params
         previousSeen += previous
+        fetchedIn += currentCoroutineContext()[CoroutineName]?.name
         gate?.await()
         failWith?.let { throw it }
         return "$params#$fetchCount"

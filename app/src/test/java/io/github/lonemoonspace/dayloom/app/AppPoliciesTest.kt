@@ -6,6 +6,7 @@ import io.github.lonemoonspace.dayloom.app.nav.DeepLinkPolicy
 import io.github.lonemoonspace.dayloom.app.nav.DeepLinkPolicy.Destination
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -46,6 +47,22 @@ class AppPoliciesTest {
         assertEquals(listOf("a", "c"), ModulePolicy.enabledIds(modules, emptyMap()))
         assertEquals(listOf("b", "c"), ModulePolicy.enabledIds(modules, mapOf("a" to false, "b" to true)))
         assertEquals("unknown ids in the settings are ignored", listOf("a", "c"), ModulePolicy.enabledIds(modules, mapOf("gone" to true)))
+    }
+
+    @Test
+    fun `notification ids are offsets into the module's range`() {
+        assertEquals(5_000, ModulePolicy.notificationId("weather", 5_000..5_099, 0))
+        assertEquals(5_099, ModulePolicy.notificationId("weather", 5_000..5_099, 99))
+        assertThrows(IllegalArgumentException::class.java) { ModulePolicy.notificationId("weather", 5_000..5_099, 100) }
+        assertThrows(IllegalArgumentException::class.java) { ModulePolicy.notificationId("weather", 5_000..5_099, -1) }
+    }
+
+    @Test
+    fun `a module without a notification range gets a message that says so`() {
+        val error = assertThrows(IllegalArgumentException::class.java) {
+            ModulePolicy.notificationId("weather", IntRange.EMPTY, 0)
+        }
+        assertEquals("module weather declares no notification ids (FeatureModule.notificationIds)", error.message)
     }
 
     // ---- Card order / 卡片顺序 ----

@@ -1,6 +1,7 @@
 package io.github.lonemoonspace.dayloom.core.refresh
 
 import io.github.lonemoonspace.dayloom.core.error.AppError
+import io.github.lonemoonspace.dayloom.core.module.ModuleIds
 import java.io.IOException
 import java.time.Duration
 import java.time.Instant
@@ -69,6 +70,15 @@ class RefreshPoliciesTest {
         assertEquals("snapshot_weather_forecast", id.snapshotFileName)
         listOf("weather", "Weather.x", "weather.", ".x", "a.b.c", "1a.b").forEach { bad ->
             assertThrows(bad, IllegalArgumentException::class.java) { SourceId(bad) }
+        }
+    }
+
+    @Test
+    fun `source ids accept exactly the module ids the registry accepts`() {
+        listOf("weather", "w2", "news_feed", "Weather", "2fa", "a-b", "_x", "").forEach { moduleId ->
+            val validModule = ModuleIds.MODULE_ID.matches(moduleId)
+            val validSource = runCatching { SourceId("$moduleId.main") }.isSuccess
+            assertEquals(moduleId, validModule, validSource)
         }
     }
 }

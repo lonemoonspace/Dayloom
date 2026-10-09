@@ -87,6 +87,7 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
         appScope = appScope,
         watchInputs = true,
         onWatchError = { id, e -> Log.w(TAG, "watching inputs of ${id ?: "sources"} failed, retrying", e) },
+        fetchContext = Dispatchers.IO,
     )
 
     val notificationEngine = NotificationEngine(

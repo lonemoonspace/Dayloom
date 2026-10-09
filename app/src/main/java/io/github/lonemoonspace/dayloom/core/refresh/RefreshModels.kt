@@ -2,6 +2,7 @@ package io.github.lonemoonspace.dayloom.core.refresh
 
 import io.github.lonemoonspace.dayloom.core.error.AppError
 import io.github.lonemoonspace.dayloom.core.i18n.UiText
+import io.github.lonemoonspace.dayloom.core.module.ModuleIds
 import java.time.Instant
 
 /**
@@ -11,7 +12,7 @@ import java.time.Instant
 @JvmInline
 value class SourceId(val value: String) {
     init {
-        require(PATTERN.matches(value)) { "invalid source id: $value" }
+        require(ModuleIds.SCOPED_NAME.matches(value)) { "invalid source id: $value" }
     }
 
     val moduleId: String get() = value.substringBefore('.')
@@ -20,10 +21,6 @@ value class SourceId(val value: String) {
     val snapshotFileName: String get() = "snapshot_" + value.replace('.', '_')
 
     override fun toString(): String = value
-
-    private companion object {
-        val PATTERN = Regex("[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*")
-    }
 }
 
 enum class Trigger {

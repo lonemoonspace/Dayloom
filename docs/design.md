@@ -415,7 +415,7 @@ val allModules: List<FeatureModule> = listOf(
 - 权限：`INTERNET`、`ACCESS_NETWORK_STATE`、`POST_NOTIFICATIONS`（运行时申请，用户打开任一通知开关时才请求）。不申请定位权限。
 - 「关于」页同时列出所有第三方库及其许可证（MIT 等许可要求随软件附上版权声明）。
 - 凭据只随请求发往其所属服务；沿用 `CredentialRedirectGuard` 防止重定向泄露。
-- 设置页增加「关于 / 数据来源」：
+- 设置页增加「关于 / 数据来源」部分（M7：数据来源、隐私与开源许可三个对话框；隐私声明另见 `PRIVACY.zh-CN.md`）：
 
 | 数据 | 来源 | 许可 / 要求 |
 |---|---|---|

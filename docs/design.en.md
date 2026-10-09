@@ -416,7 +416,7 @@ Module settings refer to these shared items — weather defaults to "Home", traf
 - Permissions: `INTERNET`, `ACCESS_NETWORK_STATE`, `POST_NOTIFICATIONS` (runtime permission, requested only when the user turns on a notification switch). No location permission.
 - The About page also lists every third-party library and its license (MIT and similar licenses require the copyright notice to ship with the software).
 - Credentials are only sent to the service they belong to; `CredentialRedirectGuard` is kept to prevent leaks through redirects.
-- Settings gain an "About / Data sources" page:
+- Settings gain an "About / Data sources" section (M7: dialogs for data sources, privacy and open-source licenses; the privacy statement is also in `PRIVACY.md`):
 
 | Data | Source | License / requirements |
 |---|---|---|

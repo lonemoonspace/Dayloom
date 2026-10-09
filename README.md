@@ -45,6 +45,10 @@ core/     infrastructure: module API, refresh, notifications, storage, secrets, 
 Dependencies point downwards only (`app → feature → core`); `ArchitectureTest` fails the build otherwise.
 Details: [docs/design.en.md](docs/design.en.md).
 
+## Privacy
+
+Dayloom collects nothing and has no server of its own; see [PRIVACY.md](PRIVACY.md) for what is sent to whom.
+
 ## License
 
 [Apache License 2.0](LICENSE).

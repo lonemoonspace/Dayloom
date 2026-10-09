@@ -1,6 +1,12 @@
 package io.github.lonemoonspace.dayloom.app.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.runtime.remember
+import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -183,9 +189,15 @@ internal fun ModulesCard(modules: List<ModuleToggle>, onToggle: (String, Boolean
     }
 }
 
+/**
+ * Version, license and source code, plus three dialogs: where the data comes from, what the app keeps and sends, and the
+ * open-source licenses (MIT requires shipping lunar-java's notice with the app).
+ * 版本、许可证与源代码，外加三个对话框：数据从哪里来、App 保存与发送什么、开源许可（MIT 要求随 App 附上 lunar-java 的声明）。
+ */
 @Composable
 private fun AboutCard() {
     val uriHandler = LocalUriHandler.current
+    var showing by rememberSaveable { mutableStateOf<AboutPage?>(null) }
     InfoCard(title = stringResource(R.string.settings_about)) {
         Text(stringResource(R.string.settings_version, BuildConfig.VERSION_NAME), style = MaterialTheme.typography.bodyMedium)
         Text(
@@ -193,8 +205,55 @@ private fun AboutCard() {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        TextButton(onClick = { uriHandler.openUri(SharedHttpClient.REPO_URL) }) {
-            Text(stringResource(R.string.settings_source_code))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            TextButton(onClick = { showing = AboutPage.SOURCES }) { Text(stringResource(R.string.about_data_sources)) }
+            TextButton(onClick = { showing = AboutPage.PRIVACY }) { Text(stringResource(R.string.about_privacy)) }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            TextButton(onClick = { showing = AboutPage.LICENSES }) { Text(stringResource(R.string.about_licenses)) }
+            TextButton(onClick = { uriHandler.openUri(SharedHttpClient.REPO_URL) }) { Text(stringResource(R.string.settings_source_code)) }
         }
     }
+    showing?.let { page -> AboutDialog(page) { showing = null } }
+}
+
+private enum class AboutPage { SOURCES, PRIVACY, LICENSES }
+
+@Composable
+private fun AboutDialog(page: AboutPage, onDismiss: () -> Unit) {
+    val resources = LocalResources.current
+    val body = when (page) {
+        AboutPage.SOURCES -> listOf(
+            R.string.about_source_weather,
+            R.string.about_source_transit,
+            R.string.about_source_places,
+            R.string.about_source_google,
+            R.string.about_source_football,
+            R.string.about_source_news,
+            R.string.about_source_lunar,
+        ).map { stringResource(it) }.joinToString("\n\n")
+        AboutPage.PRIVACY -> stringResource(R.string.about_privacy_body)
+        // Kept as a raw file: license texts are legal text and stay in English. / 放在 raw 文件里：许可证是法律文本，保持英文原文。
+        AboutPage.LICENSES -> remember(resources) { resources.openRawResource(R.raw.third_party_licenses).bufferedReader().use { it.readText() } }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                stringResource(
+                    when (page) {
+                        AboutPage.SOURCES -> R.string.about_data_sources
+                        AboutPage.PRIVACY -> R.string.about_privacy
+                        AboutPage.LICENSES -> R.string.about_licenses
+                    },
+                ),
+            )
+        },
+        text = {
+            Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
+                Text(body, style = if (page == AboutPage.LICENSES) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium)
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.about_close)) } },
+    )
 }

@@ -540,4 +540,17 @@
     <plurals name="news_ago_days">
         <item quantity="other">%1$d 天前</item>
     </plurals>
+
+    <string name="about_data_sources">数据来源</string>
+    <string name="about_privacy">隐私</string>
+    <string name="about_licenses">开源许可</string>
+    <string name="about_close">关闭</string>
+    <string name="about_source_weather">天气：挪威气象局 MET Norway（api.met.no），CC BY 4.0 许可。</string>
+    <string name="about_source_transit">公共交通：Entur，挪威政府开放数据许可（NLOD）。</string>
+    <string name="about_source_places">没有 Key 时的地点搜索：Open-Meteo Geocoding，CC BY 4.0 许可，数据基于 GeoNames。</string>
+    <string name="about_source_google">有 Key 时的地点搜索与路况：Google Maps Platform（Places API、Routes API），遵循 Google 的条款。</string>
+    <string name="about_source_football">足球：football-data.org，使用你自己的 Key，遵循其条款。</string>
+    <string name="about_source_news">新闻：你自己的 Miniflux 服务器。AI 摘要：你配置的接口。</string>
+    <string name="about_source_lunar">农历与节气：用 lunar-java（MIT）在手机上计算。</string>
+    <string name="about_privacy_body">Dayloom 没有自己的服务器，也不收集任何数据：没有统计、没有崩溃上报、没有广告。\n\n你的设置、地点与 Key 只保存在本机。不做云备份；换机迁移会复制设置，但不复制 Key——Key 用本机的 Android Keystore 加密。\n\nApp 只联系你打开的模块对应的服务，并且只发送它需要的内容：家的坐标发给挪威气象局，你的站点发给 Entur，地点搜索里输入的文字发给 Google 或 Open-Meteo，已保存的地点发给 Google Routes，关注的球队发给 football-data.org，令牌发给你自己的 Miniflux 服务器。只有在你点「生成摘要」时，文章正文才会发给你配置的 AI 接口。\n\nApp 不申请定位权限。只有在你打开某个通知时，才会申请通知权限。</string>
 </resources>

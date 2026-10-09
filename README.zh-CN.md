@@ -42,6 +42,10 @@ core/     基础设施：模块接口、刷新、通知、存储、凭据、网�
 
 依赖只能向下（`app → feature → core`），否则 `ArchitectureTest` 会让构建失败。详见 [docs/design.md](docs/design.md)。
 
+## 隐私
+
+Dayloom 不收集任何数据，也没有自己的服务器；发送什么、发给谁，见 [PRIVACY.zh-CN.md](PRIVACY.zh-CN.md)。
+
 ## 许可证
 
 [Apache License 2.0](LICENSE)。

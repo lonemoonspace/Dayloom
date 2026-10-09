@@ -1,6 +1,6 @@
 # Dayloom (织日) Design Document
 
-> Status: **draft v0.2, under review**. No code is written until it is approved.
+> Status: **draft v0.3, under review**. No code is written until it is approved.
 > Chinese version: [`design.md`](design.md). The two must stay identical in content; update both in the same change.
 
 ---
@@ -41,6 +41,8 @@
 | Code comments / commit messages / CHANGELOG | Bilingual, English first, Chinese below |
 | README | `README.md` (English) + `README.zh-CN.md` (Chinese), linking to each other |
 | CI / release | Same three-check gate and workflows as PersonalAssistant, renamed and adapted |
+| minSdk | **33** (Android 13); targetSdk follows Google Play's requirement for the year |
+| Lunar calendar | `cn.6tail:lunar` (lunar-java, MIT) |
 | Freeze rules | Anything may change before v1.0.0; storage formats etc. are frozen from v1.0.0 (§15) |
 
 ---
@@ -297,11 +299,11 @@ Module settings refer to these shared items — weather defaults to "Home", traf
 
 ### 10.3 Language switching
 
-- Settings offer "Follow system / English / 中文", implemented with `AppCompatDelegate.setApplicationLocales` (Android 13+ uses the system per-app language; older versions are persisted and applied by AppCompat), with a declared `locales_config.xml`.
+- Settings offer "Follow system / English / 中文", implemented directly with the system per-app language API (`LocaleManager`, available from Android 13); no AppCompat needed. A declared `locales_config.xml` also lets users pick Dayloom's language in system settings.
 
 ### 10.4 Background work and notifications
 
-- Workers and notification sending resolve strings via `context.createConfigurationContext(a Configuration with the app language)`, so notifications match the UI language.
+- The per-app language is applied by the system to the whole process, so strings resolved by workers and notifications should match the UI. Verify this in M0; if they differ, fall back to `context.createConfigurationContext(a Configuration with the app language)`.
 
 ### 10.5 Checks
 
@@ -356,7 +358,8 @@ Module settings refer to these shared items — weather defaults to "Home", traf
 ### 11.5 Calendar `calendar`
 
 - **Features**: the date header at the top of the home screen: time, date, ISO week number; optional Chinese lunar calendar (stem-branch year, zodiac, solar terms); holidays of the selected countries with countdowns.
-- **Lunar data source**: the Hong Kong Observatory table bundled in the original project cannot be reused (its terms do not allow it, see §19 item 1); the replacement is still open, see §19.
+- **Lunar data source**: `cn.6tail:lunar` (lunar-java, MIT), wrapped behind a `LunarProvider` interface so the calendar module depends only on the interface and the implementation can be swapped later. The Hong Kong Observatory table bundled in the original project is not reused (its terms do not allow it, see §19).
+- **Local verification**: `scripts/verify_lunar.py` runs only on a developer machine; it temporarily downloads the Observatory's 1901–2100 tables and compares them day by day with lunar-java (lunar date, leap month, solar terms). The Observatory data is never committed or shipped in the APK.
 - **Holidays**: `HolidayProvider` interface; the first version ships **China** (statutory holidays + traditional lunar festivals) and **Norway** (including Easter-based movable holidays). Multiple countries can be selected; same-name, same-day holidays are merged (same rule as the original project). More countries can be added later, or open data such as Nager.Date.
 - **Settings**: show lunar calendar (toggle), holiday countries (multi-select).
 - **Sources**: none (all computed locally).
@@ -405,7 +408,8 @@ Module settings refer to these shared items — weather defaults to "Home", traf
 
 - The APK contains no API keys; credentials stay on the phone, encrypted with the Keystore.
 - No analytics, no crash reporting, no ads; network requests only go to the services of modules the user enabled.
-- Permissions: `INTERNET`, `ACCESS_NETWORK_STATE`, `POST_NOTIFICATIONS` (optional), `ACCESS_COARSE_LOCATION` (optional).
+- Permissions: `INTERNET`, `ACCESS_NETWORK_STATE`, `POST_NOTIFICATIONS` (runtime permission, requested only when the user turns on a notification switch), `ACCESS_COARSE_LOCATION` (optional, requested only for the one-shot location).
+- The About page also lists every third-party library and its license (MIT and similar licenses require the copyright notice to ship with the software).
 - Credentials are only sent to the service they belong to; `CredentialRedirectGuard` is kept to prevent leaks through redirects.
 - Settings gain an "About / Data sources" page:
 
@@ -416,7 +420,7 @@ Module settings refer to these shared items — weather defaults to "Home", traf
 | Place search | Open-Meteo Geocoding | CC BY 4.0, attribution required |
 | Traffic | Google Routes | User's own key, subject to Google's terms |
 | Football | football-data.org | User's own key, subject to its terms |
-| Lunar calendar | Open (§19 item 1) | Not the Hong Kong Observatory table |
+| Lunar calendar | lunar-java (`cn.6tail:lunar`) | MIT, copyright notice required; not the Hong Kong Observatory table |
 
 ---
 
@@ -489,10 +493,12 @@ Check every file before porting: remove personal information from defaults, test
 | Card ordering | Drag to reorder, plus accessible move up / move down (§4.3) |
 | English design document | Add `docs/design.en.md`, kept identical to the Chinese version |
 | Device location | One-shot only: read the current position once into a place; no continuous tracking, no background location (§8) |
+| Lunar data | Use lunar-java (MIT), accepting the slight risk that its upstream (sxwnl) license is not explicit; verify locally against the Observatory data (§11.5) |
+| minSdk | 33 (Android 13). The intended users all have recent phones; in return, blur and dynamic color work on every device, notification permission has a single flow, and per-app language uses the native system implementation |
 
-### Open
+### Rationale (archived)
 
-**1. Lunar calendar data source**
+**1. Lunar calendar data source (decided: option A)**
 
 Findings: the original project's `LunarData.kt` is generated by a script from the Hong Kong Observatory website's 1901–2100 conversion tables (`hko.gov.hk/.../T{year}e.txt`).
 
@@ -510,16 +516,16 @@ Options:
 
 Whichever option is chosen, the Observatory data can still be used for **local verification**: a script that runs only on the developer machine downloads the tables temporarily and compares every day; the data itself is never committed or shipped in the APK.
 
-**2. minSdk**
+**2. minSdk (decided: 33)**
 
-Options and trade-offs:
+Options that were compared:
 
 | minSdk | Android version | Benefit | Cost |
 |---|---|---|---|
 | 24 | Android 7.0 | Covers a few more old devices | `java.time` needs core library desugaring; notification channels and adaptive icons need compatibility branches |
-| **26** (recommended) | Android 8.0 | Same as the original project; `java.time`, notification channels and adaptive icons are all native | No notable cost |
+| 26 | Android 8.0 | Same as the original project; `java.time`, notification channels and adaptive icons are all native | No notable cost |
 | 28 / 29 | Android 9 / 10 | Almost no compatibility code to remove | Loses some devices for nothing |
 | 31 | Android 12 | Dynamic color (Material You) needs no version check | Notable cost; dynamic color can be enabled after a runtime version check anyway |
-| 33 | Android 13 | Native per-app language and notification permission need no version check | Largest cost; AppCompat already provides per-app language on older versions |
+| **33** (chosen) | Android 13 | Native per-app language and notification permission need no version check; includes every benefit of 31 | Covers the fewest devices (about 58% per Android Studio data, December 2025); not a problem for the intended users |
 
 targetSdk follows Google Play's requirement for the year; to be checked at implementation time.

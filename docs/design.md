@@ -1,6 +1,6 @@
 # Dayloom（织日）设计文档
 
-> 状态：**草稿 v0.2，待审**。审定前不写任何代码。
+> 状态：**草稿 v0.3，待审**。审定前不写任何代码。
 > 英文版见 [`design.en.md`](design.en.md)；两份内容必须一致，修改时同时更新。
 
 ---
@@ -41,6 +41,8 @@
 | 代码注释 / 提交信息 / CHANGELOG | 双语，英文在上、中文在下 |
 | README | `README.md`（英文）+ `README.zh-CN.md`（中文），互相链接 |
 | CI / 发版 | 沿用 PersonalAssistant 的三项门禁与 workflow，改名适配 |
+| minSdk | **33**（Android 13）；targetSdk 跟随 Google Play 当年要求 |
+| 农历 | `cn.6tail:lunar`（lunar-java，MIT） |
 | 冻结规则 | v1.0.0 之前可自由改；v1.0.0 起冻结存储格式等（§15） |
 
 ---
@@ -296,11 +298,11 @@ val allModules: List<FeatureModule> = listOf(
 
 ### 10.3 语言切换
 
-- 设置里「跟随系统 / English / 中文」，用 `AppCompatDelegate.setApplicationLocales`（Android 13+ 走系统的按应用语言，旧版本由 AppCompat 保存并应用）；声明 `locales_config.xml`。
+- 设置里「跟随系统 / English / 中文」，直接用系统的按应用语言 API（`LocaleManager`，Android 13 起提供），不需要 AppCompat；声明 `locales_config.xml`，系统设置里也能给织日单独选语言。
 
 ### 10.4 后台与通知
 
-- Worker 与通知发送时用 `context.createConfigurationContext(带应用语言的 Configuration)` 取字符串，保证通知语言和界面一致。
+- 按应用语言由系统作用于整个进程，Worker 与通知取到的字符串应与界面一致；M0 时实测确认，若有不一致，再用 `context.createConfigurationContext(带应用语言的 Configuration)` 兜底。
 
 ### 10.5 检查
 
@@ -355,7 +357,8 @@ val allModules: List<FeatureModule> = listOf(
 ### 11.5 日历 `calendar`
 
 - **功能**：首页顶部的日期头：时间、日期、ISO 周数；可选农历（干支生肖、节气）；所选国家的节假日与倒计时。
-- **农历数据来源**：不能沿用原项目内置的香港天文台对照表（许可不允许，见 §19 第 1 条）；待定方案见 §19。
+- **农历数据来源**：`cn.6tail:lunar`（lunar-java，MIT），由 `LunarProvider` 接口包一层，日历模块只依赖接口，以后换实现不影响其他代码。不沿用原项目内置的香港天文台对照表（许可不允许，见 §19）。
+- **本地校验**：`scripts/verify_lunar.py` 只在开发机运行，临时下载天文台 1901–2100 年对照表，与 lunar-java 的结果逐日比对（农历日期、闰月、节气）；天文台数据不入库、不进 APK。
 - **节假日**：`HolidayProvider` 接口，第一版内置**中国**（法定节假日 + 农历传统节日）与**挪威**（含复活节浮动假日）两个实现，可多选、同名同日合并（沿用原项目规则）。以后可加更多国家，或接 Nager.Date 等开放数据。
 - **设置**：显示农历（开关）、节假日国家（多选）。
 - **来源**：无（全部本地计算）。
@@ -404,7 +407,8 @@ val allModules: List<FeatureModule> = listOf(
 
 - APK 不含任何 API Key；凭据只存在手机上，用 Keystore 加密。
 - 无统计、无崩溃上报、无广告；网络请求只发往用户启用的模块对应的服务。
-- 权限：`INTERNET`、`ACCESS_NETWORK_STATE`、`POST_NOTIFICATIONS`（可选）、`ACCESS_COARSE_LOCATION`（可选）。
+- 权限：`INTERNET`、`ACCESS_NETWORK_STATE`、`POST_NOTIFICATIONS`（运行时申请，用户打开任一通知开关时才请求）、`ACCESS_COARSE_LOCATION`（可选，仅一次性定位时请求）。
+- 「关于」页同时列出所有第三方库及其许可证（MIT 等许可要求随软件附上版权声明）。
 - 凭据只随请求发往其所属服务；沿用 `CredentialRedirectGuard` 防止重定向泄露。
 - 设置页增加「关于 / 数据来源」：
 
@@ -415,7 +419,7 @@ val allModules: List<FeatureModule> = listOf(
 | 地点搜索 | Open-Meteo Geocoding | CC BY 4.0，需注明来源 |
 | 路况 | Google Routes | 用户自己的 Key，受 Google 服务条款约束 |
 | 足球 | football-data.org | 用户自己的 Key，受其条款约束 |
-| 农历 | 待定（§19 第 1 条） | 不使用香港天文台对照表 |
+| 农历 | lunar-java（`cn.6tail:lunar`） | MIT，需附版权声明；不使用香港天文台对照表 |
 
 ---
 
@@ -488,10 +492,12 @@ val allModules: List<FeatureModule> = listOf(
 | 卡片排序 | 直接做拖动排序，并提供无障碍的上移/下移（§4.3） |
 | 英文版设计文档 | 补 `docs/design.en.md`，与中文版保持一致 |
 | 设备定位 | 只做一次性取当前位置填进地点；不做持续跟随、不申请后台定位（§8） |
+| 农历数据 | 用 lunar-java（MIT），接受其上游（寿星天文历）许可不够明确的轻微风险；用天文台数据做本地校验（§11.5） |
+| minSdk | 33（Android 13）。使用者的手机都是新机型；换来：毛玻璃模糊与动态取色在所有设备上都可用、通知权限只有一种流程、按应用语言用系统原生实现 |
 
-### 待定
+### 决策依据（存档）
 
-**1. 农历数据来源**
+**1. 农历数据来源（已决：方案 A）**
 
 调查结论：原项目的 `LunarData.kt` 由脚本从香港天文台网站的 1901–2100 年对照表（`hko.gov.hk/.../T{年份}e.txt`）生成。
 
@@ -509,16 +515,16 @@ val allModules: List<FeatureModule> = listOf(
 
 不论选哪个方案，都可以用天文台数据做**本地校验**：写一个只在开发机运行的脚本，临时下载对照表、逐日比对结果，数据本身不入库、不进 APK。
 
-**2. minSdk**
+**2. minSdk（已决：33）**
 
-可选值与取舍：
+当时比较过的选项：
 
 | minSdk | 对应系统 | 收益 | 代价 |
 |---|---|---|---|
 | 24 | Android 7.0 | 多覆盖少量老设备 | `java.time` 要开 core library desugaring；通知渠道、自适应图标都要写兼容分支 |
-| **26**（推荐） | Android 8.0 | 与原项目一致；`java.time`、通知渠道、自适应图标都是原生支持 | 无明显代价 |
+| 26 | Android 8.0 | 与原项目一致；`java.time`、通知渠道、自适应图标都是原生支持 | 无明显代价 |
 | 28 / 29 | Android 9 / 10 | 几乎没有可以删掉的兼容代码 | 白白少覆盖一部分设备 |
 | 31 | Android 12 | 动态取色（Material You）不必判断版本 | 代价明显；而且动态取色本来就可以运行时判断版本后启用 |
-| 33 | Android 13 | 系统原生的按应用语言、通知权限不必判断版本 | 代价最大；AppCompat 已经能在旧版本上实现按应用语言 |
+| **33**（选定） | Android 13 | 系统原生的按应用语言、通知权限不必判断版本；包含 31 的全部收益 | 覆盖设备最少（2025 年 12 月 Android Studio 数据约 58%）；对目标用户不构成问题 |
 
 targetSdk 跟随 Google Play 当年的要求设置，实施时再核对。

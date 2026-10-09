@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="demo_title">演示</string>
+    <string name="demo_summary">仅 Debug 版：展示一个模块如何接入 App。</string>
+    <string name="demo_name_label">你的名字</string>
+    <string name="demo_greeting">你好，%1$s！</string>
+    <plurals name="demo_count">
+        <item quantity="other">已刷新 %1$d 次，最近一次在 %2$s</item>
+    </plurals>
+    <string name="demo_tab_body">这个标签页属于演示模块。模块可以像这样添加自己的标签页。</string>
+    <string name="demo_refresh_now">立即刷新</string>
+</resources>

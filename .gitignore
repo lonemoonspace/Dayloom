@@ -1,0 +1,27 @@
+# Gradle and build output / Gradle 与构建产物
+.gradle/
+.kotlin/
+build/
+*.apk
+*.aab
+release/
+
+# Machine-specific config and signing material (never commit)
+# 机器相关配置与签名材料（绝不入库）
+local.properties
+keystore.properties
+*.jks
+*.keystore
+dayloom-signing*/
+
+# IDE
+.idea/
+*.iml
+
+# OS / 系统
+.DS_Store
+Thumbs.db
+
+# JVM crash dumps / JVM 崩溃转储
+hs_err_pid*.log
+replay_pid*.log

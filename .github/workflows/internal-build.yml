@@ -1,0 +1,159 @@
+# Internal test builds (alpha / rc): pushing branch `testbuild/<versionName>` builds a signed APK kept as a workflow artifact
+# for 14 days; no Release is created. Only pre-release versionNames (containing `-`, e.g. 0.1.0-rc.1) are accepted, so a final
+# version number cannot bypass release.yml. A branch, not a tag, because cloud sessions cannot push tags.
+# 内部测试包（alpha / rc）：推送 `testbuild/<versionName>` 分支时构建签名 APK，作为 artifact 保存 14 天，不建 Release。
+# 只接受带 `-` 的预发布版本号（如 0.1.0-rc.1），正式版本号不能绕过 release.yml。用分支而非 tag：云端会话不能推 tag。
+
+name: Internal build
+
+on:
+  push:
+    branches: ['testbuild/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: internal-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Signed test build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # The versionCode check reads the latest v* tag. / versionCode 校验要读最新的 v* tag。
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Check branch name against versionName
+        id: meta
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#testbuild/}"
+          declared="$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts | head -n1)"
+          code="$(grep -oP 'versionCode\s*=\s*\K[0-9]+' app/build.gradle.kts | head -n1)"
+          if [ "$declared" != "$version" ]; then
+            echo "::error::branch $GITHUB_REF_NAME does not match versionName \"$declared\" / 分支与 versionName 不一致"
+            exit 1
+          fi
+          case "$version" in
+            *-*) ;;
+            *) echo "::error::test builds need a pre-release version such as 0.1.0-rc.1; push release/v$version for a release / 测试包只接受预发布版本号"; exit 1 ;;
+          esac
+          # A test build must install over the latest release: its versionCode must be higher. / 测试包要能覆盖安装在最新正式版上。
+          latest_tag="$(git tag --list 'v*' --sort=-v:refname | head -n1)"
+          if [ -n "$latest_tag" ]; then
+            latest_code="$(git show "$latest_tag:app/build.gradle.kts" | grep -oP 'versionCode\s*=\s*\K[0-9]+' | head -n1 || true)"
+            if [ -n "$latest_code" ] && [ "$code" -le "$latest_code" ]; then
+              echo "::error::versionCode $code is not above $latest_code of $latest_tag / versionCode 不大于最新正式版"
+              exit 1
+            fi
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "versionName $version (versionCode $code)"
+
+      - name: Build signed APK
+        id: build
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          # Only used to make sure no key leaked into the APK. / 只用于确认 APK 里没有混进 Key。
+          LEAK_CHECK_GOOGLE: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+          LEAK_CHECK_FOOTBALL: ${{ secrets.FOOTBALL_DATA_ORG_API_KEY }}
+        run: |
+          set -euo pipefail
+          # Without signing material, fail instead of producing an APK that cannot update an installed one.
+          # 缺签名材料直接失败，不产出无法覆盖安装的包。
+          for name in KEYSTORE_B64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then echo "::error::missing secret: $name / 缺少 Secret：$name"; exit 1; fi
+          done
+          # Signing material only lives in the runner's temp dir. / 签名材料只放在 runner 的临时目录。
+          keystore="$RUNNER_TEMP/release.jks"
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$keystore"
+          {
+            echo "storeFile=$keystore"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > keystore.properties
+          if [ -n "${ANDROID_SDK_ROOT:-}" ]; then echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties; fi
+
+          # verify (test + lintDebug + assembleDebug) + assembleRelease + mapping + SHA256SUMS
+          ./gradlew publishVersionedRelease --stacktrace
+
+          apk="release/Dayloom-v${{ steps.meta.outputs.version }}.apk"
+          test -f "$apk"
+
+          # The APK is public: it must not contain any API key. Unpack to a file first: `unzip | grep -q` gets SIGPIPE under pipefail.
+          # APK 公开可下载，不能含任何 API Key。先解压到文件再扫：`unzip | grep -q` 在 pipefail 下会因 SIGPIPE 误判。
+          unpacked="$RUNNER_TEMP/apk-unpacked.bin"
+          unzip -p "$apk" > "$unpacked"
+          if grep -aqE 'AIza[0-9A-Za-z_-]{35}' "$unpacked"; then
+            echo "::error::the APK contains a Google API key pattern / APK 里有 Google API Key 格式的字符串"; exit 1
+          fi
+          for name in LEAK_CHECK_GOOGLE LEAK_CHECK_FOOTBALL; do
+            value="${!name:-}"
+            if [ -n "$value" ] && grep -aqF -- "$value" "$unpacked"; then
+              echo "::error::the APK contains the key of $name / APK 里含有 $name 对应的 Key"; exit 1
+            fi
+          done
+
+          sdk="${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
+          apksigner="$(find "$sdk/build-tools" -type f -name apksigner 2>/dev/null | sort -V | tail -n1)"
+          test -n "$apksigner"
+          "$apksigner" verify --print-certs "$apk" | grep -i 'SHA-256' | tee "$RUNNER_TEMP/cert.txt"
+
+          sha="$(sha256sum "$apk" | awk '{print $1}')"
+          echo "apk=$apk" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Internal build ${{ steps.meta.outputs.version }}"
+            echo
+            echo "- APK SHA-256: \`$sha\`"
+            echo "- Signing certificate: \`$(sed 's/.*: //' "$RUNNER_TEMP/cert.txt")\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          rm -f keystore.properties "$keystore"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: Dayloom-${{ steps.meta.outputs.version }}
+          path: |
+            ${{ steps.build.outputs.apk }}
+            release/SHA256SUMS
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Upload R8 mapping
+        uses: actions/upload-artifact@v7
+        with:
+          name: mapping-${{ steps.meta.outputs.version }}
+          path: release/mapping-v${{ steps.meta.outputs.version }}.txt
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Upload gate reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: internal-build-reports
+          path: |
+            app/build/reports/tests/
+            app/build/reports/lint-results-debug.*
+          if-no-files-found: ignore

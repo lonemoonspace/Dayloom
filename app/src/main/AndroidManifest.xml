@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Requested only when the user turns on a notification switch, never at startup. / 只在用户打开某个通知开关时请求，绝不在启动时请求。 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application
+        android:name=".DayloomApp"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Dayloom"
+        android:usesCleartextTraffic="false">
+
+        <!-- singleTop: a notification tap reuses this activity through onNewIntent. / singleTop：点击通知经 onNewIntent 复用本 Activity。 -->
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|uiMode|fontScale|keyboardHidden"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.Dayloom.Starting">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- dayloom://home, dayloom://settings, dayloom://<moduleId>; resolved in DeepLinkPolicy. / 由 DeepLinkPolicy 解析。 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="dayloom" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

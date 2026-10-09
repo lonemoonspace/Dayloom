@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Dayloom" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Splash: background matches the app surface, icon is the launcher foreground. / 启动页：底色与 App 一致，图标用启动器前景。 -->
+    <style name="Theme.Dayloom.Starting" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/ic_launcher_background</item>
+        <item name="postSplashScreenTheme">@style/Theme.Dayloom</item>
+    </style>
+</resources>

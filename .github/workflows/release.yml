@@ -1,0 +1,284 @@
+# Creates a GitHub Release with the signed APK when tag v* is pushed, or branch release/v* (cloud sessions cannot push tags;
+# then this workflow creates the tag itself after the gate passes, and the commit must already be on the default branch).
+# Without the four signing secrets the Release is still created, with a note that the APK will be uploaded by hand.
+# Release notes come from the "## X.Y.Z" section of CHANGELOG.md on the default branch (falling back to the tag's copy).
+# 推 v* tag 或 release/v* 分支时建 GitHub Release 并附签名 APK（云端会话推不了 tag；分支触发时本 workflow 在门禁通过后
+# 自己打 tag，且该提交必须已在默认分支上）。缺四个签名 Secrets 时照样建 Release，并注明 APK 待手动补传。
+# Release 说明取自默认分支 CHANGELOG.md 的「## X.Y.Z」段落（取不到时退回 tag 里那份）。
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+    branches: ['release/v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to (re)publish, e.g. v1.0.0'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      # With a release/v* branch, ref_name has the `release/` prefix; steps strip it. / 分支触发时 ref_name 带 `release/` 前缀，各步骤去掉它。
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          # The versionCode check needs the tag history. / versionCode 递增校验需要 tag 历史。
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      # Tag and versionName must match, or the file name and the app would disagree about the version.
+      # tag 与 versionName 必须一致，否则文件名与 App 里的版本号会对不上。
+      - name: Check tag against versionName
+        id: meta
+        run: |
+          set -euo pipefail
+          tag="${RELEASE_TAG#release/}"
+          case "$tag" in
+            v*) ;;
+            *) echo "::error::the tag must start with v, got '$tag'"; exit 1 ;;
+          esac
+          version="${tag#v}"
+          declared="$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts | head -n1)"
+          code="$(grep -oP 'versionCode\s*=\s*\K[0-9]+' app/build.gradle.kts | head -n1)"
+          if [ "$declared" != "$version" ]; then
+            echo "::error::tag $tag does not match versionName \"$declared\" / tag 与 versionName 不一致"
+            exit 1
+          fi
+          # Branch trigger: create the tag locally now (pushed only after the gate passes). / 分支触发：先在本地打 tag（门禁通过后才推送）。
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$GITHUB_REF_TYPE" = "branch" ]; then
+            if [ -z "$DEFAULT_BRANCH" ] || ! git merge-base --is-ancestor HEAD "origin/$DEFAULT_BRANCH"; then
+              echo "::error::the commit must already be on $DEFAULT_BRANCH / 该提交必须已在 $DEFAULT_BRANCH 上"
+              exit 1
+            fi
+            if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+              if [ "$(git rev-parse "$tag^{commit}")" != "$(git rev-parse HEAD)" ]; then
+                echo "::error::tag $tag exists and points elsewhere / tag $tag 已存在且不指向本提交"
+                exit 1
+              fi
+            else
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git tag -a "$tag" -m "$tag"
+              echo "push-tag=true" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+          # Android only installs a strictly higher versionCode over an existing install; compare with the previous v* tag.
+          # Android 只允许 versionCode 严格递增才能覆盖安装；与上一条 v* tag 比较。
+          prev_tag="$(git tag --list 'v*' --sort=-v:refname | awk -v cur="$tag" '$0 == cur { seen = 1; next } seen { print; exit }')"
+          if [ -z "$prev_tag" ]; then
+            echo "no earlier v* tag, skipping the versionCode check"
+          else
+            prev_code="$(git show "$prev_tag:app/build.gradle.kts" 2>/dev/null | grep -oP 'versionCode\s*=\s*\K[0-9]+' | head -n1 || true)"
+            if [ -z "$prev_code" ]; then
+              echo "::warning::cannot read versionCode of $prev_tag, skipping the check"
+            elif [ "$code" -le "$prev_code" ]; then
+              echo "::error::versionCode $code is not above $prev_code of $prev_tag / versionCode 未大于上一条 tag"
+              exit 1
+            fi
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Extract release notes from CHANGELOG
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="${{ steps.meta.outputs.version }}"
+          source_file="CHANGELOG.md"
+          fetched="$RUNNER_TEMP/CHANGELOG.default.md"
+          # Prefer the default branch's CHANGELOG: a tag is a snapshot and may be outdated when re-publishing an old tag.
+          # awk reads the file directly; `sed | grep -q` would fail with SIGPIPE under pipefail.
+          # 优先用默认分支的 CHANGELOG：tag 是快照，补发旧 tag 时可能过时。awk 直接读文件；`sed | grep -q` 在 pipefail 下会因 SIGPIPE 失败。
+          if gh api "repos/$GITHUB_REPOSITORY/contents/CHANGELOG.md?ref=$DEFAULT_BRANCH" \
+               -H 'Accept: application/vnd.github.raw' > "$fetched" 2>/dev/null; then
+            if awk -v v="## $version" '{ line = $0; gsub(/\r/, "", line); sub(/[ \t]+$/, "", line); if (line == v) found = 1 } END { exit(found ? 0 : 1) }' "$fetched"; then
+              source_file="$fetched"
+            else
+              echo "::warning::no \"## $version\" on $DEFAULT_BRANCH, using the tag's CHANGELOG"
+            fi
+          else
+            echo "::warning::cannot fetch CHANGELOG.md from $DEFAULT_BRANCH, using the tag's copy"
+          fi
+          notes="$RUNNER_TEMP/release-notes.md"
+          # Exact string comparison: dots in the version are wildcards in a regex. / 用字符串相等比较：版本号里的点在正则里是通配符。
+          awk -v v="$version" '
+            {
+              gsub(/\r/, "")
+              line = $0
+              sub(/[ \t]+$/, "", line)
+              if (!found && line == "## " v) { found = 1; next }
+              if (found && line ~ /^## /) { exit }
+              if (found) { print }
+            }
+          ' "$source_file" | sed -e '/./,$!d' > "$notes"
+          if ! grep -q . "$notes"; then
+            echo "::error::no \"## $version\" section in $source_file / CHANGELOG 里没有该版本段落"
+            exit 1
+          fi
+          cat "$notes"
+
+      # Without credentials nothing is written and the gate still runs; it does not need signing.
+      # 凭据缺失时不写任何文件，门禁照常跑——门禁不需要签名。
+      - name: Prepare signing
+        id: creds
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=""
+          for name in KEYSTORE_B64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            [ -n "${!name:-}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::signing secrets missing, the Release will have no APK:$missing"
+            exit 0
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+          keystore="$RUNNER_TEMP/release.jks"
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$keystore"
+          {
+            echo "storeFile=$keystore"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > keystore.properties
+          if [ -n "${ANDROID_SDK_ROOT:-}" ]; then echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties; fi
+
+      - name: Gate (:app:verify)
+        run: ./gradlew :app:verify --stacktrace
+
+      - name: Build signed release APK
+        id: build
+        if: steps.creds.outputs.ready == 'true'
+        env:
+          LEAK_CHECK_GOOGLE: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+          LEAK_CHECK_FOOTBALL: ${{ secrets.FOOTBALL_DATA_ORG_API_KEY }}
+        run: |
+          set -euo pipefail
+          ./gradlew publishVersionedRelease --stacktrace
+
+          apk="release/Dayloom-v${{ steps.meta.outputs.version }}.apk"
+          test -f "$apk"
+
+          # The APK is public: no API keys allowed. / APK 公开可下载：不能含任何 API Key。
+          unpacked="$RUNNER_TEMP/apk-unpacked.bin"
+          unzip -p "$apk" > "$unpacked"
+          if grep -aqE 'AIza[0-9A-Za-z_-]{35}' "$unpacked"; then
+            echo "::error::the APK contains a Google API key pattern"
+            exit 1
+          fi
+          for name in LEAK_CHECK_GOOGLE LEAK_CHECK_FOOTBALL; do
+            value="${!name:-}"
+            if [ -n "$value" ] && grep -aqF -- "$value" "$unpacked"; then
+              echo "::error::the APK contains the key of $name"
+              exit 1
+            fi
+          done
+
+          # Never publish an unsigned or debug-signed APK as a release. / 绝不把未签名或 debug 签名的包当正式版发布。
+          sdk="${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
+          apksigner="$(find "$sdk/build-tools" -type f -name apksigner 2>/dev/null | sort -V | tail -n1)"
+          if [ -z "$apksigner" ]; then
+            echo "::error::apksigner not found under $sdk/build-tools; cannot verify the signature"
+            exit 1
+          fi
+          "$apksigner" verify --print-certs "$apk" >/dev/null
+
+          echo "apk=$apk" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(sha256sum "$apk" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+      - name: Upload gate reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-gate-reports
+          path: |
+            app/build/reports/tests/
+            app/build/reports/lint-results-debug.*
+          if-no-files-found: ignore
+
+      # Without the mapping, crash traces of this version can never be retraced. / 没有 mapping，这个版本的崩溃堆栈永远无法还原。
+      - name: Archive R8 mapping
+        if: steps.creds.outputs.ready == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-mapping-${{ steps.meta.outputs.version }}
+          path: release/mapping-v${{ steps.meta.outputs.version }}.txt
+          if-no-files-found: error
+
+      # Pushed only now, so a failed gate leaves no tag without a Release. Tags pushed with GITHUB_TOKEN do not re-trigger this workflow.
+      # 到这里才推 tag：门禁失败不会留下没有 Release 的 tag。用 GITHUB_TOKEN 推的 tag 不会再次触发本 workflow。
+      - name: Push tag (release branch trigger)
+        if: steps.meta.outputs.push-tag == 'true'
+        run: git push origin "refs/tags/${{ steps.meta.outputs.tag }}"
+
+      - name: Create or update the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          APK: ${{ steps.build.outputs.apk }}
+          SHA256: ${{ steps.build.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.meta.outputs.tag }}"
+          notes="$RUNNER_TEMP/release-notes.md"
+          if [ -n "${APK:-}" ] && [ -f "$APK" ]; then
+            if ! printf '%s' "$SHA256" | grep -Eq '^[0-9a-f]{64}$'; then
+              echo "::error::no valid APK SHA256"
+              exit 1
+            fi
+            printf '\nSHA256: %s\n' "$SHA256" >> "$notes"
+          else
+            printf '\n> No signed APK attached yet: the signing secrets are not configured. / 尚未附签名 APK：未配置签名 Secrets。\n' >> "$notes"
+          fi
+          # Idempotent; updating does not pass --latest, so re-running an old tag does not make it "Latest" again.
+          # 幂等；更新时不带 --latest，重跑旧 tag 不会把它重新标成 Latest。
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" --title "$tag" --notes-file "$notes"
+          else
+            gh release create "$tag" --title "$tag" --notes-file "$notes" --latest --verify-tag
+          fi
+          if [ -n "${APK:-}" ] && [ -f "$APK" ]; then
+            gh release upload "$tag" "$APK" --clobber
+          fi
+          gh release view "$tag" --json url,name,assets
+
+      # The release/v* branch was only a trigger; on failure it stays so it can be re-pushed after a fix.
+      # release/v* 分支只是触发器；失败时保留，修好后可以重推。
+      - name: Delete the trigger branch
+        if: success() && github.event_name == 'push' && github.ref_type == 'branch'
+        run: git push origin --delete "$GITHUB_REF_NAME"

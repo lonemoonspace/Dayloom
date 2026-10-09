@@ -1,0 +1,63 @@
+# Runs the same three checks as the local `verify` gate (test + lintDebug + assembleDebug) on every push.
+# 每次 push 运行与本地 `verify` 门禁相同的三项（test + lintDebug + assembleDebug）。
+
+name: CI
+
+on:
+  push:
+    # cleanup/* only triggers branch cleanup. / cleanup/* 只用来触发分支清理。
+    branches: ['**', '!cleanup/**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: test + lint + assembleDebug
+    runs-on: ubuntu-latest
+    # A hung Gradle daemon must not burn six hours of runner time. / Gradle 卡死时不能白烧 6 小时 runner 额度。
+    timeout-minutes: 30
+    # Least privilege: pull requests from others must not get a writable token. / 最小权限：外部 PR 不能拿到可写令牌。
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Unit tests
+        run: ./gradlew test --stacktrace
+
+      - name: Android Lint
+        run: ./gradlew :app:lintDebug --stacktrace
+
+      - name: Assemble debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: app/build/reports/tests/
+          if-no-files-found: ignore
+
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-debug.*
+          if-no-files-found: ignore

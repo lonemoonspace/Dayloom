@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="demo_title">Demo</string>
+    <string name="demo_summary">Debug builds only: shows how a module plugs into the app.</string>
+    <string name="demo_name_label">Your name</string>
+    <string name="demo_greeting">Hello, %1$s!</string>
+    <plurals name="demo_count">
+        <item quantity="one">Refreshed %1$d time, last at %2$s</item>
+        <item quantity="other">Refreshed %1$d times, last at %2$s</item>
+    </plurals>
+    <string name="demo_tab_body">This tab belongs to the demo module. Modules can add their own tab like this one.</string>
+    <string name="demo_refresh_now">Refresh now</string>
+</resources>

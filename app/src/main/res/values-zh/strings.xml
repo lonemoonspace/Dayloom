@@ -9,6 +9,10 @@
 
     <string name="common_today">今天</string>
     <string name="common_tomorrow">明天</string>
+    <string name="common_updated_now">刚刚</string>
+    <plurals name="common_updated_minutes">
+        <item quantity="other">%1$d 分钟前</item>
+    </plurals>
 
     <string name="place_home">家</string>
     <string name="place_work">公司</string>
@@ -32,16 +36,16 @@
     <string name="weather_clothing_cool">夹克或毛衣</string>
     <string name="weather_clothing_cold">厚外套，加条围巾</string>
     <string name="weather_clothing_freezing">羽绒服、帽子和手套</string>
-    <string name="weather_tip_thunder">可能有雷暴，雷雨时尽量待在室内</string>
-    <string name="weather_tip_heavy_rain">雨势较大，建议穿防水的鞋</string>
-    <string name="weather_tip_umbrella">出门记得带伞</string>
-    <string name="weather_tip_snow">有雨雪，出门留足时间</string>
-    <string name="weather_tip_slippery">路面可能结冰，小心路滑</string>
-    <string name="weather_tip_strong_wind">风大，雨伞可能撑不住</string>
-    <string name="weather_tip_heat">天气炎热，多喝水</string>
-    <string name="weather_tip_sunscreen">日照强，注意防晒</string>
-    <string name="weather_tip_layers">早晚温差大，注意增减衣物</string>
-    <string name="weather_tip_pleasant">天气舒适，适合出门走走</string>
+    <string name="weather_tip_thunder">可能有雷暴</string>
+    <string name="weather_tip_heavy_rain">雨势较大</string>
+    <string name="weather_tip_umbrella">记得带伞</string>
+    <string name="weather_tip_snow">有雨雪</string>
+    <string name="weather_tip_slippery">小心路滑</string>
+    <string name="weather_tip_strong_wind">风大</string>
+    <string name="weather_tip_heat">炎热，多喝水</string>
+    <string name="weather_tip_sunscreen">注意防晒</string>
+    <string name="weather_tip_layers">温差大</string>
+    <string name="weather_tip_pleasant">天气舒适</string>
     <string name="weather_attribution">天气数据：挪威气象局 MET Norway（CC BY 4.0）</string>
     <string name="weather_brief">%1$s，%2$d° · %3$s</string>
     <string name="weather_brief_umbrella">%1$s，%2$d° · %3$s · 稍后有雨，记得带伞</string>
@@ -264,7 +268,7 @@
 
     <string name="traffic_title">路况</string>
     <string name="traffic_summary">实时路况下的驾车时间（需要你自己的 Google Key）</string>
-    <string name="traffic_card_title">驾车 · %1$s → %2$s</string>
+    <string name="traffic_card_title">%1$s → %2$s</string>
     <string name="traffic_setup_places">路况的起点与终点</string>
     <string name="traffic_setup_key">Google Routes API Key</string>
     <string name="traffic_from">起点</string>
@@ -289,7 +293,6 @@
     <string name="transit_summary">挪威的火车、公交通勤方案与实时发车，数据来自 Entur</string>
     <string name="transit_train_title">火车</string>
     <string name="transit_bus_title">公交</string>
-    <string name="transit_card_title">%1$s · %2$s</string>
     <string name="transit_setup_prompt">请在「设置 → 火车 / 公交」里选择通勤的站点。</string>
     <string name="transit_train_note">只坐火车，可在火车之间换乘。选择通勤的两个车站。</string>
     <string name="transit_bus_note">只坐公交与长途大巴，可在它们之间换乘。选择通勤的两个站点。</string>
@@ -300,11 +303,12 @@
     <string name="transit_to_work">上班 · %1$s → %2$s</string>
     <string name="transit_back_home">回家 · %1$s → %2$s</string>
     <string name="transit_direction">%1$s → %2$s</string>
+    <string name="transit_both_ways">%1$s ⇄ %2$s</string>
     <string name="transit_no_options">目前查不到出行方案。</string>
     <string name="transit_no_departures">接下来几小时没有符合条件的班次。</string>
-    <string name="transit_direct">%1$s · 直达</string>
+    <string name="transit_direct">直达</string>
     <plurals name="transit_transfers">
-        <item quantity="other">%1$s · 在 %2$s 换乘</item>
+        <item quantity="other">在 %1$s 换乘</item>
     </plurals>
     <plurals name="transit_minutes">
         <item quantity="other">%1$d 分钟</item>

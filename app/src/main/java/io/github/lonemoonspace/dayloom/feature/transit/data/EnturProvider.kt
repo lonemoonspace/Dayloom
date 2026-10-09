@@ -122,6 +122,7 @@ class EnturProvider(
             expectedArrival = millis(leg.expectedEndTime) ?: aimedArr,
             realtime = leg.realtime,
             cancelled = leg.fromEstimatedCall?.cancellation == true || leg.toEstimatedCall?.cancellation == true,
+            platform = leg.fromEstimatedCall?.quay?.publicCode.orEmpty(),
         )
     }
 
@@ -201,7 +202,7 @@ class EnturProvider(
                     line { publicCode }
                     fromPlace { name }
                     toPlace { name }
-                    fromEstimatedCall { cancellation destinationDisplay { frontText } }
+                    fromEstimatedCall { cancellation destinationDisplay { frontText } quay { publicCode } }
                     toEstimatedCall { cancellation }
                   }
                 }
@@ -275,7 +276,11 @@ internal data class Leg(
     data class Place(val name: String? = null)
 
     @Serializable
-    data class CallState(val cancellation: Boolean = false, val destinationDisplay: DestinationDisplay? = null)
+    data class CallState(
+        val cancellation: Boolean = false,
+        val destinationDisplay: DestinationDisplay? = null,
+        val quay: EstimatedCall.Quay? = null,
+    )
 }
 
 @Serializable

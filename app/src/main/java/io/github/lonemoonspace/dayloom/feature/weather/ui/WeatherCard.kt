@@ -2,10 +2,15 @@ package io.github.lonemoonspace.dayloom.feature.weather.ui
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,16 +18,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -36,12 +45,9 @@ import io.github.lonemoonspace.dayloom.core.i18n.asString
 import io.github.lonemoonspace.dayloom.core.storage.Snapshot
 import io.github.lonemoonspace.dayloom.core.ui.InfoCard
 import io.github.lonemoonspace.dayloom.core.ui.SkeletonLines
-import io.github.lonemoonspace.dayloom.core.ui.StatusChip
 import io.github.lonemoonspace.dayloom.core.ui.rememberMinuteTick
 import io.github.lonemoonspace.dayloom.core.ui.rememberPatternFormatter
 import io.github.lonemoonspace.dayloom.core.ui.rememberTimeFormatter
-import io.github.lonemoonspace.dayloom.core.ui.theme.WET_TILE_RAIN_ALPHA
-import io.github.lonemoonspace.dayloom.core.ui.theme.appSurfaces
 import io.github.lonemoonspace.dayloom.core.ui.theme.statusColors
 import io.github.lonemoonspace.dayloom.core.ui.userMessage
 import io.github.lonemoonspace.dayloom.feature.weather.domain.ClothingLevel
@@ -50,6 +56,7 @@ import io.github.lonemoonspace.dayloom.feature.weather.domain.DailyForecastBuild
 import io.github.lonemoonspace.dayloom.feature.weather.domain.DayOutlook
 import io.github.lonemoonspace.dayloom.feature.weather.domain.DayOutlookPolicy
 import io.github.lonemoonspace.dayloom.feature.weather.domain.Forecast
+import io.github.lonemoonspace.dayloom.feature.weather.domain.ForecastPoint
 import io.github.lonemoonspace.dayloom.feature.weather.domain.HourWeather
 import io.github.lonemoonspace.dayloom.feature.weather.domain.OutlookDay
 import io.github.lonemoonspace.dayloom.feature.weather.domain.WeatherCondition
@@ -63,10 +70,11 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
- * The weather card for Home: the weather now on top, then what the day is like (today, or tomorrow from the evening on) —
- * temperatures, a few hours across the day, rain, what to wear and tips — and a four-day strip at the bottom.
- * 家所在地的天气卡：上面是现在的天气，然后是这一天（今天；入夜后为明天）的情况——气温、几个时间点、降雨、穿衣与温馨提示，
- * 最下面是四天预报横排。
+ * The weather card for Home, one block in the theme's primary colour (the same on every day, whatever the weather): the
+ * weather now, a few hours across the day (today, or tomorrow from the evening on), advice pills for rain, clothing and
+ * tips, and the next four days.
+ * 家所在地的天气卡，一整块主题主色（不随天气变色）：现在的天气、这一天（今天；入夜后为明天）的几个时间点、降雨、穿衣与
+ * 提示的建议胶囊，以及之后四天。
  */
 @Composable
 internal fun WeatherCard(
@@ -78,8 +86,8 @@ internal fun WeatherCard(
     val forecast = snapshot?.value
     val current = forecast?.let { f -> WeatherPointPicker.pick(f.points, now) { Instant.ofEpochMilli(it.time).atZone(now.zone) } }
     if (snapshot == null || forecast == null || current == null) {
-        InfoCard(title = stringResource(R.string.weather_title)) {
-            if (error == null) SkeletonLines() else ErrorLine(error)
+        InfoCard(title = stringResource(R.string.weather_title), icon = R.drawable.ic_wx_partly_day) {
+            if (error == null) SkeletonLines() else Text(error.userMessage().asString(), color = MaterialTheme.statusColors.red, style = MaterialTheme.typography.bodySmall)
         }
         return
     }
@@ -87,220 +95,207 @@ internal fun WeatherCard(
     val days = remember(forecast, now.toLocalDate(), now.zone) {
         DailyForecastBuilder.build(forecast.points, now.toLocalDate(), now.zone)
     }
-    val stale = isStale(snapshot, now.toInstant())
-    InfoCard(title = null) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            WeatherIconImage(current.symbol, size = 40.dp)
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(conditionText(WeatherSymbolPolicy.condition(current.symbol))),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    if (stale) {
-                        Spacer(Modifier.width(6.dp))
-                        StatusChip(stringResource(R.string.common_cached), MaterialTheme.statusColors.amber)
-                    }
+    val colors = heroColors()
+    CompositionLocalProvider(LocalContentColor provides colors.content) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(MaterialTheme.shapes.large)
+                .background(Brush.linearGradient(listOf(colors.container, lerp(colors.container, Color.Black, GRADIENT_DARKEN))))
+                .animateContentSize()
+                .padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 8.dp),
+        ) {
+            NowRow(current, outlook, stale = isStale(snapshot, now.toInstant()))
+            outlook?.timeline?.takeIf { it.size >= 2 }?.let { hours ->
+                Divider()
+                Row {
+                    hours.take(TIMELINE_POINTS).forEach { HourCell(it, Modifier.weight(1f)) }
+                    // Keep the columns the width of a full day when fewer hours are left. / 剩下的小时不多时，列宽仍按整天算。
+                    repeat(TIMELINE_POINTS - hours.size.coerceAtMost(TIMELINE_POINTS)) { Spacer(Modifier.weight(1f)) }
                 }
-                val feels = current.apparentTemperature ?: current.temperature
-                val wind = (current.windSpeed ?: 0.0).roundToInt()
-                val gust = current.windGust?.roundToInt()
-                Text(
-                    text = listOfNotNull(
-                        feels?.let { stringResource(R.string.weather_feels_like, it.roundToInt()) },
-                        if (gust != null && gust > wind) {
-                            stringResource(R.string.weather_wind_gusts, wind, gust)
-                        } else {
-                            stringResource(R.string.weather_wind_speed, wind)
-                        },
-                    ).joinToString(" · "),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
             }
-            Spacer(Modifier.width(8.dp))
-            current.temperature?.let { Text(text = "${it.roundToInt()}°", fontSize = 34.sp, fontWeight = FontWeight.SemiBold) }
-        }
-        outlook?.let { DayOutlookSection(it) }
-        val strip = days.take(STRIP_DAYS)
-        if (strip.isNotEmpty()) {
-            Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                strip.forEach { DayCell(it, now.toLocalDate(), Modifier.weight(1f)) }
+            outlook?.let { AdvicePills(it) }
+            if (error != null) {
+                Spacer(Modifier.height(6.dp))
+                HeroPill(error.userMessage().asString(), icon = R.drawable.ic_status_warn, strong = true)
             }
+            val strip = days.filter { it.date > (outlook?.date ?: now.toLocalDate()) }.take(STRIP_DAYS)
+            if (strip.isNotEmpty()) {
+                Divider()
+                Row {
+                    strip.forEach { DayCell(it, now.toLocalDate(), Modifier.weight(1f)) }
+                    repeat(STRIP_DAYS - strip.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+            Text(
+                text = stringResource(R.string.weather_attribution),
+                style = MaterialTheme.typography.labelSmall,
+                color = LocalContentColor.current.copy(alpha = 0.6f),
+                modifier = Modifier.padding(top = 4.dp),
+            )
         }
-        if (error != null) ErrorLine(error)
-        Text(
-            text = stringResource(R.string.weather_attribution),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 6.dp),
-        )
     }
 }
 
+private data class HeroColors(val container: Color, val content: Color)
+
+/**
+ * The wallpaper's primary in light mode, its primary container in dark mode, so the card is the brightest block on the
+ * page in both and its text keeps the scheme's own contrast pair.
+ * 浅色时用壁纸主色，深色时用主色容器色，两种模式下这张卡都是页面上最醒目的一块，文字沿用配色自带的对比色。
+ */
 @Composable
-private fun DayOutlookSection(outlook: DayOutlook) {
-    val time = rememberTimeFormatter()
-    Spacer(Modifier.height(10.dp))
+private fun heroColors(): HeroColors {
+    val scheme = MaterialTheme.colorScheme
+    return if (isSystemInDarkTheme()) HeroColors(scheme.primaryContainer, scheme.onPrimaryContainer) else HeroColors(scheme.primary, scheme.onPrimary)
+}
+
+@Composable
+private fun NowRow(current: ForecastPoint, outlook: DayOutlook?, stale: Boolean) {
+    val content = LocalContentColor.current
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = stringResource(if (outlook.day == OutlookDay.TODAY) R.string.common_today else R.string.common_tomorrow),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
-        )
+        WeatherIconImage(current.symbol, size = 40.dp)
         Spacer(Modifier.width(8.dp))
-        if (outlook.symbolCode.isNotEmpty()) {
-            WeatherIconImage(outlook.symbolCode, size = 18.dp)
-            Spacer(Modifier.width(4.dp))
+        current.temperature?.let { Text("${it.roundToInt()}°", fontSize = 44.sp, lineHeight = 46.sp, fontWeight = FontWeight.SemiBold) }
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(conditionText(WeatherSymbolPolicy.condition(current.symbol))),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (stale) {
+                    Spacer(Modifier.width(6.dp))
+                    HeroPill(stringResource(R.string.common_cached))
+                }
+            }
+            val feels = current.apparentTemperature ?: current.temperature
+            val wind = (current.windSpeed ?: 0.0).roundToInt()
+            val gust = current.windGust?.roundToInt()
+            Text(
+                text = listOfNotNull(
+                    feels?.let { stringResource(R.string.weather_feels_like, it.roundToInt()) },
+                    if (gust != null && gust > wind) stringResource(R.string.weather_wind_gusts, wind, gust) else stringResource(R.string.weather_wind_speed, wind),
+                ).joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = content.copy(alpha = 0.85f),
+                maxLines = 2,
+            )
         }
-        Text(
-            text = stringResource(R.string.weather_range, outlook.minTemp.roundToInt(), outlook.maxTemp.roundToInt()),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(Modifier.width(6.dp))
-        Text(
-            text = stringResource(R.string.weather_feels_like, outlook.feelsMin.roundToInt()),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-        )
-    }
-    if (outlook.timeline.size >= 2) {
-        Spacer(Modifier.height(6.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            outlook.timeline.take(TIMELINE_POINTS).forEach { HourCell(it, Modifier.weight(1f)) }
+        outlook?.let {
+            Spacer(Modifier.width(6.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    stringResource(R.string.weather_range, it.minTemp.roundToInt(), it.maxTemp.roundToInt()),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+                Text(
+                    stringResource(if (it.day == OutlookDay.TODAY) R.string.common_today else R.string.common_tomorrow),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = content.copy(alpha = 0.85f),
+                )
+            }
         }
     }
-    Spacer(Modifier.height(6.dp))
-    val rain = MaterialTheme.statusColors.rain
+}
+
+/**
+ * Rain first (when and how much, or that it stays dry), then what to wear, then the tips; safety tips are bold.
+ * 先说雨（什么时候、多少，或者不会下），再说穿什么，最后是提示；与安全有关的提示加粗。
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AdvicePills(outlook: DayOutlook) {
+    val time = rememberTimeFormatter()
     val wet = outlook.rainSpells.isNotEmpty()
-    InfoTile(
-        icon = if (wet) R.drawable.ic_status_umbrella else R.drawable.ic_status_ok,
-        iconTint = if (wet) rain else MaterialTheme.statusColors.green,
-        background = if (wet) rain.copy(alpha = WET_TILE_RAIN_ALPHA).compositeOver(MaterialTheme.appSurfaces.tile) else MaterialTheme.appSurfaces.tile,
-    ) {
+    Spacer(Modifier.height(8.dp))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
         if (wet) {
             val spells = outlook.rainSpells.take(MAX_SPELLS).map {
                 stringResource(R.string.weather_rain_spell, it.start.format(time), it.end.format(time))
-            }.joinToString(" · ")
-            Text(spells, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-            Text(
-                text = listOfNotNull(
-                    stringResource(R.string.weather_rain_total, millimetres(outlook.precipMm)),
-                    outlook.precipChance?.let { stringResource(R.string.weather_rain_chance, it) },
-                ).joinToString(" · "),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            }
+            val text = (spells + listOfNotNull(
+                stringResource(R.string.weather_rain_total, millimetres(outlook.precipMm)),
+                outlook.precipChance?.let { stringResource(R.string.weather_rain_chance, it) },
+            )).joinToString(" · ")
+            HeroPill(text, icon = R.drawable.ic_status_umbrella, strong = true)
         } else {
-            Text(stringResource(R.string.weather_no_rain), style = MaterialTheme.typography.bodyMedium)
+            HeroPill(stringResource(R.string.weather_no_rain))
         }
-    }
-    Spacer(Modifier.height(6.dp))
-    InfoTile(icon = null, iconTint = null, background = MaterialTheme.appSurfaces.tile) {
-        Text(
-            text = stringResource(R.string.weather_clothing_label),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(stringResource(clothingText(outlook.clothing)), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        HeroPill(stringResource(clothingText(outlook.clothing)))
+        // The rain pill already says to take an umbrella. / 雨的那颗胶囊已经说了要带伞。
         outlook.tips.filterNot { it == WeatherTip.UMBRELLA && wet }.forEach { tip ->
-            Text(
-                text = "· " + stringResource(tipText(tip)),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (tip in WARNING_TIPS) MaterialTheme.statusColors.amber else MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = if (tip in WARNING_TIPS) FontWeight.SemiBold else null,
-            )
+            HeroPill(stringResource(tipText(tip)), strong = tip in WARNING_TIPS)
         }
     }
 }
 
-/** A tinted block with an optional leading status icon. / 带可选状态图标的底色块。 */
 @Composable
-private fun InfoTile(@DrawableRes icon: Int?, iconTint: Color?, background: Color, content: @Composable () -> Unit) {
+private fun HeroPill(text: String, @DrawableRes icon: Int? = null, strong: Boolean = false) {
+    val content = LocalContentColor.current
     Row(
         modifier = Modifier
-            .fillMaxWidth()
-            .background(background, TileShape)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .background(content.copy(alpha = if (strong) 0.26f else 0.16f), CircleShape)
+            .padding(horizontal = 9.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (icon != null && iconTint != null) {
-            Icon(painterResource(icon), contentDescription = null, tint = iconTint, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
+        if (icon != null) {
+            Icon(painterResource(icon), contentDescription = null, tint = content, modifier = Modifier.size(12.dp))
+            Spacer(Modifier.width(4.dp))
         }
-        Column(Modifier.weight(1f)) { content() }
+        Text(text, style = MaterialTheme.typography.labelMedium, fontWeight = if (strong) FontWeight.SemiBold else null)
     }
+}
+
+@Composable
+private fun Divider() {
+    Spacer(Modifier.height(8.dp))
+    Box(Modifier.fillMaxWidth().height(1.dp).background(LocalContentColor.current.copy(alpha = 0.18f)))
+    Spacer(Modifier.height(6.dp))
 }
 
 @Composable
 private fun HourCell(hour: HourWeather, modifier: Modifier) {
+    val content = LocalContentColor.current
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(hour.time.format(rememberPatternFormatter("HH")), style = MaterialTheme.typography.labelSmall, color = content.copy(alpha = 0.75f))
+        if (hour.symbolCode.isNotEmpty()) WeatherIconImage(hour.symbolCode, size = 20.dp) else Spacer(Modifier.height(20.dp))
+        Text(hour.temperature?.let { "${it.roundToInt()}°" }.orEmpty(), style = MaterialTheme.typography.labelMedium)
+        // An empty line on dry hours keeps the columns the same height. / 没雨也占一行，各列高度才对得齐。
         Text(
-            hour.time.format(rememberTimeFormatter()),
+            text = if (hour.precipMm >= DayOutlookPolicy.UMBRELLA_MM) millimetres(hour.precipMm) else "",
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
         )
-        if (hour.symbolCode.isNotEmpty()) WeatherIconImage(hour.symbolCode, size = 22.dp)
-        Text(hour.temperature?.let { "${it.roundToInt()}°" }.orEmpty(), style = MaterialTheme.typography.bodySmall)
     }
 }
 
 @Composable
 private fun DayCell(day: DailyForecast, today: LocalDate, modifier: Modifier) {
-    val weekday = rememberPatternFormatter("EEE")
     val label = when (day.date) {
-        today -> stringResource(R.string.common_today)
         today.plusDays(1) -> stringResource(R.string.common_tomorrow)
-        else -> day.date.format(weekday)
+        else -> day.date.format(rememberPatternFormatter("EEE"))
     }
-    Column(
-        modifier = modifier
-            .then(if (day.date == today) Modifier.background(MaterialTheme.appSurfaces.tile, TileShape) else Modifier)
-            .padding(vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
-        Spacer(Modifier.height(2.dp))
-        WeatherIconImage(day.symbolCode, size = 26.dp)
-        Spacer(Modifier.height(2.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-            Text("${day.maxTemp.roundToInt()}°", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.width(4.dp))
-            Text(
-                "${day.minTemp.roundToInt()}°",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        // An empty line on dry days keeps the four columns the same height. / 没雨也占一行，四列的高度才对得齐。
+    val content = LocalContentColor.current
+    Row(modifier = modifier, horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = content.copy(alpha = 0.75f), maxLines = 1)
+        Spacer(Modifier.width(3.dp))
+        WeatherIconImage(day.symbolCode, size = 16.dp)
+        Spacer(Modifier.width(3.dp))
         Text(
-            text = if (day.precipMm >= 0.1) "${millimetres(day.precipMm)} mm" else "",
-            style = MaterialTheme.typography.labelSmall,
-            color = if (day.precipMm >= HEAVY_PRECIP_MM) MaterialTheme.statusColors.amber else MaterialTheme.statusColors.rain,
-            fontWeight = if (day.precipMm >= HEAVY_PRECIP_MM) FontWeight.SemiBold else null,
+            "${day.maxTemp.roundToInt()}°/${day.minTemp.roundToInt()}°",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (day.precipMm >= HEAVY_PRECIP_MM) FontWeight.Bold else null,
             maxLines = 1,
         )
     }
-}
-
-@Composable
-private fun ErrorLine(error: AppError) {
-    Text(
-        text = error.userMessage().asString(),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.statusColors.red,
-        modifier = Modifier.padding(top = 6.dp),
-    )
 }
 
 /**
@@ -389,7 +384,8 @@ internal fun conditionText(condition: WeatherCondition): Int = when (condition) 
     WeatherCondition.UNKNOWN -> R.string.weather_unknown
 }
 
-private val TileShape = RoundedCornerShape(10.dp)
+/** How much darker the bottom-right corner is than the top-left. / 右下角比左上角暗多少。 */
+private const val GRADIENT_DARKEN = 0.22f
 
 /** Every three hours from 06:00 to 21:00 fits six columns. / 06:00 到 21:00 每三小时一列，共六列。 */
 private const val TIMELINE_POINTS = 6
@@ -400,5 +396,5 @@ private const val MAX_SPELLS = 2
 /** Four columns still fit an icon and two temperatures on a narrow phone. / 四列在窄屏上还放得下图标和两个温度。 */
 private const val STRIP_DAYS = 4
 
-/** A day with at least this much precipitation gets the warning colour. / 当天累计降水达到该值时用警示色。 */
+/** A day with at least this much precipitation is shown bold. / 当天累计降水达到该值时加粗显示。 */
 private const val HEAVY_PRECIP_MM = 5.0

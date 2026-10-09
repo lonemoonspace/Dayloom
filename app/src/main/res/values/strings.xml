@@ -13,6 +13,11 @@
 
     <string name="common_today">Today</string>
     <string name="common_tomorrow">Tomorrow</string>
+    <string name="common_updated_now">Just now</string>
+    <plurals name="common_updated_minutes">
+        <item quantity="one">%1$d min ago</item>
+        <item quantity="other">%1$d min ago</item>
+    </plurals>
 
     <string name="place_home">Home</string>
     <string name="place_work">Work</string>
@@ -36,16 +41,16 @@
     <string name="weather_clothing_cool">A jacket or a jumper</string>
     <string name="weather_clothing_cold">A warm coat and a scarf</string>
     <string name="weather_clothing_freezing">Down jacket, hat and gloves</string>
-    <string name="weather_tip_thunder">Thunder is possible; stay indoors during storms</string>
-    <string name="weather_tip_heavy_rain">Heavy rain; waterproof shoes help</string>
+    <string name="weather_tip_thunder">Thunder possible</string>
+    <string name="weather_tip_heavy_rain">Heavy rain</string>
     <string name="weather_tip_umbrella">Take an umbrella</string>
-    <string name="weather_tip_snow">Snow or sleet; allow extra time</string>
-    <string name="weather_tip_slippery">Roads and pavements may be icy</string>
-    <string name="weather_tip_strong_wind">Strong wind; an umbrella may not hold</string>
-    <string name="weather_tip_heat">Hot; drink plenty of water</string>
-    <string name="weather_tip_sunscreen">Strong sun; use sunscreen</string>
-    <string name="weather_tip_layers">Big swing between morning and afternoon; dress in layers</string>
-    <string name="weather_tip_pleasant">A pleasant day to be outside</string>
+    <string name="weather_tip_snow">Snow or sleet</string>
+    <string name="weather_tip_slippery">Icy roads</string>
+    <string name="weather_tip_strong_wind">Strong wind</string>
+    <string name="weather_tip_heat">Hot, drink water</string>
+    <string name="weather_tip_sunscreen">Use sunscreen</string>
+    <string name="weather_tip_layers">Dress in layers</string>
+    <string name="weather_tip_pleasant">Pleasant day</string>
     <string name="weather_attribution">Weather data: MET Norway (CC BY 4.0)</string>
     <string name="weather_brief">%1$s, %2$d° · %3$s</string>
     <string name="weather_brief_umbrella">%1$s, %2$d° · %3$s · rain later, take an umbrella</string>
@@ -273,7 +278,7 @@
 
     <string name="traffic_title">Traffic</string>
     <string name="traffic_summary">Driving time with live traffic (needs your own Google key)</string>
-    <string name="traffic_card_title">Drive · %1$s → %2$s</string>
+    <string name="traffic_card_title">%1$s → %2$s</string>
     <string name="traffic_setup_places">Start and destination for traffic</string>
     <string name="traffic_setup_key">Google Routes API key</string>
     <string name="traffic_from">From</string>
@@ -299,7 +304,6 @@
     <string name="transit_summary">Train and bus commutes and live departures in Norway, from Entur</string>
     <string name="transit_train_title">Train</string>
     <string name="transit_bus_title">Bus</string>
-    <string name="transit_card_title">%1$s · %2$s</string>
     <string name="transit_setup_prompt">Choose the stops of your train or bus commute under Settings → Train / Bus.</string>
     <string name="transit_train_note">Trains only, with changes between trains. Pick the two stations of your commute.</string>
     <string name="transit_bus_note">Buses and coaches only, with changes between them. Pick the two stops of your commute.</string>
@@ -310,12 +314,13 @@
     <string name="transit_to_work">To work · %1$s → %2$s</string>
     <string name="transit_back_home">Home · %1$s → %2$s</string>
     <string name="transit_direction">%1$s → %2$s</string>
+    <string name="transit_both_ways">%1$s ⇄ %2$s</string>
     <string name="transit_no_options">No trips found right now.</string>
     <string name="transit_no_departures">No matching departures in the next hours.</string>
-    <string name="transit_direct">%1$s · direct</string>
+    <string name="transit_direct">Direct</string>
     <plurals name="transit_transfers">
-        <item quantity="one">%1$s · change at %2$s</item>
-        <item quantity="other">%1$s · changes at %2$s</item>
+        <item quantity="one">Change at %1$s</item>
+        <item quantity="other">Changes at %1$s</item>
     </plurals>
     <plurals name="transit_minutes">
         <item quantity="one">%1$d min</item>

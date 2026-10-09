@@ -52,6 +52,8 @@ data class TransitLeg(
     /** False means no real-time data: the times are only the timetable. / false 表示没有实时数据：时刻只是时刻表。 */
     val realtime: Boolean = false,
     val cancelled: Boolean = false,
+    /** Platform or stop position the leg leaves from, e.g. `4` or `B`; empty when unknown. / 这一段出发的站台或候车位，如 `4`、`B`；未知时为空。 */
+    val platform: String = "",
 )
 
 /** One way to make the trip: its legs in order; transfers happen between consecutive legs. / 一种出行方案：按顺序的各段；换乘发生在相邻两段之间。 */

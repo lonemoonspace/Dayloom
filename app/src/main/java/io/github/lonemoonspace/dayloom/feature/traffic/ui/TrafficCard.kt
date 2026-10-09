@@ -55,14 +55,16 @@ internal fun TrafficCard(
     val context = LocalContext.current
     // The direction comes from the data actually shown, which may be from the other window. / 方向以实际显示的数据为准，它可能来自另一个时间窗。
     val (origin, destination) = if (status?.direction == Direction.BACK_HOME) Pair(to, from) else Pair(from, to)
-    val title = if (origin != null && destination != null) {
+    val route = if (origin != null && destination != null) {
         stringResource(R.string.traffic_card_title, placeTitle(origin), placeTitle(destination))
     } else {
-        stringResource(R.string.traffic_title)
+        null
     }
     val openLabel = stringResource(R.string.traffic_open_maps)
     InfoCard(
-        title = title,
+        title = stringResource(R.string.traffic_title),
+        icon = R.drawable.ic_traffic,
+        subtitle = route,
         stale = snapshot?.let { isStale(it, LocalAppClock.current.instant()) } == true,
         modifier = if (status != null && origin != null && destination != null) {
             Modifier.clickable(onClickLabel = openLabel) { openMaps(context, origin, destination) }

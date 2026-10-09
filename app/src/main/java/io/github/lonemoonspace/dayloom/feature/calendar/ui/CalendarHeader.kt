@@ -1,6 +1,7 @@
 package io.github.lonemoonspace.dayloom.feature.calendar.ui
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -55,8 +57,8 @@ internal fun CalendarHeader(showLunar: Boolean, countries: Set<HolidayCountry>, 
         Row(Modifier.fillMaxWidth()) {
             Text(
                 text = now.format(rememberTimeFormatter()),
-                fontSize = 36.sp,
-                lineHeight = 38.sp,
+                fontSize = 44.sp,
+                lineHeight = 46.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.alignByBaseline(),
@@ -109,13 +111,17 @@ private fun SolarTermText(date: LocalDate, lunar: LunarProvider, modifier: Modif
     val text = termToday?.let { stringResource(R.string.calendar_solar_term_today, terms[it.ordinal]) }
         ?: next?.let { countdown(terms[it.term.ordinal], ChronoUnit.DAYS.between(date, it.date).toInt()) }
         ?: return
+    // A pill like the other statuses; today's term is highlighted. / 与其他状态一样是胶囊；当天的节气高亮。
+    val color = if (termToday != null) MaterialTheme.statusColors.green else MaterialTheme.colorScheme.onSurfaceVariant
     Text(
         text = text,
-        style = MaterialTheme.typography.bodyMedium,
-        color = if (termToday != null) MaterialTheme.statusColors.green else MaterialTheme.colorScheme.onSurfaceVariant,
-        fontWeight = if (termToday != null) FontWeight.SemiBold else null,
+        style = MaterialTheme.typography.labelMedium,
+        color = color,
+        fontWeight = FontWeight.SemiBold,
         maxLines = 1,
-        modifier = modifier,
+        modifier = modifier
+            .background(color.copy(alpha = 0.12f), CircleShape)
+            .padding(horizontal = 8.dp, vertical = 2.dp),
     )
 }
 

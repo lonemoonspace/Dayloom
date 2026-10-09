@@ -5,6 +5,7 @@ import io.github.lonemoonspace.dayloom.core.json.AppJson
 import io.github.lonemoonspace.dayloom.core.network.decodeOrBadData
 import io.github.lonemoonspace.dayloom.core.network.executeOrAppError
 import io.github.lonemoonspace.dayloom.feature.transit.domain.BoardDeparture
+import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteKind
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitLeg
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitProvider
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitStop
@@ -19,6 +20,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import okhttp3.HttpUrl
@@ -62,13 +65,14 @@ class EnturProvider(
         }
     }
 
-    override suspend fun planTrips(from: TransitStop, to: TransitStop, at: ZonedDateTime, count: Int): List<TripOption> =
+    override suspend fun planTrips(from: TransitStop, to: TransitStop, at: ZonedDateTime, count: Int, kind: CommuteKind): List<TripOption> =
         withContext(io) {
             val variables = buildJsonObject {
                 put("from", from.id)
                 put("to", to.id)
                 put("at", at.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
                 put("count", count)
+                put("modes", buildJsonArray { modesOf(kind).forEach { add(buildJsonObject { put("transportMode", it) }) } })
             }
             val response = decode(TripResponse.serializer(), post(TRIP_QUERY, variables), "trip response")
             failOnErrors(response.errors)
@@ -168,19 +172,29 @@ class EnturProvider(
 
     companion object {
         const val SERVICE = "Entur"
+
+        /**
+         * Entur transport modes per commute kind; coaches run bus routes too. Walking to and between stops stays allowed.
+         * 每种通勤对应的 Entur 交通方式；长途大巴也跑公交线路。到站与换乘之间的步行照样允许。
+         */
+        internal fun modesOf(kind: CommuteKind): List<String> = when (kind) {
+            CommuteKind.TRAIN -> listOf("rail")
+            CommuteKind.BUS -> listOf("bus", "coach")
+        }
         const val CLIENT_HEADER = "ET-Client-Name"
         const val CLIENT_NAME = "lonemoonspace-dayloom"
         private val JSON = "application/json".toMediaType()
 
         /**
-         * Any mode, so "any line" works. Cancelled options are included and flagged: hiding them would leave the user
-         * waiting for a train that will not come.
-         * 不限交通方式，「任意线路」才成立。被取消的方案也返回并标出：把它们藏起来，用户会在站台等一班不会来的车。
+         * Any line of the commute's modes, with transfers. Cancelled options are included and flagged: hiding them would
+         * leave the user waiting for a train that will not come.
+         * 该通勤交通方式下的任意线路，可换乘。被取消的方案也返回并标出：把它们藏起来，用户会在站台等一班不会来的车。
          */
         internal val TRIP_QUERY = """
-            query Trip(${'$'}from: String!, ${'$'}to: String!, ${'$'}at: DateTime, ${'$'}count: Int) {
+            query Trip(${'$'}from: String!, ${'$'}to: String!, ${'$'}at: DateTime, ${'$'}count: Int, ${'$'}modes: [TransportModes]) {
               trip(from: { place: ${'$'}from }, to: { place: ${'$'}to }, dateTime: ${'$'}at, numTripPatterns: ${'$'}count,
-                   includeRealtimeCancellations: true) {
+                   includeRealtimeCancellations: true,
+                   modes: { accessMode: foot, egressMode: foot, transportModes: ${'$'}modes }) {
                 tripPatterns {
                   legs {
                     mode realtime aimedStartTime expectedStartTime aimedEndTime expectedEndTime

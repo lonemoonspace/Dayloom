@@ -7,10 +7,10 @@ import io.github.lonemoonspace.dayloom.BuildConfig
 import io.github.lonemoonspace.dayloom.app.work.BackgroundRound
 import io.github.lonemoonspace.dayloom.core.i18n.AppLanguage
 import io.github.lonemoonspace.dayloom.core.i18n.SystemAppLanguage
-import io.github.lonemoonspace.dayloom.core.location.AndroidDeviceLocator
-import io.github.lonemoonspace.dayloom.core.location.DeviceLocator
+import io.github.lonemoonspace.dayloom.core.location.GooglePlacesSearch
 import io.github.lonemoonspace.dayloom.core.location.OpenMeteoGeocoder
 import io.github.lonemoonspace.dayloom.core.location.PlaceBook
+import io.github.lonemoonspace.dayloom.core.location.PlaceFinder
 import io.github.lonemoonspace.dayloom.core.location.PlaceSearch
 import io.github.lonemoonspace.dayloom.core.module.FeatureModule
 import io.github.lonemoonspace.dayloom.core.network.ConnectivityMonitor
@@ -24,6 +24,7 @@ import io.github.lonemoonspace.dayloom.core.routine.Routine
 import io.github.lonemoonspace.dayloom.core.secret.DataStoreSecretStore
 import io.github.lonemoonspace.dayloom.core.secret.SecretBox
 import io.github.lonemoonspace.dayloom.core.secret.SecretStore
+import io.github.lonemoonspace.dayloom.core.secret.SharedSecrets
 import io.github.lonemoonspace.dayloom.core.storage.AppSettings
 import io.github.lonemoonspace.dayloom.core.storage.AppStores
 import io.github.lonemoonspace.dayloom.core.storage.DataStoreSnapshotStore
@@ -95,11 +96,13 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
 
     val connectivity = ConnectivityMonitor(appContext)
 
-    val placeSearch: PlaceSearch = OpenMeteoGeocoder(http)
-
-    val deviceLocator: DeviceLocator = AndroidDeviceLocator(appContext)
-
     val secrets: SecretStore = DataStoreSecretStore(appContext.secretsDataStore, SecretBox)
+
+    val placeSearch: PlaceSearch = PlaceFinder(
+        google = GooglePlacesSearch(http, apiKey = { secrets.usable(SharedSecrets.GOOGLE_MAPS) }),
+        fallback = OpenMeteoGeocoder(http),
+        hasGoogleKey = { secrets.usable(SharedSecrets.GOOGLE_MAPS).isNotBlank() },
+    )
 
     private val moduleSettings = ModuleSettingsStore(appContext.moduleSettingsDataStore) { moduleId, e ->
         Log.w(TAG, "settings of module $moduleId unreadable, using defaults", e)

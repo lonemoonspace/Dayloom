@@ -67,7 +67,7 @@ data class TrafficSettings(
 @OptIn(ExperimentalCoroutinesApi::class)
 private class TrafficInstance(private val ctx: ModuleContext) : ModuleInstance {
     private val store = ctx.settings(TrafficSettings.serializer(), TrafficSettings())
-    private val key = ctx.secret("google_maps")
+    private val key = ctx.googleMapsKey
 
     private val from: Flow<Place?> = store.flow.map { it.fromPlaceId }.distinctUntilChanged().flatMapLatest(ctx.places::observe)
     private val to: Flow<Place?> = store.flow.map { it.toPlaceId }.distinctUntilChanged().flatMapLatest(ctx.places::observe)

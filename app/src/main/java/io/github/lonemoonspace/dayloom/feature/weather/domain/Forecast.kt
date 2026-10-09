@@ -37,6 +37,16 @@ data class ForecastPoint(
     val precipitation1h: Double? = null,
     val symbol6h: String = "",
     val precipitation6h: Double? = null,
+    /** °C, MET's "feels like" (wind chill and humidity). / °C，MET 的体感温度（含风寒与湿度）。 */
+    val apparentTemperature: Double? = null,
+    /** m/s. */
+    val windGust: Double? = null,
+    /** UV index under a clear sky; clouds lower the real value. / 晴空紫外线指数；有云时实际值更低。 */
+    val uvIndex: Double? = null,
+    /** 0–100 %, next hour. / 0–100 %，未来一小时。 */
+    val precipProbability1h: Double? = null,
+    /** 0–100 %, next hour. / 0–100 %，未来一小时。 */
+    val thunderProbability1h: Double? = null,
 ) {
     /** The most detailed symbol available. / 可用的最细粒度符号。 */
     val symbol: String get() = symbol1h.ifEmpty { symbol6h }

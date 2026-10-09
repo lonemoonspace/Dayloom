@@ -10,6 +10,7 @@ import io.github.lonemoonspace.dayloom.core.refresh.SourceId
 import io.github.lonemoonspace.dayloom.core.routine.Routine
 import io.github.lonemoonspace.dayloom.core.secret.SecretState
 import io.github.lonemoonspace.dayloom.core.secret.SecretStore
+import io.github.lonemoonspace.dayloom.core.secret.SharedSecrets
 import io.github.lonemoonspace.dayloom.core.storage.ModuleSettingsStore
 import io.github.lonemoonspace.dayloom.core.storage.SnapshotStore
 import io.github.lonemoonspace.dayloom.core.storage.ValueStore
@@ -57,8 +58,11 @@ class DefaultModuleContext(
         return snapshotFactory.create(sourceId, serializer)
     }
 
-    override fun secret(name: String): ModuleSecret {
-        val id = "$moduleId.$name"
+    override fun secret(name: String): ModuleSecret = secretOf("$moduleId.$name")
+
+    override val googleMapsKey: ModuleSecret get() = secretOf(SharedSecrets.GOOGLE_MAPS)
+
+    private fun secretOf(id: String): ModuleSecret {
         return object : ModuleSecret {
             override fun observe(): Flow<SecretState> = secrets.observe(id)
             override suspend fun usable(): String = secrets.usable(id)

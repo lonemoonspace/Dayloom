@@ -7,6 +7,7 @@ import io.github.lonemoonspace.dayloom.app.ModulePolicy
 import io.github.lonemoonspace.dayloom.core.i18n.AppLanguage
 import io.github.lonemoonspace.dayloom.core.i18n.LanguageChoice
 import io.github.lonemoonspace.dayloom.core.module.FeatureModule
+import io.github.lonemoonspace.dayloom.core.module.SettingsSection
 import io.github.lonemoonspace.dayloom.core.storage.AppSettings
 import io.github.lonemoonspace.dayloom.core.storage.ValueStore
 import io.github.lonemoonspace.dayloom.core.time.ZonePolicy
@@ -26,8 +27,8 @@ data class SettingsState(
     val timeZoneOverride: String = "",
     val effectiveZone: String = "",
     val modules: List<ModuleToggle> = emptyList(),
-    /** Enabled modules that contribute a settings section, in registry order. / 提供设置分区的已开启模块，按注册表顺序。 */
-    val sections: List<ActiveModule> = emptyList(),
+    /** Settings cards of the enabled modules, in registry order. / 已开启模块的设置卡片，按注册表顺序。 */
+    val sections: List<SettingsCardEntry> = emptyList(),
     val morningBrief: Boolean = false,
 )
 
@@ -49,7 +50,7 @@ class SettingsViewModel(
             timeZoneOverride = s.timeZoneOverride,
             effectiveZone = z.id,
             modules = modules.map { ModuleToggle(it, it.id in enabled) },
-            sections = act.orEmpty().filter { it.instance.settings != null },
+            sections = act.orEmpty().flatMap { a -> a.instance.settingsSections.mapIndexed { i, section -> SettingsCardEntry(a, section, i) } },
             morningBrief = s.morningBrief,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsState())
@@ -82,3 +83,6 @@ class SettingsViewModel(
         viewModelScope.launch { settings.update { it.copy(moduleEnabled = it.moduleEnabled + (moduleId to enabled)) } }
     }
 }
+
+/** One settings card; [index] keeps the list keys of a module's cards apart. / 一张设置卡片；[index] 让同一模块的多张卡片列表键不重复。 */
+class SettingsCardEntry(val active: ActiveModule, val section: SettingsSection, val index: Int)

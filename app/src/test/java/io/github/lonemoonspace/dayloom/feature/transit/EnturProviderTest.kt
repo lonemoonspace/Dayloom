@@ -12,6 +12,8 @@ import io.github.lonemoonspace.dayloom.core.time.FixedClock
 import io.github.lonemoonspace.dayloom.feature.transit.data.BoardsSource
 import io.github.lonemoonspace.dayloom.feature.transit.data.CommuteParams
 import io.github.lonemoonspace.dayloom.feature.transit.data.CommuteSource
+import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteKind
+import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteRoute
 import io.github.lonemoonspace.dayloom.feature.transit.data.EnturProvider
 import io.github.lonemoonspace.dayloom.feature.transit.domain.BoardDeparture
 import io.github.lonemoonspace.dayloom.feature.transit.domain.Boards
@@ -25,6 +27,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
@@ -79,7 +82,7 @@ class EnturProviderTest {
     fun `a trip keeps rides, drops walking, and carries real-time and cancellation per leg`() = runTest {
         server.enqueue(MockResponse().setBody(tripBody))
 
-        val options = provider().planTrips(a, b, now, 3)
+        val options = provider().planTrips(a, b, now, 3, CommuteKind.TRAIN)
 
         assertEquals(1, options.size)
         val (rail, bus) = options.single().legs
@@ -100,7 +103,7 @@ class EnturProviderTest {
         server.enqueue(MockResponse().setBody("""{"data":{"trip":{"tripPatterns":[]}}}"""))
         val hostile = TransitStop("x\" } evil { \"", "Hostile")
 
-        provider().planTrips(hostile, b, now, 2)
+        provider().planTrips(hostile, b, now, 2, CommuteKind.BUS)
 
         val request = server.takeRequest()
         assertEquals(EnturProvider.CLIENT_NAME, request.getHeader(EnturProvider.CLIENT_HEADER))
@@ -108,16 +111,19 @@ class EnturProviderTest {
         assertFalse(body.getValue("query").jsonPrimitive.content.contains("evil"))
         assertEquals(hostile.id, body.getValue("variables").jsonObject.getValue("from").jsonPrimitive.content)
         assertTrue(body.getValue("query").jsonPrimitive.content.contains("includeRealtimeCancellations: true"))
+        // The bus commute asks for buses and coaches only. / 公交通勤只要公交与长途大巴。
+        val modes = body.getValue("variables").jsonObject.getValue("modes").jsonArray
+        assertEquals(listOf("bus", "coach"), modes.map { it.jsonObject.getValue("transportMode").jsonPrimitive.content })
     }
 
     @Test
     fun `graphql errors, http errors and garbage become AppErrors`() = runTest {
         server.enqueue(MockResponse().setBody("""{"errors":[{"message":"bad place"}]}"""))
-        assertTrue(runCatching { provider().planTrips(a, b, now, 1) }.exceptionOrNull() is AppError.BadData)
+        assertTrue(runCatching { provider().planTrips(a, b, now, 1, CommuteKind.TRAIN) }.exceptionOrNull() is AppError.BadData)
         server.enqueue(MockResponse().setResponseCode(503))
-        assertEquals(503, (runCatching { provider().planTrips(a, b, now, 1) }.exceptionOrNull() as AppError.Http).code)
+        assertEquals(503, (runCatching { provider().planTrips(a, b, now, 1, CommuteKind.TRAIN) }.exceptionOrNull() as AppError.Http).code)
         server.enqueue(MockResponse().setBody("<html>"))
-        assertTrue(runCatching { provider().planTrips(a, b, now, 1) }.exceptionOrNull() is AppError.BadData)
+        assertTrue(runCatching { provider().planTrips(a, b, now, 1, CommuteKind.TRAIN) }.exceptionOrNull() is AppError.BadData)
     }
 
     @Test
@@ -163,8 +169,10 @@ class EnturProviderTest {
     private class FakeProvider : TransitProvider {
         val trips = mutableListOf<Pair<String, String>>()
         override suspend fun searchStops(query: String) = emptyList<TransitStop>()
-        override suspend fun planTrips(from: TransitStop, to: TransitStop, at: ZonedDateTime, count: Int): List<TripOption> {
+        val kinds = mutableListOf<CommuteKind>()
+        override suspend fun planTrips(from: TransitStop, to: TransitStop, at: ZonedDateTime, count: Int, kind: CommuteKind): List<TripOption> {
             trips += from.id to to.id
+            kinds += kind
             return emptyList()
         }
         override suspend fun departures(stopIds: List<String>, at: ZonedDateTime) = mapOf(
@@ -189,12 +197,13 @@ class EnturProviderTest {
         val clock = FixedClock(now)
         val store = InMemorySnapshotStore<CommuteTrips>()
         val mode = kotlinx.coroutines.flow.MutableStateFlow(CommuteMode.BOTH)
-        val source = CommuteSource(SourceId("transit.commute"), store, clock, flowOf(Triple(a, b, 3)), mode, provider)
+        val source = CommuteSource(SourceId("transit.bus"), store, clock, CommuteKind.BUS, flowOf(CommuteRoute(a, b, 3)), mode, provider)
         val coordinator = RefreshCoordinator(FakeNetworkStatus(), clock, backgroundScope, watchInputs = false)
         coordinator.register(listOf(source))
 
         coordinator.refresh(setOf(source.id), Trigger.USER)
         assertEquals(listOf(a.id to b.id, b.id to a.id), provider.trips)
+        assertEquals("the route's kind travels with every request", setOf(CommuteKind.BUS), provider.kinds.toSet())
 
         mode.value = CommuteMode.INBOUND
         provider.trips.clear()

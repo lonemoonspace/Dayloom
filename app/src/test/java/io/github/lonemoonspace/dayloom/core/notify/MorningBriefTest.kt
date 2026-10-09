@@ -26,14 +26,13 @@ class MorningBriefTest {
     private val monday = LocalDate.of(2026, 10, 5)
 
     @Test
-    fun `due once per working day inside the to-work window`() {
+    fun `due once a day inside the to-work window, weekends included`() {
         assertEquals(monday, MorningBriefPolicy.dueDay(routine, at(5, 7, 10), null))
         assertNull("already sent today", MorningBriefPolicy.dueDay(routine, at(5, 7, 40), monday))
         assertEquals("a new day", monday.plusDays(1), MorningBriefPolicy.dueDay(routine, at(6, 7, 10), monday))
         assertNull("before the window", MorningBriefPolicy.dueDay(routine, at(5, 6, 50), null))
         assertNull("the back-home window does not count", MorningBriefPolicy.dueDay(routine, at(5, 17), null))
-        assertNull("weekend", MorningBriefPolicy.dueDay(routine, at(10, 7, 10), null))
-        assertNull("no commute", MorningBriefPolicy.dueDay(routine.copy(enabled = false), at(5, 7, 10), null))
+        assertEquals("weekend", LocalDate.of(2026, 10, 10), MorningBriefPolicy.dueDay(routine, at(10, 7, 10), null))
     }
 
     @Test

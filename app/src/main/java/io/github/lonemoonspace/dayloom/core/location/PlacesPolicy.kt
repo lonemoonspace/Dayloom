@@ -45,6 +45,29 @@ object PlacesPolicy {
     /** Four decimals with a dot, never exponent notation (`1.0E-4`). / 四位小数、小数点，绝不用科学计数法（`1.0E-4`）。 */
     fun formatCoordinate(value: Double): String = String.format(Locale.ROOT, "%.4f", roundCoordinate(value))
 
+    /**
+     * "59.9139, 10.7522" (also with a space, a semicolon or Chinese punctuation) typed by hand, as a place at exactly that spot;
+     * null for anything else, including coordinates out of range. Both numbers need decimals, so a house number and a
+     * postcode are never read as coordinates.
+     * 手动输入的「59.9139, 10.7522」（也接受空格、分号或中文标点分隔），作为恰好在那一点的地点；其他输入（包括超出范围的坐标）为 null。
+     * 两个数都必须带小数，门牌号加邮编才不会被当成坐标。
+     */
+    fun parseCoordinates(text: String): PlaceCandidate? {
+        val match = COORDINATES.matchEntire(text.trim()) ?: return null
+        val lat = match.groupValues[1].toDoubleOrNull() ?: return null
+        val lon = match.groupValues[2].toDoubleOrNull() ?: return null
+        if (lat !in -90.0..90.0 || lon !in -180.0..180.0) return null
+        return PlaceCandidate(
+            name = formatCoordinate(lat) + ", " + formatCoordinate(lon),
+            detail = "",
+            lat = roundCoordinate(lat),
+            lon = roundCoordinate(lon),
+            countryCode = "",
+        )
+    }
+
+    private val COORDINATES = Regex("""(-?\d{1,2}\.\d+)\s*[,;，；\s]\s*(-?\d{1,3}\.\d+)""")
+
     private fun presetRank(id: String): Int = when (id) {
         Place.HOME -> 0
         Place.WORK -> 1

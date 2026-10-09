@@ -18,6 +18,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,36 +33,41 @@ import io.github.lonemoonspace.dayloom.feature.calendar.domain.HolidayCountry
 import io.github.lonemoonspace.dayloom.feature.calendar.domain.HolidayPolicy
 import io.github.lonemoonspace.dayloom.feature.calendar.domain.LunarDate
 import io.github.lonemoonspace.dayloom.feature.calendar.domain.LunarProvider
-import io.github.lonemoonspace.dayloom.feature.calendar.domain.SolarTerm
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import java.time.temporal.IsoFields
 
 /**
- * The clock header (no card around it): time, date, week number and holidays on the left; lunar date, stem-branch year and
- * solar term on the right.
- * 时钟页头（不套卡片）：左侧时间、日期、周数与节日，右侧农历日期、干支年与节气。
+ * The clock header (no card around it), in two aligned rows: the time with the solar term on the right, then the date and
+ * week with the stem-branch year and lunar date on the right; holidays below.
+ * 时钟页头（不套卡片），两行对齐：时间与右侧的节气；日期、周数与右侧的干支年和农历日期；节日在下面。
  */
 @Composable
 internal fun CalendarHeader(showLunar: Boolean, countries: Set<HolidayCountry>, lunar: LunarProvider) {
     val now = rememberMinuteTick()
     val date = now.toLocalDate()
-    val termToday = remember(date, showLunar) { if (showLunar) lunar.solarTermOn(date) else null }
-    Row(
+    val day = remember(date, showLunar) { if (showLunar) lunar.lunarDate(date) else null }
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.Bottom,
     ) {
-        Column(Modifier.weight(1f)) {
+        Row(Modifier.fillMaxWidth()) {
             Text(
                 text = now.format(rememberTimeFormatter()),
                 fontSize = 36.sp,
                 lineHeight = 38.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.alignByBaseline(),
             )
+            Spacer(Modifier.weight(1f))
+            if (day != null) SolarTermText(date, lunar, Modifier.alignByBaseline())
+        }
+        Row(Modifier.fillMaxWidth()) {
             // ISO 8601 weeks (Monday first), as Norwegian calendars count them. / 周数按 ISO 8601（周一为一周开始），与挪威日历一致。
+            // Unweighted, so the date is measured first and the lunar text gives way on a narrow screen.
+            // 不加权重，日期先测量，窄屏上让农历文字让位。
             Text(
                 text = stringResource(
                     R.string.calendar_date_week,
@@ -70,15 +76,47 @@ internal fun CalendarHeader(showLunar: Boolean, countries: Set<HolidayCountry>, 
                 ),
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.alignByBaseline(),
             )
-            if (countries.isNotEmpty()) HolidayRow(date, countries, lunar, solarTermsShown = showLunar)
+            if (day != null) {
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = stringResource(R.string.calendar_lunar_line, lunarYearText(day), lunarDateText(day)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.End,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .weight(1f)
+                        .alignByBaseline(),
+                )
+            }
         }
-        if (showLunar) {
-            Spacer(Modifier.width(12.dp))
-            LunarBlock(date, lunar, termToday)
-        }
+        if (countries.isNotEmpty()) HolidayRow(date, countries, lunar, solarTermsShown = showLunar)
     }
+}
+
+/**
+ * Today's solar term, highlighted, or a countdown to the next one.
+ * 当天的节气（高亮），否则是下一个节气的倒计时。
+ */
+@Composable
+private fun SolarTermText(date: LocalDate, lunar: LunarProvider, modifier: Modifier) {
+    val termToday = remember(date) { lunar.solarTermOn(date) }
+    val next = remember(date) { if (termToday == null) lunar.nextSolarTerm(date) else null }
+    val terms = stringArrayResource(R.array.calendar_solar_terms)
+    val text = termToday?.let { stringResource(R.string.calendar_solar_term_today, terms[it.ordinal]) }
+        ?: next?.let { countdown(terms[it.term.ordinal], ChronoUnit.DAYS.between(date, it.date).toInt()) }
+        ?: return
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = if (termToday != null) MaterialTheme.statusColors.green else MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = if (termToday != null) FontWeight.SemiBold else null,
+        maxLines = 1,
+        modifier = modifier,
+    )
 }
 
 /**
@@ -105,39 +143,6 @@ private fun HolidayRow(date: LocalDate, countries: Set<HolidayCountry>, lunar: L
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-        }
-    }
-}
-
-/**
- * Lunar date, stem-branch year and solar term, as a calendar in China shows them for the same Gregorian date.
- * 农历日期、干支年与节气，与国内日历在同一公历日期显示的内容一致。
- */
-@Composable
-private fun LunarBlock(date: LocalDate, lunar: LunarProvider, termToday: SolarTerm?) {
-    val day = remember(date) { lunar.lunarDate(date) } ?: return
-    val next = remember(date) { if (termToday == null) lunar.nextSolarTerm(date) else null }
-    val terms = stringArrayResource(R.array.calendar_solar_terms)
-    Column(horizontalAlignment = Alignment.End) {
-        Text(text = lunarDateText(day), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-        val termText = termToday?.let { stringResource(R.string.calendar_solar_term_today, terms[it.ordinal]) }
-            ?: next?.let { countdown(terms[it.term.ordinal], ChronoUnit.DAYS.between(date, it.date).toInt()) }
-        Row {
-            Text(
-                text = lunarYearText(day) + if (termText != null) " · " else "",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-            termText?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (termToday != null) MaterialTheme.statusColors.green else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = if (termToday != null) FontWeight.SemiBold else null,
-                    maxLines = 1,
-                )
-            }
         }
     }
 }

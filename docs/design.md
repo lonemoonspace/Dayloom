@@ -87,7 +87,7 @@ io.github.lonemoonspace.dayloom
 │   ├── secret/                  // SecretStore、SecretBox
 │   ├── network/                 // OkHttp、联网状态、凭据重定向防护
 │   ├── time/                    // AppClock、时区
-│   ├── location/                // 地点（Place）、地点搜索、设备定位
+│   ├── location/                // 地点（Place）、地点搜索（Google / Open-Meteo / 坐标）
 │   ├── routine/                 // 日常时间窗（上班/下班）、常用地点（家/公司）
 │   ├── i18n/                    // UiText、语言切换
 │   ├── error/  json/  work/  ui/
@@ -223,7 +223,7 @@ val allModules: List<FeatureModule> = listOf(
 ### 6.3 凭据
 
 沿用 `SecretStore` / `SecretBox`（`v1:` 密文格式、Android Keystore），规则不变：发请求只用 `usable(id)`，输入框只回填 `display`，永远不把密文当凭据发出或显示。
-第一版的凭据：`traffic.google_maps`、`football.football_data`、`news.miniflux_token`、`news.llm_api_key`。
+第一版的凭据：`core.google_maps`（地点搜索与路况共用的一个 Google Maps Platform Key，在「地点」里填写；模块通过 `ModuleContext.googleMapsKey` 取用）、`football.football_data`、`news.miniflux_token`、`news.llm_api_key`。
 
 ---
 
@@ -244,7 +244,7 @@ val allModules: List<FeatureModule> = listOf(
 
 - 由 core 实现，是唯一跨模块的通知：每个启用了 `BriefContributor` 的模块提供一行结构化内容（如「今天有雨，带伞」「首班车准点」「路况畅通，22 分钟」），按模块顺序拼成一条通知。
 - 新模块只要实现 `BriefContributor` 就会自动出现在简报里。
-- 发送时机：工作日上班时间窗内的第一轮后台刷新，按时间窗所属日期每天一条。没有任何模块有话说时（数据太旧或都没内容）当天的机会不算用掉，同一时间窗里稍后的一轮还能发。某个模块出错只少它那一行。
+- 发送时机：每天上班时间窗内的第一轮后台刷新，按时间窗所属日期每天一条。没有任何模块有话说时（数据太旧或都没内容）当天的机会不算用掉，同一时间窗里稍后的一轮还能发。某个模块出错只少它那一行。
 
 ### 7.4 第一版的通知
 
@@ -265,9 +265,9 @@ val allModules: List<FeatureModule> = listOf(
 天气、公共交通、路况、早间简报都需要「家在哪、公司在哪、什么时候出门」。为避免每个模块各问一遍，放在 core 里共享：
 
 - **常用地点（`core/location`）**：`Place(id, label, name, lat, lon, countryCode?)`。预置「家」「公司」两个槽位，可加自定义地点。
-  - 搜索：**Open-Meteo Geocoding**（全球、免费、无需 Key）；挪威地址可额外用 Entur Geocoder 提高精度。
-  - 「使用当前位置」：**只做一次性定位**——用户点按钮时取一次当前位置填进地点，之后地点固定不变。用系统 `LocationManager`（不依赖 Google Play 服务，便于以后上 F-Droid），只申请前台粗略定位权限，可选；不做持续跟随定位，不申请后台定位权限。
-- **日常时间窗（`core/routine`）**：上班窗口、下班窗口（支持跨午夜，沿用原项目校验规则）、工作日（默认周一至周五）。
+  - 搜索：有用户自己的 Key 时用 **Google Places API（新版）文本搜索**（街道地址与具名地点）；没有 Key 时用 **Open-Meteo Geocoding**（全球、免费、无需 Key，只认城镇）。手动输入的坐标（「59.9139, 10.7522」）总是直接采用。
+  - 不用设备定位：App 不申请任何定位权限（rc.1 测试后决定，见 §19）。
+- **日常时间窗（`core/routine`）**：上班窗口、下班窗口（支持跨午夜，沿用原项目校验规则）。每天都生效，没有通勤开关，也不选工作日。
 
 各模块的设置里引用这些共享项，比如天气默认「家」、路况默认「家 → 公司」，也可以改成别的地点。
 
@@ -319,22 +319,22 @@ val allModules: List<FeatureModule> = listOf(
 
 ### 11.1 天气 `weather`
 
-- **功能**：当前天气、未来几小时逐时、明早预报；在日常时间窗内显示「出门/回家时的天气」与降雨开始/停止时间（移植 `CommuteWeatherPolicy`，去掉对通勤设置的直接依赖，改为读共享的时间窗）。
-- **数据源**：MET Norway Locationforecast 2.0（全球）。
-- **设置**：地点（默认「家」）。
+- **功能**：家所在地现在的天气（体感、风与阵风），然后是这一天：18:00 前是今天，18:00 起是明天（`DayOutlookPolicy`，白天时段 06:00–22:00）：最低/最高与体感温度、每三小时一点的时间线、降雨时段及雨量与概率、穿衣建议（按最低体感温度）与温馨提示（带伞、大雨、雷暴、雨雪、路滑、大风、炎热、防晒、温差）；最后是四天预报横排。
+- **数据源**：MET Norway Locationforecast 2.0 `complete`（全球；用 `complete` 是为了体感温度、阵风、紫外线与降水概率）。
+- **设置**：无——固定为家。
 - **来源**：`weather.forecast`。
-- **移植**：`MetApi`、`WeatherPointPicker`、`DailyForecastBuilder`、`CommuteWeatherPolicy`、天气图标（原项目自绘的 `ic_wx_*` 矢量图）。
+- **移植**：`MetApi`、`WeatherPointPicker`、`DailyForecastBuilder`、天气图标（原项目自绘的 `ic_wx_*` 矢量图）。
 - **注意**：MET 要求 User-Agent 带联系方式，改为 `Dayloom/<版本> (+https://github.com/lonemoonspace/dayloom)`；界面需注明数据来源（CC BY 4.0）。
 
 ### 11.2 公共交通 `transit`（第一版最大的一块）
 
 - **功能**
-  1. **通勤行程**：起点站 → 终点站（任意线路），在上班窗口显示去程、下班窗口显示回程，窗口外显示双向最近一班。列出接下来 N 个方案：出发/到达时间、换乘次数与换乘站、每段的实时状态（准点/晚点 N 分/取消）。
+  1. **通勤行程**，**火车**通勤与**公交**通勤分开，各有自己的站点、卡片、设置与异常开关：起点站 → 终点站（该类车辆的任意线路；Entur `trip` 查询限定为 `rail`，或 `bus` 与 `coach`），在上班窗口显示去程、下班窗口显示回程，窗口外显示双向最近一班。列出接下来 N 个方案：出发/到达时间、换乘次数与换乘站、每段的实时状态（准点/晚点 N 分/取消）。
   2. **收藏站点发车板**：任意站点的实时发车，可按线路、终点、方向筛选（例：某站只看某条公交线路、开往某个终点的班次，可还原原项目「只显示全程车」的效果）。
 - **数据源**：Entur Journey Planner v3（GraphQL）`trip` 与 `stopPlace.estimatedCalls`；站点搜索用 Entur Geocoder。请求头 `ET-Client-Name: lonemoonspace-dayloom`。
 - **可插拔**：`TransitProvider` 接口（`searchStops`、`planTrips`、`departures`），第一版只有 `EnturProvider`。设置里地点不在挪威时提示「暂不支持该地区」。
-- **设置**：通勤起点站、终点站、显示方案数；收藏站点列表（站点 + 筛选条件）。
-- **来源**：`transit.commute`、`transit.boards`。
+- **设置**：火车、公交（起点站、终点站、显示方案数、异常提醒）与收藏站点（站点 + 筛选条件）各一张卡片。
+- **来源**：`transit.train`、`transit.bus`、`transit.boards`。
 - **通知**：通勤窗口内，接下来的方案出现取消或大晚点时提醒（移植 `CommuteDisruptionPolicy` 的指纹去重思路）。
 - **移植**：`EnturApi` 的请求与解析基础、`StationMatcher`/`TransferMatcher` 中通用的部分、状态标签的判定规则（准点/晚点/取消/实时未知）。
 - **不移植**：`L1Stations`、L1/R14 专用的换乘对比、`UpcomingL1Policy`、`Bus280*`。
@@ -344,7 +344,7 @@ val allModules: List<FeatureModule> = listOf(
 
 - **功能**：起点 → 终点的预计用时、畅通用时、距离、拥堵等级；按日常时间窗自动切换去程/回程。
 - **数据源**：Google Routes API，**用户自己的 Key**（设置页明确提示需在 Google Cloud 开通、可能产生费用）。
-- **设置**：起点、终点（默认「家 → 公司」）、Google Key。
+- **设置**：起点、终点（默认「家 → 公司」）、共用的 Google Key（`core.google_maps`，需启用 Routes API）。
 - **来源**：`traffic.route`。
 - **默认关闭**：没有 Key 的用户不会看到一张报错的卡片。
 
@@ -401,7 +401,7 @@ val allModules: List<FeatureModule> = listOf(
 ## 13. 首次启动引导
 
 1. 欢迎 + 语言选择；
-2. 设置「家」（搜索或当前位置），可跳过；
+2. 设置「家」（搜索或输入坐标），可跳过；
 3. 勾选要启用的模块（默认：日历、天气、到期提醒；需要 Key 或仅限挪威的模块默认不勾，并注明原因）；
 4. 进入首页。未配置完的模块卡片显示「去设置」引导。
 
@@ -411,7 +411,7 @@ val allModules: List<FeatureModule> = listOf(
 
 - APK 不含任何 API Key；凭据只存在手机上，用 Keystore 加密。
 - 无统计、无崩溃上报、无广告；网络请求只发往用户启用的模块对应的服务。
-- 权限：`INTERNET`、`ACCESS_NETWORK_STATE`、`POST_NOTIFICATIONS`（运行时申请，用户打开任一通知开关时才请求）、`ACCESS_COARSE_LOCATION`（可选，仅一次性定位时请求）。
+- 权限：`INTERNET`、`ACCESS_NETWORK_STATE`、`POST_NOTIFICATIONS`（运行时申请，用户打开任一通知开关时才请求）。不申请定位权限。
 - 「关于」页同时列出所有第三方库及其许可证（MIT 等许可要求随软件附上版权声明）。
 - 凭据只随请求发往其所属服务；沿用 `CredentialRedirectGuard` 防止重定向泄露。
 - 设置页增加「关于 / 数据来源」：
@@ -420,7 +420,7 @@ val allModules: List<FeatureModule> = listOf(
 |---|---|---|
 | 天气 | MET Norway | CC BY 4.0，需注明来源；User-Agent 带联系方式 |
 | 公共交通 | Entur | NLOD，需注明来源；请求头 `ET-Client-Name` |
-| 地点搜索 | Open-Meteo Geocoding | CC BY 4.0，需注明来源 |
+| 地点搜索 | 有 Key 时用 Google Places API（新版），没有时用 Open-Meteo Geocoding | 结果旁注明来自 Google 地图；Open-Meteo 为 CC BY 4.0，需注明来源 |
 | 路况 | Google Routes | 用户自己的 Key，受 Google 服务条款约束 |
 | 足球 | football-data.org | 用户自己的 Key，受其条款约束 |
 | 农历 | lunar-java（`cn.6tail:lunar`） | MIT，需附版权声明；不使用香港天文台对照表 |
@@ -495,17 +495,18 @@ val allModules: List<FeatureModule> = listOf(
 |---|---|
 | 卡片排序 | 直接做拖动排序，并提供无障碍的上移/下移（§4.3） |
 | 英文版设计文档 | 补 `docs/design.en.md`，与中文版保持一致 |
-| 设备定位 | 只做一次性取当前位置填进地点；不做持续跟随、不申请后台定位（§8） |
+| 设备定位 | 不用。最初只做一次性定位；rc.1 测试后去掉，改为 Google 搜索与手动输入坐标（§8） |
 | 农历数据 | 用 lunar-java（MIT），接受其上游（寿星天文历）许可不够明确的轻微风险；用天文台数据做本地校验（§11.5） |
 | minSdk | 33（Android 13）。使用者的手机都是新机型；换来：毛玻璃模糊与动态取色在所有设备上都可用、通知权限只有一种流程、按应用语言用系统原生实现 |
 | 仓库公开时间 | 从 M1（2026-10-09）起公开，而不是等到 M7：公开仓库的 GitHub Actions 分钟数免费。从 PersonalAssistant 移植的代码（天气、节日、图标）经所有者同意公开；移植时去掉个人数据（§18） |
 | 门禁编译 Release | `verify` 与 CI 另外运行 `compileReleaseKotlin`：M1 时发现 Release 源集缺了一个只有 Debug 才有的文件，只编 Debug 的门禁看不出来。CI 每次多约一分钟；R8 仍只在发版 workflow 里跑 |
 | 到期提醒 | 每个条目、每个截止时间在进入提醒期、截止当天、过期时各提醒一次——过期提醒只在过期后一天内发，录入的旧日期不会打扰人。规则从 M2 起就有；选择加入的开关在 M4 随通知接线与权限流程一起加上，不会出现一个按了没用的开关 |
 | 公共交通 | 目前只有 Entur；实现前已验证接口（§11.2）。通勤卡片跟随日常时间窗（时间窗内只看一个方向，时间窗外两个方向各显示下一个方案）；收藏站点发车板在客户端按线路号与终点过滤。异常通知规则从 M3 起就有，选择加入的开关在 M4 随通知接线一起加上 |
-| 日常时间窗 | 所有模块共用（§8），带工作日（默认周一到周五）；起止都是墙上时间，夏令时切换日的时间窗会短一小时或长一小时，与原项目一致 |
+| 日常时间窗 | 所有模块共用（§8），每天都一样（rc.1 测试后去掉了工作日选择与通勤开关）；起止都是墙上时间，夏令时切换日的时间窗会短一小时或长一小时，与原项目一致 |
 | 通知开关 | 不设通知总开关：每类通知各有一个默认关闭的开关，「全部关掉」交给系统设置。通知权限只在用户打开某个开关时请求；权限或对应渠道被关掉时开关上直接提示并给出系统设置入口 |
 | 后台刷新 | WorkManager 每 15 分钟一轮，不加联网约束，每个来源按自己的 `RefreshCadence` 节流；首页可见时每分钟检查一次（§12） |
-| 早间简报 | 工作日上班时间窗内第一轮后台刷新时发送，天气、公共交通、路况、到期提醒各一行；数据过旧的模块不出现在简报里（§7.3） |
+| 早间简报 | 每天上班时间窗内第一轮后台刷新时发送，天气、公共交通、路况、到期提醒各一行；数据过旧的模块不出现在简报里（§7.3） |
+| rc.1 测试反馈（2026-10-09） | 日历页头：节气放在时钟那一行，干支年与农历日期写成一行、与公历日期同高。天气：固定为家，没有设置；卡片上的通勤时间窗换成当天概况、穿衣建议与温馨提示，18:00 起改看明天。公共交通：火车与公交通勤分开（来源、卡片、设置、规则）。地点：不用设备定位；Google 搜索（共用 Key）、手动输入坐标，没有 Key 时退回 Open-Meteo。日常时间窗每天生效。一个模块现在可以有多张设置卡片（`ModuleInstance.settingsSections`）。整体视觉另行讨论 |
 
 ### 决策依据（存档）
 

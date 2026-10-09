@@ -55,6 +55,12 @@ interface ModuleInstance {
 
     val settings: SettingsSection? get() = null
 
+    /**
+     * Several settings cards when one is not enough (train and bus apart); defaults to [settings] alone.
+     * 一张设置卡片不够时可以给多张（火车与公交分开）；默认只有 [settings]。
+     */
+    val settingsSections: List<SettingsSection> get() = listOfNotNull(settings)
+
     val notificationChannels: List<ChannelSpec> get() = emptyList()
 
     val notificationRules: List<NotificationRule<*>> get() = emptyList()
@@ -97,5 +103,8 @@ class ModuleTab(
     val content: @Composable () -> Unit,
 )
 
-/** The module's part of the settings screen, shown under its title. / 模块在设置页里的部分，显示在模块标题下。 */
-class SettingsSection(val content: @Composable () -> Unit)
+/**
+ * One card of the module's settings, titled [title] or else the module's title.
+ * 模块设置里的一张卡片，标题为 [title]，没有时用模块标题。
+ */
+class SettingsSection(@param:StringRes val title: Int? = null, val content: @Composable () -> Unit)

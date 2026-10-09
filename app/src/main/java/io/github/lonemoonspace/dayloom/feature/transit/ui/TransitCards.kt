@@ -1,5 +1,6 @@
 package io.github.lonemoonspace.dayloom.feature.transit.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,41 +30,49 @@ import io.github.lonemoonspace.dayloom.core.ui.theme.statusColors
 import io.github.lonemoonspace.dayloom.core.ui.userMessage
 import io.github.lonemoonspace.dayloom.feature.transit.domain.BoardDeparture
 import io.github.lonemoonspace.dayloom.feature.transit.domain.Boards
+import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteKind
 import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteMode
+import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteRoute
 import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteTrips
 import io.github.lonemoonspace.dayloom.feature.transit.domain.FavouriteBoard
 import io.github.lonemoonspace.dayloom.feature.transit.domain.LegState
 import io.github.lonemoonspace.dayloom.feature.transit.domain.LegStatus
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitPolicy
-import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitStop
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TripOption
 import java.time.Duration
 import java.time.Instant
 import java.time.ZonedDateTime
 
 /**
- * The commute card: inside a daily window the next options in that direction, otherwise the next option each way. Each
- * option shows its times, transfers and the worst real-time status of its legs.
- * 通勤卡片：日常时间窗内显示该方向的接下来几个方案，时间窗外两个方向各显示下一个。每个方案显示时刻、换乘，以及各段中最差的
- * 实时状态。
+ * One commute card (train or bus): inside a daily window the next options in that direction, otherwise the next option each
+ * way. Each option shows its times, transfers and the worst real-time status of its legs.
+ * 一张通勤卡片（火车或公交）：日常时间窗内显示该方向的接下来几个方案，时间窗外两个方向各显示下一个。每个方案显示时刻、换乘，
+ * 以及各段中最差的实时状态。
  */
 @Composable
 internal fun CommuteCard(
+    kind: CommuteKind,
     snapshot: Snapshot<CommuteTrips>?,
     error: AppError?,
     isStale: (Snapshot<CommuteTrips>, Instant) -> Boolean,
-    origin: TransitStop,
-    destination: TransitStop,
-    options: Int,
+    route: CommuteRoute,
 ) {
     val now = rememberMinuteTick()
-    val trips = snapshot?.value
+    val origin = route.origin
+    val destination = route.destination
+    val trips = snapshot?.value?.takeIf { route.isSet }
+    val kindName = stringResource(kindTitle(kind))
     val title = when (trips?.mode) {
-        CommuteMode.OUTBOUND -> stringResource(R.string.transit_to_work, origin.name, destination.name)
-        CommuteMode.INBOUND -> stringResource(R.string.transit_back_home, destination.name, origin.name)
-        else -> stringResource(R.string.transit_commute_title)
+        CommuteMode.OUTBOUND -> stringResource(R.string.transit_card_title, kindName, stringResource(R.string.transit_to_work, origin.name, destination.name))
+        CommuteMode.INBOUND -> stringResource(R.string.transit_card_title, kindName, stringResource(R.string.transit_back_home, destination.name, origin.name))
+        else -> kindName
     }
-    InfoCard(title = title, stale = snapshot?.let { isStale(it, now.toInstant()) } == true) {
+    InfoCard(title = title, stale = route.isSet && snapshot?.let { isStale(it, now.toInstant()) } == true) {
+        if (!route.isSet) {
+            Hint(stringResource(R.string.transit_setup_prompt), maxLines = 3)
+            return@InfoCard
+        }
+        val options = route.options
         when (trips?.mode) {
             null -> if (error == null) SkeletonLines()
             CommuteMode.OUTBOUND -> OptionList(TransitPolicy.visibleOptions(trips.outbound, now, options), now)
@@ -78,6 +87,12 @@ internal fun CommuteCard(
         if (error != null) ErrorLine(error)
         Attribution()
     }
+}
+
+@StringRes
+internal fun kindTitle(kind: CommuteKind): Int = when (kind) {
+    CommuteKind.TRAIN -> R.string.transit_train_title
+    CommuteKind.BUS -> R.string.transit_bus_title
 }
 
 @Composable

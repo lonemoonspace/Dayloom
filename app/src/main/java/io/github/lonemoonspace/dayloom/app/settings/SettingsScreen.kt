@@ -60,9 +60,9 @@ fun SettingsScreen(
         item(key = "shared") { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { sharedData() } }
         item(key = "notifications") { NotificationsCard(state.morningBrief, onMorningBrief) }
         item(key = "modules") { ModulesCard(state.modules, onModuleEnabled) }
-        items(state.sections, key = { "section:${it.module.id}" }) { active ->
-            InfoCard(title = stringResource(active.module.title)) {
-                active.instance.settings?.content?.invoke()
+        items(state.sections, key = { "section:${it.active.module.id}:${it.index}" }) { entry ->
+            InfoCard(title = stringResource(entry.section.title ?: entry.active.module.title)) {
+                entry.section.content()
             }
         }
         item(key = "about") { AboutCard() }

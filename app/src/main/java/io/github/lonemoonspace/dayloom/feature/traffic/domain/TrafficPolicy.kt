@@ -41,8 +41,8 @@ object TrafficPolicy {
 
     /**
      * Back home during the back-home window; otherwise the direction of whichever window comes next, so in the afternoon the
-     * card already shows the way home. With the routine off it always shows the way to work.
-     * 回家时段内是返程；其余时间看哪个时间窗先到，所以下午卡片已经显示回家的路。日常作息关闭时始终显示去程。
+     * card already shows the way home. With an invalid window it falls back to the way to work.
+     * 回家时段内是返程；其余时间看哪个时间窗先到，所以下午卡片已经显示回家的路。时间窗无效时退回去程。
      */
     fun direction(routine: Routine, now: ZonedDateTime): Direction {
         val toWork = RoutinePolicy.next(routine, WindowKind.TO_WORK, now)

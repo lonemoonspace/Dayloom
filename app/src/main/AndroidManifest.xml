@@ -5,9 +5,6 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Requested only when the user turns on a notification switch, never at startup. / 只在用户打开某个通知开关时请求，绝不在启动时请求。 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- Optional; requested only when the user taps "Use current location", read once, never tracked.
-         可选；只在用户点「使用当前位置」时请求，只读一次，不持续定位。 -->
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <application
         android:name=".DayloomApp"

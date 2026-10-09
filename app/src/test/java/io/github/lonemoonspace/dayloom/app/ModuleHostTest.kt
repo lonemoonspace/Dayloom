@@ -151,6 +151,7 @@ class ModuleHostTest {
             override suspend fun usable() = ""
             override suspend fun put(plain: String) {}
         }
+        override val googleMapsKey = secret("google_maps")
         override fun notificationId(offset: Int) = offset
     }
 

@@ -18,6 +18,8 @@ import java.time.format.DateTimeFormatter
  * 通勤异常：在日常时间窗内，下一个方案被取消或严重延误时通知用户。只在本轮刷新成功的通勤快照上判断，过期数据绝不触发通知。
  */
 class DisruptionRule(
+    /** One rule per commute route, e.g. `train_disruption`. / 每条通勤路线一条规则，如 `train_disruption`。 */
+    override val name: String,
     private val enabled: suspend () -> Boolean,
     private val refreshed: (RefreshReport) -> Boolean,
     private val trips: suspend () -> CommuteTrips?,
@@ -25,8 +27,6 @@ class DisruptionRule(
     private val deepLink: String,
     private val notificationId: Int,
 ) : NotificationRule<String?> {
-
-    override val name = "disruption"
 
     override val codec: StateCodec<String?> = StringStateCodec
 

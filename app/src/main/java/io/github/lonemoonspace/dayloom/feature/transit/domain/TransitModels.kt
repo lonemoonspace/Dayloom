@@ -12,6 +12,25 @@ data class TransitStop(val id: String = "", val name: String = "", val locality:
 }
 
 /**
+ * Which vehicles a commute uses. Train and bus commutes are kept apart, each with its own stops, card and settings, because
+ * people plan them differently (a fixed train vs. whichever bus comes).
+ * 一段通勤坐什么车。火车与公交分开，各有自己的站点、卡片与设置，因为两者的安排方式不同（固定的火车班次 vs. 哪班公交先来坐哪班）。
+ */
+enum class CommuteKind { TRAIN, BUS }
+
+/** One commute route: two stops and how many options to show. / 一条通勤路线：两个站点与显示几个方案。 */
+@Serializable
+data class CommuteRoute(
+    val origin: TransitStop = TransitStop(),
+    val destination: TransitStop = TransitStop(),
+    val options: Int = TransitPolicy.DEFAULT_OPTIONS,
+    /** Opt-in, off by default like every notification (design §7.4). / 选择加入，与所有通知一样默认关闭（设计文档 §7.4）。 */
+    val notify: Boolean = false,
+) {
+    val isSet: Boolean get() = origin.isSet && destination.isSet
+}
+
+/**
  * One ride on one vehicle; walking between stops is not a leg. Times are epoch millis; aimed = timetable,
  * expected = real-time estimate (equal to aimed without real-time data).
  * 乘坐一辆车的一段；站间步行不算一段。时刻为 epoch 毫秒；aimed = 时刻表，expected = 实时预计（没有实时数据时等于 aimed）。
@@ -55,7 +74,7 @@ enum class CommuteMode {
     BOTH,
 }
 
-/** The snapshot of `transit.commute`. / `transit.commute` 的快照。 */
+/** The snapshot of `transit.train` and `transit.bus`. / `transit.train` 与 `transit.bus` 的快照。 */
 @Serializable
 data class CommuteTrips(
     val mode: CommuteMode = CommuteMode.BOTH,

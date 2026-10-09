@@ -81,7 +81,7 @@ class TransitPolicyTest {
         assertEquals(CommuteMode.OUTBOUND, TransitPolicy.commuteMode(routine, t(5, 7, 30)))
         assertEquals(CommuteMode.INBOUND, TransitPolicy.commuteMode(routine, t(5, 17)))
         assertEquals(CommuteMode.BOTH, TransitPolicy.commuteMode(routine, t(5, 12)))
-        assertEquals(CommuteMode.BOTH, TransitPolicy.commuteMode(routine, t(10, 7, 30)))
+        assertEquals("weekends too", CommuteMode.OUTBOUND, TransitPolicy.commuteMode(routine, t(10, 7, 30)))
     }
 
     @Test
@@ -180,11 +180,12 @@ class TransitPolicyTest {
 
     @Test
     fun `the rule only acts on a fresh snapshot inside a window and sends structured text`() = runTest {
-        val id = SourceId("transit.commute")
+        val id = SourceId("transit.train")
         val fresh = RefreshReport(mapOf(id to SourceResult.Success(Instant.EPOCH)), Instant.EPOCH)
         val failed = RefreshReport(mapOf(id to SourceResult.Failed(io.github.lonemoonspace.dayloom.core.error.AppError.Offline())), Instant.EPOCH)
         var trips = CommuteTrips(CommuteMode.OUTBOUND, outbound = listOf(option(leg(line = "R1", delay = 12))))
         val rule = DisruptionRule(
+            name = "train_disruption",
             enabled = { true },
             refreshed = { it.succeeded(id) },
             trips = { trips },
@@ -227,5 +228,14 @@ class TransitPolicyTest {
         assertEquals(UiText.Res(R.string.transit_brief, listOf("R1", "07:42", lateText)), TransitBrief.line(late, now))
 
         assertNull("nothing left today", TransitBrief.line(CommuteTrips(CommuteMode.OUTBOUND), now))
+
+        // Train and bus share the module's one line. / 火车与公交合用本模块的一行。
+        val bus = CommuteTrips(CommuteMode.OUTBOUND, outbound = listOf(option(leg(line = "31", dep = t(5, 7, 50)))))
+        assertEquals(
+            UiText.Res(R.string.transit_brief_joined, listOf(TransitBrief.line(onTime, now)!!, TransitBrief.line(bus, now)!!)),
+            TransitBrief.lines(listOf(onTime, bus), now),
+        )
+        assertEquals(TransitBrief.line(bus, now), TransitBrief.lines(listOf(CommuteTrips(CommuteMode.OUTBOUND), bus), now))
+        assertNull(TransitBrief.lines(emptyList(), now))
     }
 }

@@ -31,6 +31,20 @@ looks it up literally.
   when one is turned on, and a switch says when the permission or its system channel is off. Morning brief: on working
   days, one notification at the start of the to-work window with a line each from weather, public transport, traffic and
   expiry reminders. First-run onboarding: language, Home, modules.
+- Changed after testing 0.1.0-rc.1:
+  - Calendar header: the solar term sits on the clock row; the stem-branch year and lunar date form one line level with
+    the date.
+  - Weather always shows Home and has no settings. Instead of umbrella advice per commute window, the card shows the day:
+    low and high, feels-like, a three-hourly timeline, rain spells with amount and chance, what to wear and tips (umbrella,
+    heavy rain, thunder, snow, icy roads, strong wind, heat, sunscreen, layers); from 18:00 it shows tomorrow. Data now
+    comes from MET's `complete` forecast.
+  - Public transport: separate train and bus commutes, each with its own stops, card, settings and disruption alerts;
+    favourite stops have their own settings card.
+  - Places: no device location and no location permission. Search uses Google Places with your own Google Maps key (the
+    same key as Traffic, now entered once under Places), falls back to Open-Meteo without a key, and accepts typed
+    coordinates.
+  - Daily routine: the to-work and back-home times apply every day; the commute switch and working-day selection are gone,
+    and the time buttons line up.
 
 - 项目骨架（M0）：带注册表、宿主与命名空间存储的模块系统；从 PersonalAssistant 移植并泛化的刷新协调器与通知引擎；
   卡片可拖动排序的首页；语言、时区与模块开关设置；中英文资源；架构测试与字符串一致性测试；CI 与发版 workflow。
@@ -49,3 +63,12 @@ looks it up literally.
 - 后台刷新与通知（M4）：周期性后台刷新（每 15 分钟一次，每个来源再按自己的节奏节流），刷新后运行所有通知规则；首页可见时
   也每分钟刷新到期的来源。到期提醒与通勤异常各有一个需要主动打开的开关；只在打开开关时才请求通知权限，权限或对应的系统渠道
   被关掉时开关会提示。早间简报：工作日上班时间窗开始时发一条，天气、公共交通、路况与到期提醒各一行。首次启动引导：语言、家、模块。
+- 0.1.0-rc.1 测试后的修改：
+  - 日历页头：节气放在时钟那一行；干支年与农历日期写成一行，与公历日期同高。
+  - 天气固定显示家所在地，没有设置项。卡片不再按通勤时段给带伞建议，改为显示这一天的情况：最低与最高温度、体感、每三小时一点的
+    时间线、降雨时段及雨量与概率、穿衣建议与温馨提示（带伞、大雨、雷暴、雨雪、路滑、大风、炎热、防晒、温差）；18:00 起显示明天。
+    数据改用 MET 的 `complete` 预报。
+  - 公共交通：火车与公交通勤分开，各有自己的站点、卡片、设置与异常提醒；收藏站点有单独的设置卡片。
+  - 地点：不再使用设备定位，也不申请定位权限。搜索用你自己的 Google Maps Key 调 Google Places（与路况共用一个 Key，现在只需在
+    「地点」里填一次）；没有 Key 时退回 Open-Meteo；也可以直接输入坐标。
+  - 日常作息：去程与返程时间每天都生效；去掉了通勤开关与工作日选择，时间按钮上下对齐。

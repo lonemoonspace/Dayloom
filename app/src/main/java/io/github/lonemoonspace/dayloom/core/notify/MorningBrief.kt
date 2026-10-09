@@ -26,11 +26,11 @@ object CoreNotifications {
 }
 
 /**
- * When the morning brief goes out: on the first background round inside the to-work window, once per working day. A round
+ * When the morning brief goes out: on the first background round inside the to-work window, once a day. A round
  * runs every 15 minutes, so it arrives within a quarter of an hour of the window opening, later if the phone was offline;
  * no exact alarm is worth the battery for that. Deduplicated by the day the window belongs to, not by content: the brief is
  * a daily habit even when nothing changed.
- * 早间简报的发送时机：上班时间窗内的第一次后台刷新，每个工作日一次。后台每 15 分钟跑一轮，所以会在时间窗开始后一刻钟内送达，
+ * 早间简报的发送时机：上班时间窗内的第一次后台刷新，每天一次。后台每 15 分钟跑一轮，所以会在时间窗开始后一刻钟内送达，
  * 手机离线时顺延；为这点精度不值得耗电用精确闹钟。按时间窗所属的日期去重而不是按内容：哪怕什么都没变，简报也是每天一条。
  */
 object MorningBriefPolicy {

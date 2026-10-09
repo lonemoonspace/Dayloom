@@ -78,9 +78,8 @@ class TrafficTest {
         assertEquals(Direction.BACK_HOME, TrafficPolicy.direction(routine, t(5, 12)))
         assertEquals(Direction.BACK_HOME, TrafficPolicy.direction(routine, t(5, 16)))
         assertEquals(Direction.TO_WORK, TrafficPolicy.direction(routine, t(5, 18)))
-        // Friday evening → Monday morning. / 周五晚上 → 周一早上。
-        assertEquals(Direction.TO_WORK, TrafficPolicy.direction(routine, t(9, 20)))
-        assertEquals(Direction.TO_WORK, TrafficPolicy.direction(routine.copy(enabled = false), t(5, 16)))
+        // Weekends too. / 周末也一样。
+        assertEquals(Direction.BACK_HOME, TrafficPolicy.direction(routine, t(10, 16)))
     }
 
     // Parsing and levels / 解析与等级

@@ -45,6 +45,12 @@ interface ModuleContext {
 
     fun secret(name: String): ModuleSecret
 
+    /**
+     * The user's Google Maps Platform key, shared with place search so it is entered once (`core.google_maps`).
+     * 用户的 Google Maps Platform Key，与地点搜索共用，只需输入一次（`core.google_maps`）。
+     */
+    val googleMapsKey: ModuleSecret
+
     fun channelId(name: String): String = "$moduleId.$name"
 
     /**

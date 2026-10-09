@@ -9,6 +9,7 @@ import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -105,5 +106,69 @@ class PlacesTest {
             server.shutdown()
         }
         assertThrows(IllegalArgumentException::class.java) { PlacesPolicy.upsert(emptyList(), Place()) }
+    }
+
+    @Test
+    fun `typed coordinates are a place of their own, house numbers are not`() {
+        val spot = PlacesPolicy.parseCoordinates(" 59.91235, 10.7522 ")!!
+        assertEquals(59.9124, spot.lat, 0.0)
+        assertEquals(10.7522, spot.lon, 0.0)
+        assertEquals("59.9124, 10.7522", spot.name)
+        assertEquals(-33.86, PlacesPolicy.parseCoordinates("-33.86；151.21")?.lat ?: 0.0, 0.0)
+        assertEquals(1.5, PlacesPolicy.parseCoordinates("1.5 -2.5")?.lat ?: 0.0, 0.0)
+        assertNull("no decimals: an address", PlacesPolicy.parseCoordinates("Storgata 12, 0155"))
+        assertNull("out of range", PlacesPolicy.parseCoordinates("95.0, 10.0"))
+        assertNull(PlacesPolicy.parseCoordinates("Oslo"))
+    }
+
+    @Test
+    fun `google text search sends the key in a header and maps name, address and country`() = runTest {
+        val server = MockWebServer()
+        try {
+            server.enqueue(
+                MockResponse().setBody(
+                    """{"places":[{"formattedAddress":"Street 1, 0001 Town A, Norway","location":{"latitude":59.1,"longitude":10.2},
+                    "displayName":{"text":"Station A","languageCode":"en"},
+                    "addressComponents":[{"longText":"Norway","shortText":"NO","types":["country","political"]}]},
+                    {"displayName":{"text":"No location"}}]}""",
+                ),
+            )
+            val search = GooglePlacesSearch(OkHttpClient(), apiKey = { "test-key" }, endpoint = server.url("/v1/places:searchText"))
+            val results = search.search("station a", "zh")
+
+            assertEquals(listOf(PlaceCandidate("Station A", "Street 1, 0001 Town A, Norway", 59.1, 10.2, "NO")), results)
+            val request = server.takeRequest()
+            assertEquals("test-key", request.getHeader("X-Goog-Api-Key"))
+            assertTrue(request.getHeader("X-Goog-FieldMask")!!.contains("places.location"))
+            assertTrue("key never in the URL", "test-key" !in request.path.orEmpty())
+            assertTrue(request.body.readUtf8().contains("\"languageCode\":\"zh\""))
+
+            server.enqueue(MockResponse().setResponseCode(403).setBody("""{"error":{"message":"Places API (New) has not been used"}}"""))
+            val error = try {
+                search.search("station a", "en")
+                null
+            } catch (e: AppError.Http) {
+                e
+            }
+            assertTrue(error!!.detail.contains("Places API"))
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun `the finder takes coordinates as typed, Google with a key, Open-Meteo without`() = runTest {
+        val google = object : PlaceSearch {
+            override suspend fun search(query: String, language: String) = listOf(PlaceCandidate("google", "", 1.0, 1.0, ""))
+        }
+        val meteo = object : PlaceSearch {
+            override suspend fun search(query: String, language: String) = listOf(PlaceCandidate("meteo", "", 1.0, 1.0, ""))
+        }
+        var hasKey = false
+        val finder = PlaceFinder(google, meteo) { hasKey }
+        assertEquals("meteo", finder.search("Town", "en").single().name)
+        hasKey = true
+        assertEquals("google", finder.search("Town", "en").single().name)
+        assertEquals("1.5000, 2.5000", finder.search("1.5, 2.5", "en").single().name)
     }
 }

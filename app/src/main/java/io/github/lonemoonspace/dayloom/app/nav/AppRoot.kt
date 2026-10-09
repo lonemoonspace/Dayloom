@@ -121,7 +121,7 @@ private fun sharedDataViewModel(graph: AppGraph): SharedDataViewModel = viewMode
                 places = graph.places,
                 sharedData = graph.sharedData,
                 search = graph.placeSearch,
-                locator = graph.deviceLocator,
+                secrets = graph.secrets,
                 appScope = graph.appScope,
                 ioContext = Dispatchers.IO,
             )

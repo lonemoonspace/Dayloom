@@ -19,16 +19,18 @@ import io.github.lonemoonspace.dayloom.feature.transit.data.BoardsSource
 import io.github.lonemoonspace.dayloom.feature.transit.data.CommuteSource
 import io.github.lonemoonspace.dayloom.feature.transit.data.EnturProvider
 import io.github.lonemoonspace.dayloom.feature.transit.domain.Boards
+import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteKind
 import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteMode
+import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteRoute
 import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteTrips
 import io.github.lonemoonspace.dayloom.feature.transit.domain.DisruptionRule
 import io.github.lonemoonspace.dayloom.feature.transit.domain.FavouriteBoard
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitBrief
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitPolicy
-import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitStop
 import io.github.lonemoonspace.dayloom.feature.transit.ui.BoardsCard
 import io.github.lonemoonspace.dayloom.feature.transit.ui.CommuteCard
-import io.github.lonemoonspace.dayloom.feature.transit.ui.TransitSettingsSection
+import io.github.lonemoonspace.dayloom.feature.transit.ui.BoardsSettingsSection
+import io.github.lonemoonspace.dayloom.feature.transit.ui.RouteSettingsSection
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -37,9 +39,10 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
 /**
- * Norwegian public transport from Entur: commute trip options between two stops (any line, with transfers) and real-time
- * departure boards of favourite stops. Off by default because it only covers Norway.
- * 来自 Entur 的挪威公共交通：两个站点之间的通勤方案（任意线路，可换乘），以及收藏站点的实时发车板。只覆盖挪威，所以默认关闭。
+ * Norwegian public transport from Entur: a train commute and a bus commute, each between its own two stops (any line of that
+ * kind, with transfers), and real-time departure boards of favourite stops. Off by default because it only covers Norway.
+ * 来自 Entur 的挪威公共交通：火车通勤与公交通勤各自在两个站点之间（该类车辆的任意线路，可换乘），以及收藏站点的实时发车板。
+ * 只覆盖挪威，所以默认关闭。
  */
 object TransitModule : FeatureModule {
     override val id = "transit"
@@ -56,13 +59,20 @@ object TransitModule : FeatureModule {
 data class TransitSettings(
     /** Reserved for migrations after v1.0.0. / 预留给 v1.0.0 之后的迁移。 */
     val version: Int = 1,
-    val origin: TransitStop = TransitStop(),
-    val destination: TransitStop = TransitStop(),
-    val options: Int = TransitPolicy.DEFAULT_OPTIONS,
+    val train: CommuteRoute = CommuteRoute(),
+    val bus: CommuteRoute = CommuteRoute(),
     val boards: List<FavouriteBoard> = emptyList(),
-    /** Opt-in, off by default like every notification (design §7.4). / 选择加入，与所有通知一样默认关闭（设计文档 §7.4）。 */
-    val notify: Boolean = false,
-)
+) {
+    fun route(kind: CommuteKind): CommuteRoute = when (kind) {
+        CommuteKind.TRAIN -> train
+        CommuteKind.BUS -> bus
+    }
+
+    fun withRoute(kind: CommuteKind, transform: (CommuteRoute) -> CommuteRoute): TransitSettings = when (kind) {
+        CommuteKind.TRAIN -> copy(train = transform(train))
+        CommuteKind.BUS -> copy(bus = transform(bus))
+    }
+}
 
 private class TransitInstance(private val ctx: ModuleContext) : ModuleInstance {
     private val store = ctx.settings(TransitSettings.serializer(), TransitSettings())
@@ -79,14 +89,19 @@ private class TransitInstance(private val ctx: ModuleContext) : ModuleInstance {
     // 每分钟重新判断，只在时间窗变化时发出，随后触发一次刷新。
     private val mode: Flow<CommuteMode> = combine(ctx.routine, ctx.clock.minuteTicks(), TransitPolicy::commuteMode).distinctUntilChanged()
 
-    private val commute = CommuteSource(
-        id = ctx.sourceId("commute"),
-        store = ctx.snapshots(ctx.sourceId("commute"), CommuteTrips.serializer()),
-        clock = ctx.clock,
-        settings = store.flow.map { Triple(it.origin, it.destination, it.options) }.distinctUntilChanged(),
-        mode = mode,
-        provider = provider,
-    )
+    /** One source per route: `transit.train`, `transit.bus`. / 每条路线一个来源：`transit.train`、`transit.bus`。 */
+    private val commutes: Map<CommuteKind, CommuteSource> = CommuteKind.entries.associateWith { kind ->
+        val id = ctx.sourceId(kind.sourceName)
+        CommuteSource(
+            id = id,
+            store = ctx.snapshots(id, CommuteTrips.serializer()),
+            clock = ctx.clock,
+            kind = kind,
+            route = store.flow.map { it.route(kind) }.map { it.copy(notify = false) }.distinctUntilChanged(),
+            mode = mode,
+            provider = provider,
+        )
+    }
 
     private val boards = BoardsSource(
         id = ctx.sourceId("boards"),
@@ -96,54 +111,80 @@ private class TransitInstance(private val ctx: ModuleContext) : ModuleInstance {
         provider = provider,
     )
 
-    override val sources = listOf(commute, boards)
+    override val sources = commutes.values.toList() + boards
 
     override val configured: Flow<ConfigState> = store.flow.map {
-        if (it.origin.isSet && it.destination.isSet) ConfigState.Ready else ConfigState.NeedsSetup(uiText(R.string.transit_setup_commute))
+        if (it.train.isSet || it.bus.isSet) ConfigState.Ready else ConfigState.NeedsSetup(uiText(R.string.transit_setup_commute))
     }
 
-    override val homeCards = listOf(
-        HomeCard(key = "commute", title = R.string.transit_commute_title, defaultOrder = 150) {
-            val snapshot by commute.observe().collectAsStateWithLifecycle(initialValue = null)
+    override val homeCards = CommuteKind.entries.map { kind ->
+        HomeCard(key = kind.sourceName, title = kind.title, defaultOrder = 150 + kind.ordinal * 5) {
+            val source = commutes.getValue(kind)
+            val snapshot by source.observe().collectAsStateWithLifecycle(initialValue = null)
             val status by ctx.coordinator.status.collectAsStateWithLifecycle()
             val settings by store.flow.collectAsStateWithLifecycle(initialValue = null)
-            settings?.let { CommuteCard(snapshot, status[commute.id]?.lastError, commute::isStale, it.origin, it.destination, it.options) }
-        },
-        HomeCard(key = "boards", title = R.string.transit_boards_title, defaultOrder = 160) {
-            val snapshot by boards.observe().collectAsStateWithLifecycle(initialValue = null)
-            val status by ctx.coordinator.status.collectAsStateWithLifecycle()
-            val settings by store.flow.collectAsStateWithLifecycle(initialValue = null)
-            // Without favourites the card takes no space. / 没有收藏站点时卡片不占位置。
-            settings?.boards?.takeIf { it.isNotEmpty() }?.let { BoardsCard(snapshot, status[boards.id]?.lastError, boards::isStale, it) }
-        },
-    )
+            settings?.let { s ->
+                // A route that is not set takes no space, unless neither is: then the train card asks for stops.
+                // 没设置的路线不占位置；两条都没设置时由火车卡片提示设置站点。
+                val route = s.route(kind)
+                val prompt = kind == CommuteKind.TRAIN && !s.train.isSet && !s.bus.isSet
+                if (route.isSet || prompt) CommuteCard(kind, snapshot, status[source.id]?.lastError, source::isStale, route)
+            }
+        }
+    } + HomeCard(key = "boards", title = R.string.transit_boards_title, defaultOrder = 160) {
+        val snapshot by boards.observe().collectAsStateWithLifecycle(initialValue = null)
+        val status by ctx.coordinator.status.collectAsStateWithLifecycle()
+        val settings by store.flow.collectAsStateWithLifecycle(initialValue = null)
+        // Without favourites the card takes no space. / 没有收藏站点时卡片不占位置。
+        settings?.boards?.takeIf { it.isNotEmpty() }?.let { BoardsCard(snapshot, status[boards.id]?.lastError, boards::isStale, it) }
+    }
 
-    override val settings = SettingsSection {
-        val home by ctx.places.observe(Place.HOME).collectAsStateWithLifecycle(initialValue = null)
-        TransitSettingsSection(
-            settings = store.flow,
-            provider = provider,
-            // Entur covers Norway only; warn when Home is known to be elsewhere. / Entur 只覆盖挪威；已知家不在挪威时提示。
-            outsideNorway = home?.countryCode?.let { it.isNotEmpty() && it != "NO" } == true,
-            channelId = ctx.channelId(channel.name),
-        ) { transform -> ctx.appScope.launch { store.update(transform) } }
+    override val settingsSections: List<SettingsSection> = CommuteKind.entries.map { kind ->
+        SettingsSection(title = kind.title) {
+            val home by ctx.places.observe(Place.HOME).collectAsStateWithLifecycle(initialValue = null)
+            RouteSettingsSection(
+                kind = kind,
+                settings = store.flow,
+                provider = provider,
+                // Entur covers Norway only; warn when Home is known to be elsewhere. / Entur 只覆盖挪威；已知家不在挪威时提示。
+                outsideNorway = kind == CommuteKind.TRAIN && home?.countryCode?.let { it.isNotEmpty() && it != "NO" } == true,
+                channelId = ctx.channelId(channel.name),
+            ) { transform -> ctx.appScope.launch { store.update(transform) } }
+        }
+    } + SettingsSection(title = R.string.transit_boards_title) {
+        BoardsSettingsSection(settings = store.flow, provider = provider) { transform -> ctx.appScope.launch { store.update(transform) } }
     }
 
     override val brief = BriefContributor { now ->
-        val snapshot = commute.current()?.takeUnless { commute.isStale(it, now.toInstant()) } ?: return@BriefContributor null
-        TransitBrief.line(snapshot.value, now)
+        val trips = commutes.values.mapNotNull { source -> source.current()?.takeUnless { source.isStale(it, now.toInstant()) }?.value }
+        TransitBrief.lines(trips, now)
     }
 
     override val notificationChannels = listOf(channel)
 
-    override val notificationRules = listOf(
+    override val notificationRules = CommuteKind.entries.map { kind ->
+        val source = commutes.getValue(kind)
         DisruptionRule(
-            enabled = { store.get().notify },
-            refreshed = { report -> report.succeeded(commute.id) },
-            trips = { commute.current()?.value },
+            name = "${kind.sourceName}_disruption",
+            enabled = { store.get().route(kind).notify },
+            refreshed = { report -> report.succeeded(source.id) },
+            trips = { source.current()?.value },
             channelId = ctx.channelId(channel.name),
             deepLink = ctx.deepLink,
-            notificationId = ctx.notificationId(0),
-        ),
-    )
+            notificationId = ctx.notificationId(kind.ordinal),
+        )
+    }
 }
+
+/** Also the home-card key and the rule prefix; frozen from v1.0.0 like the source ids. / 也是首页卡片键与规则前缀；与来源 id 一样从 v1.0.0 起冻结。 */
+private val CommuteKind.sourceName: String
+    get() = when (this) {
+        CommuteKind.TRAIN -> "train"
+        CommuteKind.BUS -> "bus"
+    }
+
+private val CommuteKind.title: Int
+    get() = when (this) {
+        CommuteKind.TRAIN -> R.string.transit_train_title
+        CommuteKind.BUS -> R.string.transit_bus_title
+    }

@@ -73,7 +73,11 @@ private class RemindersInstance(private val ctx: ModuleContext) : ModuleInstance
             items = { store.get().items },
             channelId = ctx.channelId(channel.name),
             deepLink = ctx.deepLink,
-            // Offsets keep each item's notification separate; ids past the range wrap rather than fail. / 偏移让每个条目的通知互不覆盖；超出号段时回绕而不是报错。
+            // One id per item so their notifications never replace each other. Ids are `item<n>` with the smallest unused n, so
+            // n never exceeds the item count and two items only share a slot past 1,000 items; the modulo merely keeps such a
+            // list from throwing.
+            // 每个条目一个 id，通知互不覆盖。id 为 `item<n>`，n 取最小未用的数，所以 n 不会超过条目数，超过 1000 个条目才会共用
+            // 一个位置；取模只是让这样的列表不至于抛异常。
             notificationId = { item -> ctx.notificationId(ReminderPolicy.idNumber(item.id) % NOTIFICATION_SLOTS) },
         ),
     )

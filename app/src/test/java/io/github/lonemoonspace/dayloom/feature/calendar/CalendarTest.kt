@@ -66,6 +66,19 @@ class CalendarTest {
     }
 
     @Test
+    fun `qingming is left out, also from the countdown, when the lunar block shows solar terms`() {
+        val cn = setOf(HolidayCountry.CN)
+        assertEquals(emptyList<Holiday>(), HolidayPolicy.on(LocalDate.of(2025, 4, 4), cn, lunar, solarTermsShown = true))
+        assertEquals(
+            HolidayCountdown(listOf(Holiday.QINGMING), LocalDate.of(2025, 4, 4), 3),
+            HolidayPolicy.upcoming(LocalDate.of(2025, 4, 1), cn, lunar),
+        )
+        assertNull(HolidayPolicy.upcoming(LocalDate.of(2025, 4, 1), cn, lunar, solarTermsShown = true))
+        // Other holidays stay. / 其他节日照常显示。
+        assertEquals(listOf(Holiday.NATIONAL_DAY), HolidayPolicy.on(LocalDate.of(2026, 10, 1), cn, lunar, solarTermsShown = true))
+    }
+
+    @Test
     fun `only the selected countries count`() {
         assertEquals(emptyList<Holiday>(), on(2026, 5, 17, setOf(HolidayCountry.CN)))
         assertEquals(emptyList<Holiday>(), on(2026, 10, 1, setOf(HolidayCountry.NO)))

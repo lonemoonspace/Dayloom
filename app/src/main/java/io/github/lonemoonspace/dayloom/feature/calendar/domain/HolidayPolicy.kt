@@ -35,20 +35,31 @@ object HolidayPolicy {
     /** A countdown starts when the next holiday is at most this many days away. / 下一个节日不超过这么多天时开始倒计时。 */
     const val COUNTDOWN_DAYS = 7
 
-    fun on(date: LocalDate, countries: Set<HolidayCountry>, lunar: LunarProvider): List<Holiday> = buildList {
+    /**
+     * Holidays on [date]. With [solarTermsShown] the holidays that are also solar terms (Qingming) are left out, on the day
+     * and in the countdown, because the lunar block already shows them as solar terms.
+     * [date] 当天的节日。[solarTermsShown] 为 true 时去掉同时也是节气的节日（清明），当天与倒计时都去掉，因为农历区已把它作为节气显示。
+     */
+    fun on(
+        date: LocalDate,
+        countries: Set<HolidayCountry>,
+        lunar: LunarProvider,
+        solarTermsShown: Boolean = false,
+    ): List<Holiday> = buildList {
         if (HolidayCountry.CN in countries) addAll(china(date, lunar))
         if (HolidayCountry.NO in countries) norway(date)?.let(::add)
-    }.distinct()
+    }.distinct().filterNot { solarTermsShown && it in SOLAR_TERM_HOLIDAYS }
 
     /** The first holiday strictly after [today] and at most [withinDays] away. / 严格晚于 [today]、且不超过 [withinDays] 天的第一个节日。 */
     fun upcoming(
         today: LocalDate,
         countries: Set<HolidayCountry>,
         lunar: LunarProvider,
+        solarTermsShown: Boolean = false,
         withinDays: Int = COUNTDOWN_DAYS,
     ): HolidayCountdown? = (1..withinDays).firstNotNullOfOrNull { days ->
         val date = today.plusDays(days.toLong())
-        on(date, countries, lunar).takeIf { it.isNotEmpty() }?.let { HolidayCountdown(it, date, days) }
+        on(date, countries, lunar, solarTermsShown).takeIf { it.isNotEmpty() }?.let { HolidayCountdown(it, date, days) }
     }
 
     /**
@@ -109,6 +120,9 @@ object HolidayPolicy {
         val day = (h + l - 7 * m + 114) % 31 + 1
         return LocalDate.of(year, month, day)
     }
+
+    /** Holidays that are also solar terms. / 同时也是节气的节日。 */
+    private val SOLAR_TERM_HOLIDAYS = setOf(Holiday.QINGMING)
 
     private val CHINA_FIXED = mapOf(
         (1 to 1) to Holiday.NEW_YEAR,

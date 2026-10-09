@@ -72,7 +72,7 @@ internal fun CalendarHeader(showLunar: Boolean, countries: Set<HolidayCountry>, 
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (countries.isNotEmpty()) HolidayRow(date, countries, lunar, hideQingming = termToday == SolarTerm.CLEAR_AND_BRIGHT)
+            if (countries.isNotEmpty()) HolidayRow(date, countries, lunar, solarTermsShown = showLunar)
         }
         if (showLunar) {
             Spacer(Modifier.width(12.dp))
@@ -83,16 +83,13 @@ internal fun CalendarHeader(showLunar: Boolean, countries: Set<HolidayCountry>, 
 
 /**
  * Today's holidays as a red chip; the next one as a countdown when it is within [HolidayPolicy.COUNTDOWN_DAYS]. Takes no
- * space when there is neither. Qingming is hidden on the day when the lunar block already shows it as today's solar term.
+ * space when there is neither.
  * 当天的节日显示为红色标签；下一个节日在 [HolidayPolicy.COUNTDOWN_DAYS] 天以内时显示倒计时。两者都没有时不占位。
- * 清明当天如果农历区已作为节气显示，这里不重复。
  */
 @Composable
-private fun HolidayRow(date: LocalDate, countries: Set<HolidayCountry>, lunar: LunarProvider, hideQingming: Boolean) {
-    val today = remember(date, countries, hideQingming) {
-        HolidayPolicy.on(date, countries, lunar).filterNot { hideQingming && it == Holiday.QINGMING }
-    }
-    val upcoming = remember(date, countries) { HolidayPolicy.upcoming(date, countries, lunar) }
+private fun HolidayRow(date: LocalDate, countries: Set<HolidayCountry>, lunar: LunarProvider, solarTermsShown: Boolean) {
+    val today = remember(date, countries, solarTermsShown) { HolidayPolicy.on(date, countries, lunar, solarTermsShown) }
+    val upcoming = remember(date, countries, solarTermsShown) { HolidayPolicy.upcoming(date, countries, lunar, solarTermsShown) }
     if (today.isEmpty() && upcoming == null) return
     Spacer(Modifier.height(4.dp))
     Row(verticalAlignment = Alignment.CenterVertically) {

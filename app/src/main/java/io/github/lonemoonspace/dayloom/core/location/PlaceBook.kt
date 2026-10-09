@@ -29,6 +29,9 @@ class PlaceBook(private val store: ValueStore<SharedData>) : Places {
 
     /** Saves [candidate] as a new custom place and returns its id. / 把 [candidate] 存为新的自定义地点，并返回其 id。 */
     suspend fun addCustom(candidate: PlaceCandidate, label: String): String {
+        // The id is chosen inside the atomic update, so two places added at once never get the same id; reading the list
+        // first and writing afterwards would race.
+        // id 在原子更新内部选定，所以同时新增的两个地点不会拿到同一个 id；先读列表再写入就会有竞态。
         var id = ""
         store.update {
             id = PlacesPolicy.newCustomId(it.places)

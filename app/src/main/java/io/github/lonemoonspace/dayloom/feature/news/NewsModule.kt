@@ -209,7 +209,7 @@ private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
         val status by ctx.coordinator.status.collectAsStateWithLifecycle()
         LaunchedEffect(Unit) {
             try {
-                ctx.coordinator.refreshDue(setOf(source.id), Trigger.AUTO, inWindow = false, throttleFailures = true)
+                ctx.coordinator.refreshDue(setOf(source.id), Trigger.AUTO, daytime = false, throttleFailures = true)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {

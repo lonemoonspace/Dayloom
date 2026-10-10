@@ -75,11 +75,12 @@ internal fun CommuteCard(
     val origin = route.origin
     val destination = route.destination
     val trips = snapshot?.value?.takeIf { route.isSet }
+    // Before the first snapshot the direction comes from the clock, so the title does not change once data arrives.
+    // 第一份快照到来之前按时钟定方向，数据到了标题也不会变。
     val subtitle = when {
         !route.isSet -> null
-        trips?.mode == CommuteMode.OUTBOUND -> stringResource(R.string.transit_to_work, origin.name, destination.name)
-        trips?.mode == CommuteMode.INBOUND -> stringResource(R.string.transit_back_home, destination.name, origin.name)
-        else -> stringResource(R.string.transit_both_ways, origin.name, destination.name)
+        (trips?.mode ?: TransitPolicy.commuteMode(now)) == CommuteMode.OUTBOUND -> stringResource(R.string.transit_to_work, origin.name, destination.name)
+        else -> stringResource(R.string.transit_back_home, destination.name, origin.name)
     }
     InfoCard(
         title = stringResource(kindTitle(kind)),
@@ -96,12 +97,6 @@ internal fun CommuteCard(
             null -> if (error == null) SkeletonLines()
             CommuteMode.OUTBOUND -> OptionList(TransitPolicy.visibleOptions(trips.outbound, now, route.options), now)
             CommuteMode.INBOUND -> OptionList(TransitPolicy.visibleOptions(trips.inbound, now, route.options), now)
-            CommuteMode.BOTH -> {
-                Direction(stringResource(R.string.transit_direction, origin.name, destination.name))
-                OptionList(TransitPolicy.visibleOptions(trips.outbound, now, 1), now)
-                Direction(stringResource(R.string.transit_direction, destination.name, origin.name))
-                OptionList(TransitPolicy.visibleOptions(trips.inbound, now, 1), now)
-            }
         }
         if (error != null) ErrorLine(error)
         Attribution()
@@ -334,18 +329,6 @@ private fun StatusBadge(status: LegStatus, prefix: String? = null) {
         LegState.CANCELLED -> Triple(stringResource(R.string.transit_cancelled), MaterialTheme.statusColors.red, R.drawable.ic_status_cancel)
     }
     StatusChip(if (prefix.isNullOrEmpty()) text else stringResource(R.string.transit_line_status, prefix, text), color, icon)
-}
-
-@Composable
-private fun Direction(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.padding(top = 4.dp),
-    )
 }
 
 @Composable

@@ -1,8 +1,7 @@
 package io.github.lonemoonspace.dayloom.feature.traffic.domain
 
-import io.github.lonemoonspace.dayloom.core.routine.Routine
+import io.github.lonemoonspace.dayloom.core.routine.CommuteDirection
 import io.github.lonemoonspace.dayloom.core.routine.RoutinePolicy
-import io.github.lonemoonspace.dayloom.core.routine.WindowKind
 import java.time.ZonedDateTime
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -33,30 +32,17 @@ data class TrafficStatus(
 )
 
 /**
- * Traffic decisions, ported from the original `TrafficSource`; one source now follows the daily windows instead of two
+ * Traffic decisions, ported from the original `TrafficSource`; one source now switches direction at noon instead of two
  * fixed sources (design §5).
- * 路况判定，移植自原项目 `TrafficSource`；现在一个来源跟随日常时间窗切换方向，而不是两个固定来源（设计文档 §5）。
+ * 路况判定，移植自原项目 `TrafficSource`；现在一个来源在中午切换方向，而不是两个固定来源（设计文档 §5）。
  */
 object TrafficPolicy {
 
-    /**
-     * Back home during the back-home window; otherwise the direction of whichever window comes next, so in the afternoon the
-     * card already shows the way home. With an invalid window it falls back to the way to work.
-     * 回家时段内是返程；其余时间看哪个时间窗先到，所以下午卡片已经显示回家的路。时间窗无效时退回去程。
-     */
-    fun direction(routine: Routine, now: ZonedDateTime): Direction {
-        val toWork = RoutinePolicy.next(routine, WindowKind.TO_WORK, now)
-        val backHome = RoutinePolicy.next(routine, WindowKind.BACK_HOME, now)
-        return when {
-            backHome == null -> Direction.TO_WORK
-            toWork == null -> Direction.BACK_HOME
-            // Under way counts as "now", so an ongoing window wins. / 进行中的时间窗视为「现在」，因此优先。
-            effectiveStart(backHome.start, now).isBefore(effectiveStart(toWork.start, now)) -> Direction.BACK_HOME
-            else -> Direction.TO_WORK
-        }
+    /** Mornings to work, from noon homewards ([RoutinePolicy.direction]). / 上午去上班，中午起回家（[RoutinePolicy.direction]）。 */
+    fun direction(now: ZonedDateTime): Direction = when (RoutinePolicy.direction(now)) {
+        CommuteDirection.TO_WORK -> Direction.TO_WORK
+        CommuteDirection.BACK_HOME -> Direction.BACK_HOME
     }
-
-    private fun effectiveStart(start: ZonedDateTime, now: ZonedDateTime) = if (start.isBefore(now)) now else start
 
     /**
      * Google's `duration` / `staticDuration` (protobuf Duration as JSON). Fractional seconds are allowed (`"10.5s"`); null when

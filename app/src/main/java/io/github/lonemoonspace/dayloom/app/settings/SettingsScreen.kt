@@ -33,6 +33,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import java.time.LocalTime
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
@@ -46,6 +47,7 @@ import io.github.lonemoonspace.dayloom.core.notify.CoreNotifications
 import io.github.lonemoonspace.dayloom.core.ui.InfoCard
 import io.github.lonemoonspace.dayloom.core.ui.NotifySwitch
 import io.github.lonemoonspace.dayloom.core.ui.SwitchRow
+import io.github.lonemoonspace.dayloom.core.ui.rememberTimeFormatter
 import io.github.lonemoonspace.dayloom.core.ui.plusBars
 
 @Composable
@@ -55,7 +57,8 @@ fun SettingsScreen(
     onTimeZone: (String) -> Boolean,
     onModuleEnabled: (String, Boolean) -> Unit,
     onMorningBrief: (Boolean) -> Unit,
-    /** The shared places and daily-routine cards. / 共用的地点与日常作息卡片。 */
+    onMorningBriefTime: (Int) -> Unit,
+    /** The shared places card. / 共用的地点卡片。 */
     sharedData: @Composable () -> Unit = {},
 ) {
     LazyColumn(
@@ -66,7 +69,7 @@ fun SettingsScreen(
         item(key = "language") { LanguageCard(state.language, onLanguage) }
         item(key = "timezone") { TimeZoneCard(state.timeZoneOverride, state.effectiveZone, onTimeZone) }
         item(key = "shared") { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { sharedData() } }
-        item(key = "notifications") { NotificationsCard(state.morningBrief, onMorningBrief) }
+        item(key = "notifications") { NotificationsCard(state.morningBrief, state.morningBriefMinute, onMorningBrief, onMorningBriefTime) }
         item(key = "modules") { ModulesCard(state.modules, onModuleEnabled) }
         items(state.sections, key = { "section:${it.active.module.id}:${it.index}" }) { entry ->
             InfoCard(title = stringResource(entry.section.title ?: entry.active.module.title)) {
@@ -149,7 +152,8 @@ private fun TimeZoneCard(override: String, effective: String, onSave: (String) -
 }
 
 @Composable
-private fun NotificationsCard(morningBrief: Boolean, onMorningBrief: (Boolean) -> Unit) {
+private fun NotificationsCard(morningBrief: Boolean, briefMinute: Int, onMorningBrief: (Boolean) -> Unit, onBriefTime: (Int) -> Unit) {
+    var picking by rememberSaveable { mutableStateOf(false) }
     InfoCard(title = stringResource(R.string.settings_notifications)) {
         NotifySwitch(
             label = stringResource(R.string.brief_title),
@@ -158,10 +162,26 @@ private fun NotificationsCard(morningBrief: Boolean, onMorningBrief: (Boolean) -
             channelId = CoreNotifications.BRIEF_CHANNEL_ID,
             onCheckedChange = onMorningBrief,
         )
+        if (morningBrief) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.brief_time), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                TimeButton(LocalTime.MIDNIGHT.plusMinutes(briefMinute.toLong()).format(rememberTimeFormatter())) { picking = true }
+            }
+        }
         Text(
             text = stringResource(R.string.settings_notifications_note),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    if (picking) {
+        TimeDialog(
+            initialMinute = briefMinute,
+            onDismiss = { picking = false },
+            onConfirm = { minute ->
+                picking = false
+                onBriefTime(minute)
+            },
         )
     }
 }

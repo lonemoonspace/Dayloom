@@ -213,24 +213,24 @@ class EnturProviderTest {
 
     @Test
     fun `commute inputs need both stops and key on mode, stops and count`() {
-        assertTrue(CommuteSource.inputFor(a, TransitStop(), 3, CommuteMode.BOTH) is SourceInput.Missing)
+        assertTrue(CommuteSource.inputFor(a, TransitStop(), 3, CommuteMode.OUTBOUND) is SourceInput.Missing)
         val ready = CommuteSource.inputFor(a, b, 9, CommuteMode.OUTBOUND) as SourceInput.Ready<CommuteParams>
         assertEquals(5, ready.params.options)
         assertEquals("OUTBOUND|NSR:StopPlace:1|NSR:StopPlace:2|5", ready.key)
     }
 
     @Test
-    fun `outside the windows both directions are fetched, inside only one`() = runTest {
+    fun `only the current direction is fetched`() = runTest {
         val provider = FakeProvider()
         val clock = FixedClock(now)
         val store = InMemorySnapshotStore<CommuteTrips>()
-        val mode = kotlinx.coroutines.flow.MutableStateFlow(CommuteMode.BOTH)
+        val mode = kotlinx.coroutines.flow.MutableStateFlow(CommuteMode.OUTBOUND)
         val source = CommuteSource(SourceId("transit.bus"), store, clock, CommuteKind.BUS, flowOf(CommuteRoute(a, b, 3)), mode, provider)
         val coordinator = RefreshCoordinator(FakeNetworkStatus(), clock, backgroundScope, watchInputs = false)
         coordinator.register(listOf(source))
 
         coordinator.refresh(setOf(source.id), Trigger.USER)
-        assertEquals(listOf(a.id to b.id, b.id to a.id), provider.trips)
+        assertEquals(listOf(a.id to b.id), provider.trips)
         assertEquals("the route's kind travels with every request", setOf(CommuteKind.BUS), provider.kinds.toSet())
 
         mode.value = CommuteMode.INBOUND

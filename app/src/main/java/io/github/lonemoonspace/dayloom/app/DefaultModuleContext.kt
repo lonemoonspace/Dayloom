@@ -7,7 +7,6 @@ import io.github.lonemoonspace.dayloom.core.module.ModuleSecret
 import io.github.lonemoonspace.dayloom.core.network.NetworkStatus
 import io.github.lonemoonspace.dayloom.core.refresh.RefreshCoordinator
 import io.github.lonemoonspace.dayloom.core.refresh.SourceId
-import io.github.lonemoonspace.dayloom.core.routine.Routine
 import io.github.lonemoonspace.dayloom.core.secret.SecretState
 import io.github.lonemoonspace.dayloom.core.secret.SecretStore
 import io.github.lonemoonspace.dayloom.core.secret.SharedSecrets
@@ -34,7 +33,6 @@ class DefaultModuleContext(
     override val coordinator: RefreshCoordinator,
     override val appScope: CoroutineScope,
     override val places: Places,
-    override val routine: Flow<Routine>,
     private val moduleSettings: ModuleSettingsStore,
     private val secrets: SecretStore,
     private val snapshotFactory: SnapshotFactory,

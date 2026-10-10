@@ -241,7 +241,7 @@ private class FootballInstance(private val ctx: ModuleContext) : ModuleInstance 
             var trigger = Trigger.AUTO
             while (true) {
                 try {
-                    ctx.coordinator.refreshDue(setOf(matches.id, standings.id), trigger, inWindow = false, throttleFailures = true)
+                    ctx.coordinator.refreshDue(setOf(matches.id, standings.id), trigger, daytime = false, throttleFailures = true)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (_: Exception) {

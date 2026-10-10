@@ -13,9 +13,11 @@ import java.time.Instant
 import java.time.format.DateTimeFormatter
 
 /**
- * Commute disruptions: inside a daily window, tells the user when the next option is cancelled or heavily delayed. Only acts
- * on a commute snapshot refreshed in this round, so stale data never notifies.
- * 通勤异常：在日常时间窗内，下一个方案被取消或严重延误时通知用户。只在本轮刷新成功的通勤快照上判断，过期数据绝不触发通知。
+ * Commute disruptions: tells the user when the next option is cancelled or heavily delayed, in the daytime and when it
+ * leaves soon ([TransitPolicy.isAlertable]). Only acts on a commute snapshot refreshed in this round, so stale data never
+ * notifies.
+ * 通勤异常：下一个方案被取消或严重延误时通知用户，只在白天且它即将发车时（[TransitPolicy.isAlertable]）。只在本轮刷新成功
+ * 的通勤快照上判断，过期数据绝不触发通知。
  */
 class DisruptionRule(
     /** One rule per commute route, e.g. `train_disruption`. / 每条通勤路线一条规则，如 `train_disruption`。 */
@@ -35,11 +37,13 @@ class DisruptionRule(
     override suspend fun evaluate(input: RuleInput, previous: String?): RuleDecision<String?> {
         if (!refreshed(input.report)) return RuleDecision(previous)
         val snapshot = trips() ?: return RuleDecision(previous)
-        val option = when (snapshot.mode) {
+        val next = when (snapshot.mode) {
             CommuteMode.OUTBOUND -> TransitPolicy.visibleOptions(snapshot.outbound, input.now, 1).firstOrNull()
             CommuteMode.INBOUND -> TransitPolicy.visibleOptions(snapshot.inbound, input.now, 1).firstOrNull()
-            CommuteMode.BOTH -> null
         }
+        // A trip that is not alertable yet counts as no trip; once it comes within reach it is told once.
+        // 还不该提醒的班次视同没有；进入范围后提醒一次。
+        val option = next?.takeIf { TransitPolicy.isAlertable(it, input.now) }
         val decision = DisruptionPolicy.evaluate(option, input.now.zone, previous)
         // The notification stays one line, so it names the worst leg: a cancelled connection matters more than an earlier
         // leg's delay, which may also be the part the user was already told about.

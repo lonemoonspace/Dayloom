@@ -25,6 +25,8 @@ data class AppSettings(
     val cardOrder: List<String> = emptyList(),
     /** Opt-in like every notification (design §7.4). / 与所有通知一样需要用户主动打开（设计文档 §7.4）。 */
     val morningBrief: Boolean = false,
+    /** When the morning brief goes out, minutes after midnight. / 早间简报的发送时间，午夜起的分钟数。 */
+    val morningBriefMinute: Int = 7 * 60,
     /** False until the first-run onboarding is finished or skipped. / 首次启动引导完成或跳过之前为 false。 */
     val onboardingDone: Boolean = false,
 )

@@ -6,7 +6,7 @@ Dayloom has no server of its own and collects nothing: no analytics, no crash re
 
 ## What stays on your phone
 
-- Settings, saved places, your daily routine, expiry reminders, cached data and news articles.
+- Settings, saved places, expiry reminders, cached data and news articles.
 - API keys and tokens, encrypted with the Android Keystore. They are only ever sent to the service they belong to.
 - There is no cloud backup. Moving to a new phone copies your settings but not your keys, which cannot be decrypted on
   another device.

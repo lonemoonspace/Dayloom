@@ -32,7 +32,6 @@ import io.github.lonemoonspace.dayloom.feature.transit.ui.CommuteCard
 import io.github.lonemoonspace.dayloom.feature.transit.ui.BoardsSettingsSection
 import io.github.lonemoonspace.dayloom.feature.transit.ui.RouteSettingsSection
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -85,9 +84,9 @@ private class TransitInstance(private val ctx: ModuleContext) : ModuleInstance {
         ChannelImportance.HIGH,
     )
 
-    // Re-evaluated every minute, emits only when the window changes, which then triggers a refresh.
-    // 每分钟重新判断，只在时间窗变化时发出，随后触发一次刷新。
-    private val mode: Flow<CommuteMode> = combine(ctx.routine, ctx.clock.minuteTicks(), TransitPolicy::commuteMode).distinctUntilChanged()
+    // Re-evaluated every minute, emits only when the direction changes at noon or midnight, which then triggers a refresh.
+    // 每分钟重新判断，只在中午或午夜方向变化时发出，随后触发一次刷新。
+    private val mode: Flow<CommuteMode> = ctx.clock.minuteTicks().map(TransitPolicy::commuteMode).distinctUntilChanged()
 
     /** One source per route: `transit.train`, `transit.bus`. / 每条路线一个来源：`transit.train`、`transit.bus`。 */
     private val commutes: Map<CommuteKind, CommuteSource> = CommuteKind.entries.associateWith { kind ->

@@ -1,8 +1,7 @@
 package io.github.lonemoonspace.dayloom.feature.transit.domain
 
-import io.github.lonemoonspace.dayloom.core.routine.Routine
+import io.github.lonemoonspace.dayloom.core.routine.CommuteDirection
 import io.github.lonemoonspace.dayloom.core.routine.RoutinePolicy
-import io.github.lonemoonspace.dayloom.core.routine.WindowKind
 import java.time.Duration
 import java.time.ZonedDateTime
 import java.util.Locale
@@ -34,6 +33,9 @@ object TransitPolicy {
     /** A delay of at least this much counts as a disruption worth a notification. / 至少这么久的延误才算值得通知的异常。 */
     const val DISRUPTION_DELAY_MINUTES = 5
 
+    /** Disruptions further ahead than this are left for the card. / 比这更远的异常留给卡片显示。 */
+    val ALERT_AHEAD: Duration = Duration.ofMinutes(45)
+
     fun legStatus(cancelled: Boolean, realtime: Boolean, aimed: Long, expected: Long): LegStatus {
         val delay = Duration.ofMillis(expected - aimed).toMinutes().toInt().coerceAtLeast(0)
         return when {
@@ -64,15 +66,21 @@ object TransitPolicy {
         LegState.CANCELLED -> 3
     }
 
-    /**
-     * Inside a daily window the card concentrates on that direction; outside it shows the next option both ways.
-     * 在日常时间窗内卡片只看那个方向；时间窗外两个方向各显示一个最近的方案。
-     */
-    fun commuteMode(routine: Routine, now: ZonedDateTime): CommuteMode = when (RoutinePolicy.active(routine, now)?.kind) {
-        WindowKind.TO_WORK -> CommuteMode.OUTBOUND
-        WindowKind.BACK_HOME -> CommuteMode.INBOUND
-        null -> CommuteMode.BOTH
+    /** Mornings to work, from noon homewards ([RoutinePolicy.direction]). / 上午去上班，中午起回家（[RoutinePolicy.direction]）。 */
+    fun commuteMode(now: ZonedDateTime): CommuteMode = when (RoutinePolicy.direction(now)) {
+        CommuteDirection.TO_WORK -> CommuteMode.OUTBOUND
+        CommuteDirection.BACK_HOME -> CommuteMode.INBOUND
     }
+
+    /**
+     * Whether a disruption of [option] is worth a notification now: only in the daytime, and only when it leaves within
+     * [ALERT_AHEAD]. Without commute windows the direction is always set, so these limits keep alerts to trips the user
+     * may be about to take rather than every disruption all day.
+     * [option] 的异常现在是否值得通知：只在白天，且只在它 [ALERT_AHEAD] 内发车时。没有通勤时间窗后方向总是确定的，靠这两个
+     * 限制把提醒留给用户可能马上要坐的车，而不是全天每一次异常。
+     */
+    fun isAlertable(option: TripOption, now: ZonedDateTime): Boolean =
+        RoutinePolicy.isDaytime(now) && option.departure - now.toInstant().toEpochMilli() <= ALERT_AHEAD.toMillis()
 
     /**
      * Options not yet departed, at most [limit]; a cancelled first leg still shows, so the user sees why it is missing.

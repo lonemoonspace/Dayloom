@@ -8,15 +8,9 @@ import io.github.lonemoonspace.dayloom.core.location.Place
 import io.github.lonemoonspace.dayloom.core.location.PlaceBook
 import io.github.lonemoonspace.dayloom.core.location.PlaceCandidate
 import io.github.lonemoonspace.dayloom.core.location.PlaceSearch
-import io.github.lonemoonspace.dayloom.core.routine.DailyWindow
-import io.github.lonemoonspace.dayloom.core.routine.Routine
-import io.github.lonemoonspace.dayloom.core.routine.RoutinePolicy
-import io.github.lonemoonspace.dayloom.core.routine.WindowKind
 import io.github.lonemoonspace.dayloom.core.secret.SecretState
 import io.github.lonemoonspace.dayloom.core.secret.SecretStore
 import io.github.lonemoonspace.dayloom.core.secret.SharedSecrets
-import io.github.lonemoonspace.dayloom.core.storage.SharedData
-import io.github.lonemoonspace.dayloom.core.storage.ValueStore
 import java.util.Locale
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CancellationException
@@ -26,7 +20,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -47,13 +40,12 @@ data class PlaceEditor(
 )
 
 /**
- * The shared places and daily windows on the settings screen. Writes go to [appScope] so leaving the screen right after a
+ * The shared places and the Google key on the settings screen. Writes go to [appScope] so leaving the screen right after a
  * change does not cancel it.
- * 设置页上共用的地点与日常时间窗。写入放在 [appScope]，改完立刻离开页面也不会被取消。
+ * 设置页上共用的地点与 Google Key。写入放在 [appScope]，改完立刻离开页面也不会被取消。
  */
 class SharedDataViewModel(
     private val places: PlaceBook,
-    private val sharedData: ValueStore<SharedData>,
     private val search: PlaceSearch,
     private val secrets: SecretStore,
     private val appScope: CoroutineScope,
@@ -62,9 +54,6 @@ class SharedDataViewModel(
 ) : ViewModel() {
 
     val placeList: StateFlow<List<Place>> = places.all.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    val routine: StateFlow<Routine> = sharedData.flow.map { it.routine }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Routine())
 
     /** The Google key place search uses; shared with modules that call Google. / 地点搜索用的 Google Key，与调用 Google 的模块共用。 */
     val googleKey: StateFlow<SecretState> = secrets.observe(SharedSecrets.GOOGLE_MAPS)
@@ -115,17 +104,6 @@ class SharedDataViewModel(
     fun remove(id: String) {
         appScope.launch { places.remove(id) }
         closeEditor()
-    }
-
-    /** Returns false (and saves nothing) for an empty window. / 时间窗为空时返回 false 且不保存。 */
-    fun setWindow(kind: WindowKind, window: DailyWindow): Boolean {
-        if (!RoutinePolicy.isValid(window)) return false
-        updateRoutine { if (kind == WindowKind.TO_WORK) it.copy(toWork = window) else it.copy(backHome = window) }
-        return true
-    }
-
-    private fun updateRoutine(transform: (Routine) -> Routine) {
-        appScope.launch { sharedData.update { it.copy(routine = transform(it.routine)) } }
     }
 
     private fun runInEditor(block: suspend (PlaceEditor) -> PlaceEditor) {

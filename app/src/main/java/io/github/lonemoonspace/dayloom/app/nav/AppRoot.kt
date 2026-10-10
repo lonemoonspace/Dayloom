@@ -48,7 +48,6 @@ import io.github.lonemoonspace.dayloom.app.home.HomeScreen
 import io.github.lonemoonspace.dayloom.app.home.HomeViewModel
 import io.github.lonemoonspace.dayloom.app.onboarding.OnboardingScreen
 import io.github.lonemoonspace.dayloom.app.settings.PlacesCard
-import io.github.lonemoonspace.dayloom.app.settings.RoutineCard
 import io.github.lonemoonspace.dayloom.app.settings.SettingsScreen
 import io.github.lonemoonspace.dayloom.app.settings.SettingsViewModel
 import io.github.lonemoonspace.dayloom.app.settings.SharedDataViewModel
@@ -126,7 +125,6 @@ private fun sharedDataViewModel(graph: AppGraph): SharedDataViewModel = viewMode
         initializer {
             SharedDataViewModel(
                 places = graph.places,
-                sharedData = graph.sharedData,
                 search = graph.placeSearch,
                 secrets = graph.secrets,
                 appScope = graph.appScope,
@@ -163,7 +161,7 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?) {
 
     val homeVm: HomeViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { HomeViewModel(graph.host.active, graph.appSettings, graph.coordinator, graph.routine, graph.clock) }
+            initializer { HomeViewModel(graph.host.active, graph.appSettings, graph.coordinator, graph.clock) }
         },
     )
     val homeState by homeVm.state.collectAsStateWithLifecycle()
@@ -261,12 +259,11 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?) {
                                 onTimeZone = vm::setTimeZone,
                                 onModuleEnabled = vm::setModuleEnabled,
                                 onMorningBrief = vm::setMorningBrief,
+                                onMorningBriefTime = vm::setMorningBriefTime,
                             ) {
                                 val places by sharedVm.placeList.collectAsStateWithLifecycle()
                                 val editor by sharedVm.editor.collectAsStateWithLifecycle()
-                                val routine by sharedVm.routine.collectAsStateWithLifecycle()
                                 PlacesCard(places, editor, sharedVm)
-                                RoutineCard(routine, sharedVm)
                             }
                         }
                         moduleIds.forEach { id ->

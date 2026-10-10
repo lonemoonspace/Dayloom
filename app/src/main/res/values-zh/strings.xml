@@ -302,8 +302,6 @@
     <string name="transit_setup_boards">收藏站点</string>
     <string name="transit_to_work">上班 · %1$s → %2$s</string>
     <string name="transit_back_home">回家 · %1$s → %2$s</string>
-    <string name="transit_direction">%1$s → %2$s</string>
-    <string name="transit_both_ways">%1$s ⇄ %2$s</string>
     <string name="transit_no_options">目前查不到出行方案。</string>
     <string name="transit_no_departures">接下来几小时没有符合条件的班次。</string>
     <string name="transit_direct">直达</string>
@@ -345,9 +343,9 @@
     <string name="transit_search">搜索</string>
     <string name="transit_search_none">没有找到站点。</string>
     <string name="transit_channel">通勤异常</string>
-    <string name="transit_channel_description">通勤时段内下一个方案被取消或严重延误时</string>
+    <string name="transit_channel_description">通勤的下一班被取消或严重延误时</string>
     <string name="transit_notify_switch">异常提醒</string>
-    <string name="transit_notify_switch_summary">通勤时间窗内下一班被取消或晚点 5 分钟以上时提醒</string>
+    <string name="transit_notify_switch_summary">45 分钟内的下一班被取消或晚点 5 分钟以上时提醒；上午看去程，下午看返程，22:00–06:00 不提醒</string>
     <string name="transit_notify_to_work">上班路上有异常</string>
     <string name="transit_notify_back_home">回家路上有异常</string>
     <string name="transit_notify_cancelled">%2$s 的 %1$s 已取消</string>
@@ -381,11 +379,6 @@
     <string name="places_attribution_google">搜索结果来自 Google 地图。也可以直接输入坐标，如 59.9139, 10.7522。</string>
     <string name="places_google_key">Google Maps API Key（可选）</string>
     <string name="places_google_key_note">搜索不需要它：没有 Key 也能搜地址。填入启用了 Places API (New) 的 Key 后改用 Google 搜索。路况模块需要这个 Key。超出每月免费额度的请求会向你的 Google 账号计费。Key 只保存在本机。</string>
-    <string name="settings_routine">日常作息</string>
-    <string name="routine_note">每天都按这两个时段；公共交通与路况随之切换方向。</string>
-    <string name="routine_to_work">去程</string>
-    <string name="routine_back_home">返程</string>
-    <string name="routine_window_invalid">开始与结束不能是同一时间。</string>
     <string name="settings_language">语言</string>
     <string name="settings_language_system">跟随系统</string>
     <string name="settings_time_zone">时区</string>
@@ -402,9 +395,10 @@
     <string name="settings_notifications">通知</string>
     <string name="settings_notifications_note">所有通知都要你自己打开。各模块的通知开关在下面对应模块里。</string>
     <string name="brief_title">早间简报</string>
-    <string name="brief_switch_summary">每天上班时间窗开始时，汇总各模块的情况发一条</string>
+    <string name="brief_time">发送时间</string>
+    <string name="brief_switch_summary">每天在下面的时间，汇总各模块的情况发一条</string>
     <string name="brief_channel">早间简报</string>
-    <string name="brief_channel_description">每天上班时间窗开始时发一次</string>
+    <string name="brief_channel_description">每天在你设定的时间发一次</string>
     <string name="onboarding_step">第 %1$d 步，共 %2$d 步</string>
     <string name="onboarding_welcome_title">欢迎使用织日</string>
     <string name="onboarding_welcome_body">一眼看清你的一天：天气、通勤、快到期的东西等等。你填的一切都只留在这部手机上。</string>

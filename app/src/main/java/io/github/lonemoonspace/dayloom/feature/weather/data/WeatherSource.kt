@@ -41,7 +41,7 @@ class WeatherSource(
     override val cadence = RefreshCadence(
         interval = Duration.ofMinutes(60),
         busyInterval = Duration.ofMinutes(30),
-        busyInWindows = true,
+        busyByDay = true,
     )
 
     override val inputs: Flow<SourceInput<WeatherParams>> = place.map(::inputFor)

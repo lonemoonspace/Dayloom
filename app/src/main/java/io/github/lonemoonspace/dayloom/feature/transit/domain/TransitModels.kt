@@ -68,20 +68,17 @@ data class TripOption(val legs: List<TransitLeg> = emptyList()) {
 
 /** Which way the commute card looks. / 通勤卡片看哪个方向。 */
 enum class CommuteMode {
-    /** Inside the to-work window: several options origin → destination. / 上班时段：起点 → 终点的多个方案。 */
+    /** Before noon: options origin → destination. / 中午之前：起点 → 终点的方案。 */
     OUTBOUND,
 
-    /** Inside the back-home window: several options destination → origin. / 回家时段：终点 → 起点的多个方案。 */
+    /** From noon: options destination → origin. / 中午起：终点 → 起点的方案。 */
     INBOUND,
-
-    /** Outside the windows: the next option in each direction. / 时段之外：两个方向各一个最近的方案。 */
-    BOTH,
 }
 
 /** The snapshot of `transit.train` and `transit.bus`. / `transit.train` 与 `transit.bus` 的快照。 */
 @Serializable
 data class CommuteTrips(
-    val mode: CommuteMode = CommuteMode.BOTH,
+    val mode: CommuteMode = CommuteMode.OUTBOUND,
     val outbound: List<TripOption> = emptyList(),
     val inbound: List<TripOption> = emptyList(),
 )

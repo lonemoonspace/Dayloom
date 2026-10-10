@@ -44,8 +44,9 @@ looks it up literally.
   - Places: no device location and no location permission. Search uses Google Places with your own Google Maps key (the
     same key as Traffic, now entered once under Places) only if you have one; without a key, street addresses come from
     Entur (Norway) and OpenStreetMap (elsewhere). Typed coordinates are accepted too.
-  - Daily routine: the to-work and back-home times apply every day; the commute switch and working-day selection are gone,
-    and the time buttons line up.
+  - Daily routine: gone altogether. Transport and traffic look to work before 12:00 and homewards from 12:00; the morning
+    brief has its own time under Notifications (07:00 by default); disruption alerts cover the next departure within 45
+    minutes and stay quiet 22:00–06:00. Quickly changing sources refresh more often from 06:00 to 22:00.
 - New look (direction B): colours follow the wallpaper (Material You); the weather is one card in the theme colour with the
   hours, rain, clothing and tip pills and the next four days; train and bus cards have line icons, the route and the update
   time in their title row and one dense row per trip with lines, arrival, duration, transfers, platform and a status pill;
@@ -97,7 +98,8 @@ looks it up literally.
     （线路施工时只有它在跑），用巴士图标和「替代巴士」标出；发车板上同样标出。
   - 地点：不再使用设备定位，也不申请定位权限。搜索用你自己的 Google Maps Key 调 Google Places（与路况共用一个 Key，现在只需在
     「地点」里填一次），但只是可选项；没有 Key 时街道地址来自 Entur（挪威）与 OpenStreetMap（其他地方）。也可以直接输入坐标。
-  - 日常作息：去程与返程时间每天都生效；去掉了通勤开关与工作日选择，时间按钮上下对齐。
+  - 日常作息：整个去掉。公共交通与路况 12:00 前看去程、12:00 起看返程；早间简报在「通知」里有自己的发送时间（默认 07:00）；
+    异常提醒只看 45 分钟内发车的下一班，22:00–06:00 不提醒。变化快的来源在 06:00–22:00 刷新得更勤。
 - 新外观（方向 B）：颜色跟随壁纸（Material You）；天气是一整块主题色的主卡，包含几个时间点、降雨、穿衣与提示胶囊以及之后四天；
   火车与公交卡片的标题行有线条图标、路线与更新时间，每个方案一行，含线路、到达、用时、换乘、站台与状态胶囊；节气是时钟旁的
   小胶囊；到期提醒每个条目一行。

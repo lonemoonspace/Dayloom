@@ -41,16 +41,11 @@ import io.github.lonemoonspace.dayloom.R
 import io.github.lonemoonspace.dayloom.core.i18n.asString
 import io.github.lonemoonspace.dayloom.core.location.Place
 import io.github.lonemoonspace.dayloom.core.location.PlaceCandidate
-import io.github.lonemoonspace.dayloom.core.routine.DailyWindow
-import io.github.lonemoonspace.dayloom.core.routine.Routine
-import io.github.lonemoonspace.dayloom.core.routine.WindowKind
 import io.github.lonemoonspace.dayloom.core.ui.InfoCard
 import io.github.lonemoonspace.dayloom.core.ui.SecretInput
 import io.github.lonemoonspace.dayloom.core.ui.currentLocale
 import io.github.lonemoonspace.dayloom.core.ui.placeTitle
-import io.github.lonemoonspace.dayloom.core.ui.rememberTimeFormatter
 import io.github.lonemoonspace.dayloom.core.ui.userMessage
-import java.time.LocalTime
 
 /**
  * Saved places: Home and Work always listed, custom places below. Modules refer to these, so they are edited only here.
@@ -215,66 +210,11 @@ private fun Hint(text: String) {
 }
 
 /**
- * The daily windows shared by transport, traffic and the morning brief: when the user leaves for work and heads home. They
- * apply every day.
- * 公共交通、路况与早间简报共用的日常时间窗：几点出门上班、几点回家。每天都生效。
+ * A fixed-width time button with tabular digits, so times line up whatever they are.
+ * 定宽、等宽数字的时间按钮，无论时间是多少都能对齐。
  */
 @Composable
-fun RoutineCard(routine: Routine, vm: SharedDataViewModel) {
-    var picking by rememberSaveable { mutableStateOf<String?>(null) }
-    var invalid by rememberSaveable { mutableStateOf(false) }
-    InfoCard(title = stringResource(R.string.settings_routine)) {
-        WindowKind.entries.forEach { kind ->
-            WindowRow(kind, routine.window(kind)) { end -> picking = "${kind.name}:${if (end) "end" else "start"}" }
-        }
-        if (invalid) {
-            Text(stringResource(R.string.routine_window_invalid), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-        }
-        Text(
-            stringResource(R.string.routine_note),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-    }
-    picking?.let { key ->
-        val kind = WindowKind.valueOf(key.substringBefore(':'))
-        val end = key.endsWith(":end")
-        val window = routine.window(kind)
-        TimeDialog(
-            initialMinute = if (end) window.endMinute else window.startMinute,
-            onDismiss = { picking = null },
-            onConfirm = { minute ->
-                picking = null
-                val next = if (end) window.copy(endMinute = minute) else window.copy(startMinute = minute)
-                invalid = !vm.setWindow(kind, next)
-            },
-        )
-    }
-}
-
-/**
- * Fixed-width time buttons with tabular digits, so both rows line up whatever the times are.
- * 时间按钮定宽并用等宽数字，两行无论时间是多少都上下对齐。
- */
-@Composable
-private fun WindowRow(kind: WindowKind, window: DailyWindow, onPick: (end: Boolean) -> Unit) {
-    val format = rememberTimeFormatter()
-    fun time(minute: Int) = LocalTime.MIDNIGHT.plusMinutes(minute.toLong()).format(format)
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            stringResource(if (kind == WindowKind.TO_WORK) R.string.routine_to_work else R.string.routine_back_home),
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f),
-        )
-        TimeButton(time(window.startMinute)) { onPick(false) }
-        Text("–", modifier = Modifier.padding(horizontal = 4.dp))
-        TimeButton(time(window.endMinute)) { onPick(true) }
-    }
-}
-
-@Composable
-private fun TimeButton(text: String, onClick: () -> Unit) {
+internal fun TimeButton(text: String, onClick: () -> Unit) {
     OutlinedButton(onClick = onClick, modifier = Modifier.width(TIME_BUTTON_WIDTH), contentPadding = PaddingValues(horizontal = 4.dp)) {
         Text(text, style = MaterialTheme.typography.bodyLarge.copy(fontFeatureSettings = "tnum"), textAlign = TextAlign.Center)
     }
@@ -285,7 +225,7 @@ private val TIME_BUTTON_WIDTH = 96.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TimeDialog(initialMinute: Int, onDismiss: () -> Unit, onConfirm: (Int) -> Unit) {
+internal fun TimeDialog(initialMinute: Int, onDismiss: () -> Unit, onConfirm: (Int) -> Unit) {
     val state = rememberTimePickerState(
         initialHour = initialMinute / 60,
         initialMinute = initialMinute % 60,

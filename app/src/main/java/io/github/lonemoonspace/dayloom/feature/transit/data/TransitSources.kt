@@ -51,7 +51,7 @@ class CommuteSource(
     override val cadence = RefreshCadence(
         interval = Duration.ofMinutes(30),
         busyInterval = Duration.ofMinutes(5),
-        busyInWindows = true,
+        busyByDay = true,
     )
 
     override val inputs: Flow<SourceInput<CommuteParams>> = combine(route, mode) { r, m ->
@@ -64,11 +64,6 @@ class CommuteSource(
         return when (params.mode) {
             CommuteMode.OUTBOUND -> CommuteTrips(params.mode, outbound = provider.planTrips(params.origin, params.destination, now, count, kind))
             CommuteMode.INBOUND -> CommuteTrips(params.mode, inbound = provider.planTrips(params.destination, params.origin, now, count, kind))
-            CommuteMode.BOTH -> CommuteTrips(
-                params.mode,
-                outbound = provider.planTrips(params.origin, params.destination, now, 1 + EXTRA_OPTIONS, kind),
-                inbound = provider.planTrips(params.destination, params.origin, now, 1 + EXTRA_OPTIONS, kind),
-            )
         }
     }
 
@@ -102,7 +97,7 @@ class BoardsSource(
     override val cadence = RefreshCadence(
         interval = Duration.ofMinutes(15),
         busyInterval = Duration.ofMinutes(5),
-        busyInWindows = true,
+        busyByDay = true,
     )
 
     override val inputs: Flow<SourceInput<List<FavouriteBoard>>> = boards.map(::inputFor)

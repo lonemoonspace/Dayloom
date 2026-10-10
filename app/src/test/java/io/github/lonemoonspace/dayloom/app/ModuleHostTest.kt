@@ -30,7 +30,6 @@ import io.github.lonemoonspace.dayloom.core.refresh.RefreshCoordinator
 import io.github.lonemoonspace.dayloom.core.refresh.SourceId
 import io.github.lonemoonspace.dayloom.core.refresh.SourceInput
 import io.github.lonemoonspace.dayloom.core.refresh.Trigger
-import io.github.lonemoonspace.dayloom.core.routine.Routine
 import io.github.lonemoonspace.dayloom.core.secret.SecretState
 import io.github.lonemoonspace.dayloom.core.storage.AppSettings
 import io.github.lonemoonspace.dayloom.core.storage.InMemorySnapshotStore
@@ -145,7 +144,6 @@ class ModuleHostTest {
         override val http = OkHttpClient()
         override val connectivity = FakeNetworkStatus()
         override val places = PlaceBook(InMemoryValueStore(SharedData()))
-        override val routine = flowOf(Routine())
         override fun <T> settings(serializer: KSerializer<T>, default: T): ValueStore<T> = InMemoryValueStore(default)
         override fun <T> snapshots(sourceId: SourceId, serializer: KSerializer<T>): SnapshotStore<T> = InMemorySnapshotStore()
         override fun secret(name: String) = object : ModuleSecret {
@@ -218,7 +216,7 @@ class ModuleHostTest {
         val other = SampleModule(id = "other", notificationIds = 6_000..6_099)
         val settings = InMemoryValueStore(AppSettings(cardOrder = listOf("other.card", "sample.card")))
         val (host, coordinator) = backgroundScope.host(listOf(module, other), settings)
-        val vm = HomeViewModel(host.active, settings, coordinator, flowOf(Routine()), clock)
+        val vm = HomeViewModel(host.active, settings, coordinator, clock)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
         testScheduler.runCurrent()
 
@@ -256,14 +254,14 @@ class ModuleHostTest {
         val (host, coordinator) = backgroundScope.host(listOf(module), settings)
         val state = MemoryState()
         val sent = Sent()
-        // Friday 08:00, inside the default to-work window. / 周五 08:00，在默认的上班时间窗内。
+        // Friday 08:00, after the default brief time. / 周五 08:00，已过默认的简报时间。
         val round = BackgroundRound(
             active = host.active,
-            routine = flowOf(Routine()),
             clock = clock,
             coordinator = coordinator,
             engine = NotificationEngine(state, sent),
             morningBrief = { settings.get().morningBrief },
+            briefMinute = { settings.get().morningBriefMinute },
         )
         testScheduler.runCurrent()
 
@@ -284,7 +282,7 @@ class ModuleHostTest {
         val module = SampleModule()
         val settings = InMemoryValueStore(AppSettings())
         val (host, coordinator) = backgroundScope.host(listOf(module), settings)
-        val vm = HomeViewModel(host.active, settings, coordinator, flowOf(Routine()), clock)
+        val vm = HomeViewModel(host.active, settings, coordinator, clock)
         testScheduler.runCurrent()
 
         vm.startPolling()

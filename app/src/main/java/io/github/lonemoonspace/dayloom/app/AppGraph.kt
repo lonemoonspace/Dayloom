@@ -24,7 +24,6 @@ import io.github.lonemoonspace.dayloom.core.notify.NotificationSender
 import io.github.lonemoonspace.dayloom.core.notify.PrefsNotificationStateStore
 import io.github.lonemoonspace.dayloom.core.refresh.RefreshCoordinator
 import io.github.lonemoonspace.dayloom.core.refresh.SourceId
-import io.github.lonemoonspace.dayloom.core.routine.Routine
 import io.github.lonemoonspace.dayloom.core.secret.DataStoreSecretStore
 import io.github.lonemoonspace.dayloom.core.secret.SecretBox
 import io.github.lonemoonspace.dayloom.core.secret.SecretStore
@@ -49,7 +48,6 @@ import kotlin.reflect.KClass
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -84,8 +82,6 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
     ) { appContext.dataStoreFile(AppStores.SHARED_DATA_FILE) }
 
     val places = PlaceBook(sharedData)
-
-    val routine: Flow<Routine> = sharedData.flow.map { it.routine }.distinctUntilChanged()
 
     val zone: StateFlow<ZoneId> = combine(
         appSettings.flow.map { it.timeZoneOverride }.distinctUntilChanged(),
@@ -165,7 +161,6 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
                 coordinator = coordinator,
                 appScope = appScope,
                 places = places,
-                routine = routine,
                 moduleSettings = moduleSettings,
                 secrets = secrets,
                 snapshotFactory = snapshotFactory,
@@ -178,11 +173,11 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
 
     val backgroundRound = BackgroundRound(
         active = host.active,
-        routine = routine,
         clock = clock,
         coordinator = coordinator,
         engine = notificationEngine,
         morningBrief = { appSettings.get().morningBrief },
+        briefMinute = { appSettings.get().morningBriefMinute },
         onBriefError = { Log.w(TAG, "a morning brief line failed", it) },
     )
 

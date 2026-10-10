@@ -4,7 +4,6 @@ import io.github.lonemoonspace.dayloom.core.location.Places
 import io.github.lonemoonspace.dayloom.core.network.NetworkStatus
 import io.github.lonemoonspace.dayloom.core.refresh.RefreshCoordinator
 import io.github.lonemoonspace.dayloom.core.refresh.SourceId
-import io.github.lonemoonspace.dayloom.core.routine.Routine
 import io.github.lonemoonspace.dayloom.core.secret.SecretState
 import io.github.lonemoonspace.dayloom.core.storage.SnapshotStore
 import io.github.lonemoonspace.dayloom.core.storage.ValueStore
@@ -33,9 +32,6 @@ interface ModuleContext {
 
     /** Saved places shared by all modules (read-only; edited in settings). / 所有模块共用的已保存地点（只读；在设置页编辑）。 */
     val places: Places
-
-    /** The shared daily windows (to work / back home). / 共用的日常时间窗（上班 / 回家）。 */
-    val routine: Flow<Routine>
 
     /** This module's settings; call once per module. / 本模块的设置；每个模块只调用一次。 */
     fun <T> settings(serializer: KSerializer<T>, default: T): ValueStore<T>

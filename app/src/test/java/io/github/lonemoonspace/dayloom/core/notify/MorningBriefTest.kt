@@ -3,8 +3,6 @@ package io.github.lonemoonspace.dayloom.core.notify
 import io.github.lonemoonspace.dayloom.R
 import io.github.lonemoonspace.dayloom.core.i18n.UiText
 import io.github.lonemoonspace.dayloom.core.refresh.RefreshReport
-import io.github.lonemoonspace.dayloom.core.routine.DailyWindow
-import io.github.lonemoonspace.dayloom.core.routine.Routine
 import java.io.IOException
 import java.time.Instant
 import java.time.LocalDate
@@ -19,33 +17,36 @@ import org.junit.Test
 class MorningBriefTest {
 
     private val zone = ZoneId.of("Europe/Oslo")
-    private val routine = Routine(toWork = DailyWindow(7 * 60, 9 * 60), backHome = DailyWindow(16 * 60, 18 * 60))
+    private val seven = 7 * 60
 
     /** 2026-10-05 is a Monday. / 2026-10-05 是周一。 */
     private fun at(day: Int, h: Int, mi: Int = 0) = ZonedDateTime.of(2026, 10, day, h, mi, 0, 0, zone)
     private val monday = LocalDate.of(2026, 10, 5)
 
     @Test
-    fun `due once a day inside the to-work window, weekends included`() {
-        assertEquals(monday, MorningBriefPolicy.dueDay(routine, at(5, 7, 10), null))
-        assertNull("already sent today", MorningBriefPolicy.dueDay(routine, at(5, 7, 40), monday))
-        assertEquals("a new day", monday.plusDays(1), MorningBriefPolicy.dueDay(routine, at(6, 7, 10), monday))
-        assertNull("before the window", MorningBriefPolicy.dueDay(routine, at(5, 6, 50), null))
-        assertNull("the back-home window does not count", MorningBriefPolicy.dueDay(routine, at(5, 17), null))
-        assertEquals("weekend", LocalDate.of(2026, 10, 10), MorningBriefPolicy.dueDay(routine, at(10, 7, 10), null))
+    fun `due once a day from the chosen time, weekends included`() {
+        assertEquals(monday, MorningBriefPolicy.dueDay(seven, at(5, 7, 10), null))
+        assertNull("already sent today", MorningBriefPolicy.dueDay(seven, at(5, 7, 40), monday))
+        assertEquals("a new day", monday.plusDays(1), MorningBriefPolicy.dueDay(seven, at(6, 7, 10), monday))
+        assertNull("before the time", MorningBriefPolicy.dueDay(seven, at(5, 6, 50), null))
+        assertEquals("weekend", LocalDate.of(2026, 10, 10), MorningBriefPolicy.dueDay(seven, at(10, 7, 10), null))
     }
 
     @Test
-    fun `a window crossing midnight belongs to the day it starts`() {
-        val night = routine.copy(toWork = DailyWindow(23 * 60, 1 * 60))
-        assertEquals(monday, MorningBriefPolicy.dueDay(night, at(6, 0, 30), null))
+    fun `three hours late it is no longer news, and it never spills into the next day`() {
+        assertEquals(monday, MorningBriefPolicy.dueDay(seven, at(5, 9, 59), null))
+        assertNull(MorningBriefPolicy.dueDay(seven, at(5, 10, 0), null))
+        val late = 23 * 60
+        assertEquals(monday, MorningBriefPolicy.dueDay(late, at(5, 23, 30), null))
+        assertNull("after midnight is the next day, before its own time", MorningBriefPolicy.dueDay(late, at(6, 0, 30), null))
+        assertNull("invalid time", MorningBriefPolicy.dueDay(24 * 60, at(5, 7, 10), null))
     }
 
     private fun input(now: ZonedDateTime) = RuleInput(RefreshReport(emptyMap(), Instant.EPOCH), now)
 
     private fun rule(vararg lines: BriefContributor, errors: MutableList<Exception> = mutableListOf()) = MorningBriefRule(
         enabled = { true },
-        routine = { routine },
+        briefMinute = { seven },
         contributors = { lines.toList() },
         onError = { errors += it },
     )

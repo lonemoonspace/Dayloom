@@ -12,6 +12,7 @@ import io.github.lonemoonspace.dayloom.core.storage.AppSettings
 import io.github.lonemoonspace.dayloom.core.storage.ValueStore
 import io.github.lonemoonspace.dayloom.core.time.ZonePolicy
 import java.time.ZoneId
+import io.github.lonemoonspace.dayloom.core.notify.MorningBriefPolicy
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +31,8 @@ data class SettingsState(
     /** Settings cards of the enabled modules, in registry order. / 已开启模块的设置卡片，按注册表顺序。 */
     val sections: List<SettingsCardEntry> = emptyList(),
     val morningBrief: Boolean = false,
+    /** Minutes after midnight. / 午夜起的分钟数。 */
+    val morningBriefMinute: Int = 7 * 60,
 )
 
 class SettingsViewModel(
@@ -52,6 +55,7 @@ class SettingsViewModel(
             modules = modules.map { ModuleToggle(it, it.id in enabled) },
             sections = act.orEmpty().flatMap { a -> a.instance.settingsSections.mapIndexed { i, section -> SettingsCardEntry(a, section, i) } },
             morningBrief = s.morningBrief,
+            morningBriefMinute = s.morningBriefMinute,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsState())
 
@@ -77,6 +81,11 @@ class SettingsViewModel(
 
     fun setMorningBrief(enabled: Boolean) {
         viewModelScope.launch { settings.update { it.copy(morningBrief = enabled) } }
+    }
+
+    fun setMorningBriefTime(minute: Int) {
+        if (!MorningBriefPolicy.isValidMinute(minute)) return
+        viewModelScope.launch { settings.update { it.copy(morningBriefMinute = minute) } }
     }
 
     fun setModuleEnabled(moduleId: String, enabled: Boolean) {

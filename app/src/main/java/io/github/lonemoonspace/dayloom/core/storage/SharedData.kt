@@ -1,7 +1,6 @@
 package io.github.lonemoonspace.dayloom.core.storage
 
 import io.github.lonemoonspace.dayloom.core.location.Place
-import io.github.lonemoonspace.dayloom.core.routine.Routine
 import kotlinx.serialization.Serializable
 
 /**
@@ -11,5 +10,4 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class SharedData(
     val places: List<Place> = emptyList(),
-    val routine: Routine = Routine(),
 )

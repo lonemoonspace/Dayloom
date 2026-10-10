@@ -88,8 +88,8 @@ io.github.lonemoonspace.dayloom
 │   ├── secret/                  // SecretStore, SecretBox
 │   ├── network/                 // OkHttp, connectivity, credential redirect guard
 │   ├── time/                    // AppClock, time zone
-│   ├── location/                // Place, place search, device location
-│   ├── routine/                 // Daily windows (to work / back home), saved places (home / work)
+│   ├── location/                // Place, place search (Google / Entur / OpenStreetMap / coordinates)
+│   ├── routine/                 // The day's rhythm: to work before noon, home from noon, day and night
 │   ├── i18n/                    // UiText, language switching
 │   ├── error/  json/  work/  ui/
 └── feature/
@@ -133,7 +133,6 @@ interface ModuleInstance {
     val notificationChannels: List<ChannelSpec>
     val notificationRules: List<NotificationRule<*>>
     val brief: BriefContributor?                   // One line in the morning brief
-    val backgroundWork: List<BackgroundWorkSpec>   // Extra background work (e.g. news sync); added with the news module in M6, unused before
     val configured: Flow<ConfigState>              // Whether it is set up; if not, cards show a setup prompt
 }
 ```
@@ -148,7 +147,7 @@ interface ModuleInstance {
 | `snapshots<T>(sourceName, serializer)` | This module's snapshot store; file names get the module prefix automatically |
 | `secret(name)` | This module's credentials; ids get the module prefix automatically |
 | `notifyState(name)` | State store for this module's notification rules; keys get the module prefix automatically |
-| `places` / `routine` | Shared saved places and daily windows (§8) |
+| `places` | Shared saved places (§8) |
 | `connectivity` | Network status |
 | `appScope` | Process-wide coroutine scope |
 
@@ -193,8 +192,8 @@ Port the core semantics of `CachedSource` and `RefreshCoordinator` from Personal
 |---|---|
 | `enum class SourceId` | `SourceId(value: String)`, e.g. `"weather.forecast"`, made of module id + source name |
 | `paramsKey(settings: UserSettings)` | `CachedSource<P, T>`: `P` is the source's own parameter type, derived by the module from its own settings; core only sees generics |
-| `commuteSources()` hard-codes weather/train/traffic/bus | Each source declares a `RefreshCadence` (foreground interval, whether to refresh in background, whether to poll more often only inside daily windows); the coordinator picks sources by cadence |
-| Two traffic sources (outbound/return) plus an `activeTraffic` special case | The traffic module picks the direction from the daily windows internally; core sees one source |
+| `commuteSources()` hard-codes weather/train/traffic/bus | Each source declares a `RefreshCadence` (foreground interval, whether to refresh in background, whether to poll more often only in the daytime); the coordinator picks sources by cadence |
+| Two traffic sources (outbound/return) plus an `activeTraffic` special case | The traffic module picks the direction from the time of day (12:00) internally; core sees one source |
 | `Trigger.LIVE_POLL` exists just for football | Kept as a generic "silent high-frequency polling" trigger any module can use |
 
 Snapshot files: `snapshot_<sourceId>` (dots replaced by underscores). Snapshots carry a `schemaVersion`; incompatible snapshots are discarded and refetched.
@@ -209,7 +208,7 @@ Snapshot files: `snapshot_<sourceId>` (dots replaced by underscores). Snapshots 
 |---|---|---|
 | `app_settings` | DataStore (JSON) | Global settings: language, time zone override, enabled modules, card order, onboarding done, morning brief switch |
 | `module_settings` | DataStore Preferences | One key per module (= module id); the value is that module's settings as JSON |
-| `shared_data` | DataStore (JSON) | Saved places (home / work / custom), daily windows |
+| `shared_data` | DataStore (JSON) | Saved places (home / work / custom) |
 | `secrets` | DataStore Preferences | All credentials, encrypted with `SecretBox`; key = `<moduleId>.<name>` |
 | `notify_state` | DataStore Preferences | Notification rule state; key = `<moduleId>.<rule>` |
 | `snapshot_*` | DataStore (JSON) | Data source snapshots |
@@ -224,7 +223,7 @@ Snapshot files: `snapshot_<sourceId>` (dots replaced by underscores). Snapshots 
 ### 6.3 Credentials
 
 Keep `SecretStore` / `SecretBox` (`v1:` ciphertext format, Android Keystore) with the same rules: requests use only `usable(id)`, input fields only show `display`, ciphertext is never sent or displayed as a credential.
-First-version credentials: `traffic.google_maps`, `football.football_data`, `news.miniflux_token`, `news.llm_api_key`.
+First-version credentials: `core.google_maps` (one Google Maps Platform key shared by place search and traffic, entered under Places; modules reach it through `ModuleContext.googleMapsKey`), `football.football_data`, `news.miniflux_token`, `news.llm_api_key`.
 
 ---
 
@@ -245,7 +244,7 @@ First-version credentials: `traffic.google_maps`, `football.football_data`, `new
 
 - Implemented in core; it is the only cross-module notification. Each enabled module with a `BriefContributor` supplies one structured line (e.g. "Rain today, take an umbrella", "First departure on time", "Traffic is light, 22 min"), combined in module order into one notification.
 - A new module appears in the brief automatically just by implementing `BriefContributor`.
-- When it goes out: on the first background round inside the to-work window on a working day, once per day by the day the window belongs to. When no module has anything to say (data too old, or nothing to report) the day is not used up, so a later round in the same window can still send it. A module that fails only loses its own line.
+- When it goes out: on the first background round at or after the time the user chose (07:00 by default, Settings → Notifications), once a day; three hours late it is no longer morning news and the day is skipped. When no module has anything to say (data too old, or nothing to report) the day is not used up, so a later round can still send it. A module that fails only loses its own line.
 
 ### 7.4 Notifications in the first version
 
@@ -261,14 +260,14 @@ All notifications are off by default (opt-in), for the same reason as in the ori
 
 ---
 
-## 8. Shared concepts: places and daily windows
+## 8. Shared concepts: places and the day's rhythm
 
 Weather, public transport, traffic and the morning brief all need "where is home, where is work, when do I leave". To avoid every module asking separately, these live in core:
 
 - **Saved places (`core/location`)**: `Place(id, label, name, lat, lon, countryCode?)`. Two preset slots, "Home" and "Work", plus custom places.
-  - Search: **Open-Meteo Geocoding** (worldwide, free, no key); Norwegian addresses can additionally use the Entur Geocoder for better precision.
-  - "Use current location": **one-shot only** — when the user taps the button, the current position is read once and stored in the place, which then stays fixed. Uses the system `LocationManager` (no Google Play services, keeping a later F-Droid release possible), requests only foreground coarse location, and is optional. No continuous location tracking, no background location permission.
-- **Daily windows (`core/routine`)**: to-work window, back-home window (may cross midnight, same validation rules as the original project), working days (default Monday–Friday).
+  - Search: **Google Places API (New) Text Search** with the user's own key (street addresses and named places); without a key, **Entur Geocoder** first (Norwegian street addresses, places, points of interest and stops; free, no key, addresses from Kartverket), and **Nominatim** (OpenStreetMap, worldwide) when it finds nothing or fails; Nominatim's policy asks for an identifying User-Agent, at most about one request a second and no search-as-you-type, so it is only called when Search is pressed. Google is optional: nobody should need a key just to enter an address (decided after the rc.4 test). Coordinates typed by hand ("59.9139, 10.7522") are always accepted as they are.
+  - No device location: the app asks for no location permission at all (decided after the rc.1 test, §19).
+- **The day's rhythm (`core/routine`)**: before 12:00 the cards look to work (home → work), from 12:00 homewards; 06:00–22:00 is daytime, when quickly changing sources refresh more often and commute alerts may go out. The same for everyone and every day, with no settings (replaced user-set commute windows after the rc.6 test).
 
 Module settings refer to these shared items — weather defaults to "Home", traffic to "Home → Work" — and can point elsewhere.
 
@@ -320,32 +319,32 @@ Module settings refer to these shared items — weather defaults to "Home", traf
 
 ### 11.1 Weather `weather`
 
-- **Features**: current weather, the next few hours, tomorrow morning's forecast; inside daily windows, "weather when you leave / come home" and when rain starts or stops (port `CommuteWeatherPolicy`, replacing its direct dependency on commute settings with the shared daily windows).
-- **Data source**: MET Norway Locationforecast 2.0 (worldwide).
-- **Settings**: location (default "Home").
+- **Features**: the weather at Home now (feels-like, wind and gusts), then the day: until 18:00 today, from 18:00 tomorrow (`DayOutlookPolicy`, daytime hours 06:00–22:00): low/high and feels-like, an hourly temperature curve (high and low marked) with rain bars underneath (rain spells shaded and labelled with amount and chance, the hour marked every three hours), what to wear (from the lowest feels-like temperature) and tips (umbrella, heavy rain, thunder, snow, icy roads, strong wind, heat, sunscreen, layers); then a four-day strip.
+- **Data source**: MET Norway Locationforecast 2.0 `complete` (worldwide; `complete` for feels-like, gusts, UV and rain probability).
+- **Settings**: none — always Home.
 - **Sources**: `weather.forecast`.
-- **Ported**: `MetApi`, `WeatherPointPicker`, `DailyForecastBuilder`, `CommuteWeatherPolicy`, weather icons (the original project's own `ic_wx_*` vector drawables).
+- **Ported**: `MetApi`, `WeatherPointPicker`, `DailyForecastBuilder`, weather icons (the original project's own `ic_wx_*` vector drawables).
 - **Note**: MET requires contact information in the User-Agent; it becomes `Dayloom/<version> (+https://github.com/lonemoonspace/dayloom)`. The UI must credit the data source (CC BY 4.0).
 
 ### 11.2 Public transport `transit` (the largest piece of the first version)
 
 - **Features**
-  1. **Commute trips**: origin stop → destination stop (any line). Shows the outbound trip in the to-work window, the return trip in the back-home window, and the next departure in both directions outside the windows. Lists the next N options: departure/arrival times, number of transfers and transfer stops, real-time status of each leg (on time / N min late / cancelled).
+  1. **Commute trips**, a **train** commute and a **bus** commute kept apart, each with its own stops, card, settings and disruption switch: origin stop → destination stop (any line of that kind; the Entur `trip` query is limited to `rail` plus rail replacement buses (the `railReplacementBus` submode of `bus`, the only service during track work; they keep the train's line code and only the submode identifies them, so the card adds a bus icon and "Replacement bus"), or to `bus` and `coach`). Shows the outbound trips before 12:00 and the return trips from 12:00. Lists the next N options: departure/arrival times, number of transfers and transfer stops, real-time status of each leg (on time / N min late / cancelled).
   2. **Favourite stop departure boards**: real-time departures from any stop, filterable by line, destination and direction (e.g. at one stop, show only a given bus line heading to a given terminus — this reproduces the original project's "full-route buses only" behaviour).
 - **Data source**: Entur Journey Planner v3 (GraphQL) `trip` and `stopPlace.estimatedCalls`; stop search via the Entur Geocoder. Request header `ET-Client-Name: lonemoonspace-dayloom`.
 - **Pluggable**: `TransitProvider` interface (`searchStops`, `planTrips`, `departures`); the first version has only `EnturProvider`. If the saved place is outside Norway, settings say the region is not supported yet.
-- **Settings**: commute origin stop, destination stop, number of options shown; list of favourite stops (stop + filters).
-- **Sources**: `transit.commute`, `transit.boards`.
-- **Notifications**: inside a commute window, alert when an upcoming option is cancelled or heavily delayed (port the fingerprint de-duplication idea of `CommuteDisruptionPolicy`).
+- **Settings**: one card each for train, bus (origin stop, destination stop, number of options shown, disruption alerts) and favourite stops (stop + filters).
+- **Sources**: `transit.train`, `transit.bus`, `transit.boards`.
+- **Notifications**: alert when the next option leaves within 45 minutes and is cancelled or heavily delayed, never 22:00–06:00 (port the fingerprint de-duplication idea of `CommuteDisruptionPolicy`).
 - **Ported**: the request/parsing foundation of `EnturApi`, the generic parts of `StationMatcher` / `TransferMatcher`, the status-label rules (on time / late / cancelled / no real-time data).
 - **Not ported**: `L1Stations`, the L1/R14-specific transfer comparison, `UpcomingL1Policy`, `Bus280*`.
 - **API validation (2026-10-09, before implementation)**: `trip` returns every leg with line, from/to stop, aimed and expected times and its own `realtime` flag; walking between rides is a separate `foot` leg, so transfer stops are known. Delays showed live (a 12-minute late regional train). Cancellations: `cancellation` per call, `includeRealtimeCancellations` (trip) and `includeCancelledTrips` (boards) are accepted; there was no live cancellation to observe. Many departures have no real-time data at all (88 of 300 at a busy city stop), so "no real-time data" is a status of its own and never shown as on time. The board line filter `whiteListed: {lines}` works server-side again, but filters stay on the client because the settings use public line codes and destination text. Stop search uses Geocoder v3 (`q`, `limit`, `layers=stopPlace`). Cancelled options are shown, flagged, rather than hidden; heavy delay means a known delay of at least 5 minutes on any leg of the next option.
 
 ### 11.3 Traffic `traffic`
 
-- **Features**: estimated travel time, free-flow time, distance and congestion level from origin to destination; switches between outbound and return by daily window.
+- **Features**: estimated travel time, free-flow time, distance and congestion level from origin to destination; outbound before 12:00, return from 12:00.
 - **Data source**: Google Routes API with **the user's own key** (settings clearly state it must be enabled in Google Cloud and may incur charges).
-- **Settings**: origin, destination (default "Home → Work"), Google key.
+- **Settings**: origin, destination (default "Home → Work"), the shared Google key (`core.google_maps`, with the Routes API enabled).
 - **Sources**: `traffic.route`.
 - **Off by default**: users without a key never see an error card.
 
@@ -376,6 +375,7 @@ Module settings refer to these shared items — weather defaults to "Home", traf
 - **Notifications**: kick-off reminder, final score.
 - **Ported**: `FootballDataOrgApi`, `FootballStatusBuilder`, score / penalty shoot-out logic, live polling policy; `isRealMadrid` becomes `isFollowedTeam`.
 - **Not ported**: the Real Madrid crest image (trademark); crests are loaded from the URLs the API returns.
+- **Implementation (M5)**: the original code was not available at implementation time, so it was rewritten from the API documentation and tested against a mock server. `football.matches` fetches four weeks back to five weeks ahead, with a cadence that follows the schedule (`FootballPolicy.cadence`: every minute while live, every 15 minutes around a match, every three hours otherwise), so scores on the home card and in the tab are live; `football.standings` refreshes every six hours, overall tables only. v4 counts a shoot-out into `fullTime`, so the score of play is regular plus extra time (or full time minus the shoot-out). The home card appears only around match time (live, kick-off within 24 hours, finished within 12 hours) and moves to the top while live. Two rules, `kickoff` (within an hour before kick-off) and `result` (only from a snapshot refreshed in this round, up to 11 hours after kick-off), share one notification id, so the final score replaces the kick-off reminder. Crests: Android cannot draw SVG and the same host serves a PNG next to each SVG, so the PNG is used, with the three-letter code as fallback. The twelve free competitions have bilingual names in resources.
 
 ### 11.7 News `news`
 
@@ -383,7 +383,8 @@ Module settings refer to these shared items — weather defaults to "Home", traf
 - **Data source**: the user's own Miniflux server and LLM endpoint.
 - **Settings**: Miniflux URL and token; LLM URL, model and key.
 - **Storage**: Room `dayloom.db` (schema exported from v1).
-- **Background work**: `news.sync` (declared by the module through `backgroundWork`).
+- **Background work**: `news.sync` is an ordinary source that runs in the shared refresh round (see §12).
+- **Implementation (M6)**: the original code was not available at implementation time, so it was rewritten against the Miniflux API v1 and the OpenAI-compatible chat API and tested against a mock server. A sync first downloads the unread and starred entries (up to 200 each, newest first), then pushes local changes (read/unread in one request; the bookmark call toggles, so a star is only sent when the server's state differs from the wanted one), then merges into Room. A local change stays pending, and wins, until a push succeeds, so reading offline is not undone; an article that left a complete unread list without a local change was read elsewhere; a list cut off at 200 proves nothing; a star is only toggled when the server's state is known; read, unstarred articles are deleted 14 days after they were read. Network calls run outside the lock and the merge only clears a pending change whose value was the one sent, so a tap during a sync survives it. Opening an unread article marks it read and pushes read states right away; the home card counts come straight from Room, so reading updates them at once. AI summaries are made only when the user taps the button (they may cost money), from the text without markup cut to 12,000 characters, with a prompt in the app language, and kept in Room. Addresses must be https, because the token must not travel in clear text; an address typed without a scheme gets https, and http:// is refused with that reason. Server and token are saved with one "Save and connect" button that syncs once through the coordinator and shows the unread count or the error. Room comes through `ModuleContext.database()`; only one module may own `dayloom.db`. A small home card shows the unread count and the three newest headlines.
 - **Summary language**: follows the app language (prompts in both languages).
 - **Ported**: almost entirely (it is already generic); the main work is bilingual text and plugging into the module interface.
 
@@ -394,7 +395,7 @@ Module settings refer to these shared items — weather defaults to "Home", traf
 - One generic periodic refresh worker (unique work name `dayloom.refresh`): picks the sources due according to their `RefreshCadence` → refreshes them → hands the result to `NotificationEngine` to evaluate the rules of all enabled modules.
 - No network constraint: rules that only depend on the clock (expiry reminders) must run offline too, and offline sources are skipped without a request. WorkManager is asked to retry only when every source actually attempted failed.
 - While the home screen is visible it checks every minute with the same cadences and refreshes the due sources; a source that failed waits an interval before the next try, so a broken service is not hit every minute.
-- Extra module work (e.g. `news.sync`) is declared by the module and scheduled centrally by `app`; disabling a module cancels its work.
+- Modules get no WorkManager work of their own: work like the news sync is a `CachedSource` too (`news.sync`), run in the same round on its own `RefreshCadence`, with the same offline skip, error display and failure throttling; a disabled module is simply no longer refreshed. That leaves one worker to freeze.
 - Worker class names and unique work names are frozen from v1.0 (WorkManager instantiates scheduled work by class name).
 
 ---
@@ -402,7 +403,7 @@ Module settings refer to these shared items — weather defaults to "Home", traf
 ## 13. First-run onboarding
 
 1. Welcome + language choice;
-2. set "Home" (search or current location), skippable;
+2. set "Home" (search or coordinates), skippable;
 3. choose which modules to enable (defaults: calendar, weather, expiry reminders; modules that need a key or only work in Norway are unchecked, with the reason shown);
 4. go to the home screen. Cards of modules that are not fully set up show a "Set up" prompt.
 
@@ -412,16 +413,16 @@ Module settings refer to these shared items — weather defaults to "Home", traf
 
 - The APK contains no API keys; credentials stay on the phone, encrypted with the Keystore.
 - No analytics, no crash reporting, no ads; network requests only go to the services of modules the user enabled.
-- Permissions: `INTERNET`, `ACCESS_NETWORK_STATE`, `POST_NOTIFICATIONS` (runtime permission, requested only when the user turns on a notification switch), `ACCESS_COARSE_LOCATION` (optional, requested only for the one-shot location).
+- Permissions: `INTERNET`, `ACCESS_NETWORK_STATE`, `POST_NOTIFICATIONS` (runtime permission, requested only when the user turns on a notification switch). No location permission.
 - The About page also lists every third-party library and its license (MIT and similar licenses require the copyright notice to ship with the software).
 - Credentials are only sent to the service they belong to; `CredentialRedirectGuard` is kept to prevent leaks through redirects.
-- Settings gain an "About / Data sources" page:
+- Settings gain an "About / Data sources" section (M7: dialogs for data sources, privacy and open-source licenses; the privacy statement is also in `PRIVACY.md`):
 
 | Data | Source | License / requirements |
 |---|---|---|
 | Weather | MET Norway | CC BY 4.0, attribution required; User-Agent with contact information |
 | Public transport | Entur | NLOD, attribution required; `ET-Client-Name` header |
-| Place search | Open-Meteo Geocoding | CC BY 4.0, attribution required |
+| Place search | Google Places API (New) with the user's key; Entur Geocoder and Nominatim without | Google Maps attribution shown with the results; Entur under NLOD; OpenStreetMap under ODbL, "© OpenStreetMap contributors" required |
 | Traffic | Google Routes | User's own key, subject to Google's terms |
 | Football | football-data.org | User's own key, subject to its terms |
 | Lunar calendar | lunar-java (`cn.6tail:lunar`) | MIT, copyright notice required; not the Hong Kong Observatory table |
@@ -496,17 +497,21 @@ Check every file before porting: remove personal information from defaults, test
 |---|---|
 | Card ordering | Drag to reorder, plus accessible move up / move down (§4.3) |
 | English design document | Add `docs/design.en.md`, kept identical to the Chinese version |
-| Device location | One-shot only: read the current position once into a place; no continuous tracking, no background location (§8) |
+| Device location | None. First one-shot only; removed after the rc.1 test in favour of Google search and typed coordinates (§8) |
 | Lunar data | Use lunar-java (MIT), accepting the slight risk that its upstream (sxwnl) license is not explicit; verify locally against the Observatory data (§11.5) |
 | minSdk | 33 (Android 13). The intended users all have recent phones; in return, blur and dynamic color work on every device, notification permission has a single flow, and per-app language uses the native system implementation |
 | Repository visibility | Public from M1 (2026-10-09) instead of M7: GitHub Actions minutes are free for public repositories. Code ported from PersonalAssistant (weather, holidays, icons) is published with the owner's consent; personal data is removed when porting (§18) |
 | Release compile in the gate | `verify` and CI also run `compileReleaseKotlin`: in M1 the release source set turned out to be missing a file that only debug had, which a debug-only gate cannot see. About a minute per CI run; R8 stays in the release workflows |
 | Expiry reminders | Reminded once per item and expiry time when the warning period starts, on the last day, and on expiring — the last only within a day of expiry, so an old date typed in stays quiet. The rule exists from M2; the opt-in switch arrives in M4 with the notification wiring and permission flow, so no switch exists that does nothing |
-| Public transport | Entur only for now; validated before implementation (§11.2). The commute card follows the daily windows (one direction inside a window, the next option both ways outside); favourite-stop boards filter by line code and destination on the client. The disruption rule exists from M3; its opt-in switch arrives with the notification wiring in M4 |
-| Daily windows | Shared by all modules (§8) with working days (default Monday–Friday); both ends are wall-clock times, so on DST change days a window is an hour shorter or longer, as in the original project |
+| Public transport | Entur only for now; validated before implementation (§11.2). The commute card switches direction at 12:00; favourite-stop boards filter by line code and destination on the client. The disruption rule exists from M3; its opt-in switch arrives with the notification wiring in M4 |
+| The day's rhythm | The working-day selection and commute switch went after the rc.1 test; after the rc.6 test the commute windows went too, replaced by a direction switch at 12:00 (§8). The cards only need to know which way to look, and two time pickers asked more than that was worth. The two other jobs the windows did have their own replacements: the morning brief has its own time, and disruption alerts are limited to trips leaving within 45 minutes and are quiet 22:00–06:00 |
 | Notification switches | No master switch: each kind of notification has its own switch, off by default, and "turn everything off" is left to the system settings. The notification permission is requested only when the user turns a switch on; when the permission or the channel is off the switch says so and links to the system settings |
 | Background refresh | WorkManager every 15 minutes without a network constraint, each source throttled by its own `RefreshCadence`; the visible home screen checks every minute (§12) |
-| Morning brief | Sent on the first background round inside the to-work window on working days, with a line each from weather, public transport, traffic and expiry reminders; modules whose data is too old are left out (§7.3) |
+| Morning brief | Sent on the first background round at or after the chosen time (07:00 by default), every day, with a line each from weather, public transport, traffic and expiry reminders; modules whose data is too old are left out (§7.3) |
+| rc.1 test feedback (2026-10-09) | Calendar header: solar term on the clock row, stem-branch year and lunar date on one line beside the date. Weather: always Home, no settings; the commute windows on the card are replaced by the day's outlook with clothing advice and tips, tomorrow's from 18:00. Public transport: train and bus commutes apart (sources, cards, settings, rules). Places: no device location; Google search with a shared key, typed coordinates, Open-Meteo as the keyless fallback. Daily windows apply every day. Settings may now have several cards per module (`ModuleInstance.settingsSections`). The overall look is being discussed separately |
+| Visual design (2026-10-09) | Direction B of three mockups: Material 3 Expressive with colours from the wallpaper (Material You), 20 dp cards, one weather card in the scheme's primary colour that does not change with the weather, cards with a line icon, title, route and "updated" time in one row, one dense row per trip option (departure, lines, arrival, duration, transfers, platform, status pill), three options per commute window by default |
+| News sync (M6) | No separate `news.sync` WorkManager work; it runs as a source in the shared refresh round (§12). Room comes through `ModuleContext.database()`, and only one module may own `dayloom.db` |
+| Football and news implementation (M5, M6) | The PersonalAssistant code was not available at implementation time; both were rewritten from the public API documentation and tested against a mock server. They need one real test with real keys |
 
 ### Rationale (archived)
 

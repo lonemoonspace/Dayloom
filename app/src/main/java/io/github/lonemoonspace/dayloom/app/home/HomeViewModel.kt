@@ -8,7 +8,6 @@ import io.github.lonemoonspace.dayloom.core.module.CardPlacement
 import io.github.lonemoonspace.dayloom.core.module.HomeCard
 import io.github.lonemoonspace.dayloom.core.refresh.RefreshCoordinator
 import io.github.lonemoonspace.dayloom.core.refresh.Trigger
-import io.github.lonemoonspace.dayloom.core.routine.Routine
 import io.github.lonemoonspace.dayloom.core.routine.RoutinePolicy
 import io.github.lonemoonspace.dayloom.core.storage.AppSettings
 import io.github.lonemoonspace.dayloom.core.storage.ValueStore
@@ -47,7 +46,6 @@ class HomeViewModel(
     private val active: StateFlow<List<ActiveModule>?>,
     private val settings: ValueStore<AppSettings>,
     private val coordinator: RefreshCoordinator,
-    private val routine: Flow<Routine>,
     private val clock: AppClock,
 ) : ViewModel() {
 
@@ -128,8 +126,7 @@ class HomeViewModel(
         // 冷启动时可能还不知道开启了哪些模块；等一等，而不是什么都不刷。
         val ids = ModuleHost.sourceIds(active.filterNotNull().first())
         try {
-            val inWindow = RoutinePolicy.active(routine.first(), clock.now()) != null
-            coordinator.refreshDue(ids, trigger, inWindow, throttleFailures = true)
+            coordinator.refreshDue(ids, trigger, RoutinePolicy.isDaytime(clock.now()), throttleFailures = true)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {

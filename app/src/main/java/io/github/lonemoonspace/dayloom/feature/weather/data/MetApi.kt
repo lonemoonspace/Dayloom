@@ -17,15 +17,15 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 
 /**
- * MET Norway Locationforecast 2.0 (`compact`), worldwide. The terms ask for an identifying User-Agent (set by the shared client),
+ * MET Norway Locationforecast 2.0 (`complete`, for feels-like, gusts, UV and rain probability), worldwide. The terms ask for an identifying User-Agent (set by the shared client),
  * at most four decimals in coordinates and conditional requests, so an unchanged forecast costs MET nothing.
  * Blocking call: the refresh coordinator runs it on the IO dispatcher.
- * MET Norway Locationforecast 2.0（`compact`），全球可用。条款要求带标识的 User-Agent（由共享客户端设置）、坐标最多四位小数、
+ * MET Norway Locationforecast 2.0（`complete`，为了体感温度、阵风、紫外线与降水概率），全球可用。条款要求带标识的 User-Agent（由共享客户端设置）、坐标最多四位小数、
  * 使用条件请求，预报没变时不给 MET 增加负担。阻塞调用：刷新协调器在 IO 调度器上运行它。
  */
 class MetApi(
     private val http: OkHttpClient,
-    private val baseUrl: HttpUrl = "https://api.met.no/weatherapi/locationforecast/2.0/compact".toHttpUrl(),
+    private val baseUrl: HttpUrl = "https://api.met.no/weatherapi/locationforecast/2.0/complete".toHttpUrl(),
 ) {
     sealed interface Result {
         data class Fresh(val forecast: Forecast) : Result
@@ -72,6 +72,11 @@ class MetApi(
                     precipitation1h = step.data.next1h?.details?.precipitationAmount,
                     symbol6h = step.data.next6h?.summary?.symbolCode.orEmpty(),
                     precipitation6h = step.data.next6h?.details?.precipitationAmount,
+                    apparentTemperature = step.data.instant.details.apparentTemperature,
+                    windGust = step.data.instant.details.windGust,
+                    uvIndex = step.data.instant.details.uvIndex,
+                    precipProbability1h = step.data.next1h?.details?.precipitationProbability,
+                    thunderProbability1h = step.data.next1h?.details?.thunderProbability,
                 )
             },
         )
@@ -109,6 +114,9 @@ internal data class MetResponse(val properties: Properties = Properties()) {
     data class InstantDetails(
         @SerialName("air_temperature") val airTemperature: Double? = null,
         @SerialName("wind_speed") val windSpeed: Double? = null,
+        @SerialName("apparent_air_temperature") val apparentTemperature: Double? = null,
+        @SerialName("wind_speed_of_gust") val windGust: Double? = null,
+        @SerialName("ultraviolet_index_clear_sky") val uvIndex: Double? = null,
     )
 
     @Serializable
@@ -118,5 +126,9 @@ internal data class MetResponse(val properties: Properties = Properties()) {
     data class Summary(@SerialName("symbol_code") val symbolCode: String = "")
 
     @Serializable
-    data class PeriodDetails(@SerialName("precipitation_amount") val precipitationAmount: Double? = null)
+    data class PeriodDetails(
+        @SerialName("precipitation_amount") val precipitationAmount: Double? = null,
+        @SerialName("probability_of_precipitation") val precipitationProbability: Double? = null,
+        @SerialName("probability_of_thunder") val thunderProbability: Double? = null,
+    )
 }

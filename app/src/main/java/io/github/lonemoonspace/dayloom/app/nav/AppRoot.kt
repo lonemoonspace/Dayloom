@@ -22,6 +22,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -35,12 +36,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import io.github.lonemoonspace.dayloom.R
@@ -49,7 +48,6 @@ import io.github.lonemoonspace.dayloom.app.home.HomeScreen
 import io.github.lonemoonspace.dayloom.app.home.HomeViewModel
 import io.github.lonemoonspace.dayloom.app.onboarding.OnboardingScreen
 import io.github.lonemoonspace.dayloom.app.settings.PlacesCard
-import io.github.lonemoonspace.dayloom.app.settings.RoutineCard
 import io.github.lonemoonspace.dayloom.app.settings.SettingsScreen
 import io.github.lonemoonspace.dayloom.app.settings.SettingsViewModel
 import io.github.lonemoonspace.dayloom.app.settings.SharedDataViewModel
@@ -61,11 +59,19 @@ import io.github.lonemoonspace.dayloom.core.ui.LocalHazeState
 import io.github.lonemoonspace.dayloom.core.ui.NavTab
 import kotlinx.coroutines.Dispatchers
 
-private object Routes {
+/**
+ * Each module tab has a route of its own rather than one `module/{moduleId}` pattern: tab switches save and restore state
+ * per destination, and with a shared pattern opening News restored whichever module tab had been open before (or nothing,
+ * if that module had been turned off since).
+ * 每个模块标签页都有自己的路由，而不是共用 `module/{moduleId}` 模式：切换标签页时按目的地保存与恢复状态，共用模式下
+ * 打开「新闻」会恢复之前打开过的其他模块页（若那个模块已被关闭，则什么都不显示）。
+ */
+internal object Routes {
     const val HOME = "home"
     const val SETTINGS = "settings"
-    const val MODULE = "module/{moduleId}"
-    fun module(id: String) = "module/$id"
+    private const val MODULE_PREFIX = "module/"
+    fun module(id: String) = MODULE_PREFIX + id
+    fun moduleIdOf(route: String?): String? = route?.takeIf { it.startsWith(MODULE_PREFIX) }?.removePrefix(MODULE_PREFIX)
 }
 
 /**
@@ -119,9 +125,8 @@ private fun sharedDataViewModel(graph: AppGraph): SharedDataViewModel = viewMode
         initializer {
             SharedDataViewModel(
                 places = graph.places,
-                sharedData = graph.sharedData,
                 search = graph.placeSearch,
-                locator = graph.deviceLocator,
+                secrets = graph.secrets,
                 appScope = graph.appScope,
                 ioContext = Dispatchers.IO,
             )
@@ -156,7 +161,7 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?) {
 
     val homeVm: HomeViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { HomeViewModel(graph.host.active, graph.appSettings, graph.coordinator, graph.routine, graph.clock) }
+            initializer { HomeViewModel(graph.host.active, graph.appSettings, graph.coordinator, graph.clock) }
         },
     )
     val homeState by homeVm.state.collectAsStateWithLifecycle()
@@ -164,7 +169,10 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?) {
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val route = backStackEntry?.destination?.route ?: Routes.HOME
-    val currentModuleId = backStackEntry?.arguments?.getString("moduleId")
+    val currentModuleId = Routes.moduleIdOf(route)
+    // Routes for every registered module, enabled or not, so the graph never loses a destination that is on the back stack.
+    // 为每个已登记的模块建路由（不论是否开启），图里就不会缺少返回栈上的目的地。
+    val moduleIds = remember(graph) { graph.host.modules.map { it.id } }
     val hazeState = rememberHazeState()
 
     CompositionLocalProvider(
@@ -251,21 +259,18 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?) {
                                 onTimeZone = vm::setTimeZone,
                                 onModuleEnabled = vm::setModuleEnabled,
                                 onMorningBrief = vm::setMorningBrief,
+                                onMorningBriefTime = vm::setMorningBriefTime,
                             ) {
                                 val places by sharedVm.placeList.collectAsStateWithLifecycle()
                                 val editor by sharedVm.editor.collectAsStateWithLifecycle()
-                                val routine by sharedVm.routine.collectAsStateWithLifecycle()
                                 PlacesCard(places, editor, sharedVm)
-                                RoutineCard(routine, sharedVm)
                             }
                         }
-                        composable(
-                            Routes.MODULE,
-                            arguments = listOf(navArgument("moduleId") { type = NavType.StringType }),
-                        ) { entry ->
-                            val id = entry.arguments?.getString("moduleId")
-                            // The module may have been disabled meanwhile; then there is nothing to show. / 模块可能已被关闭，此时没有内容可显示。
-                            tabModules.firstOrNull { it.module.id == id }?.instance?.tab?.content?.invoke()
+                        moduleIds.forEach { id ->
+                            composable(Routes.module(id)) {
+                                // The module may have been disabled meanwhile; then there is nothing to show. / 模块可能已被关闭，此时没有内容可显示。
+                                tabModules.firstOrNull { it.module.id == id }?.instance?.tab?.content?.invoke()
+                            }
                         }
                     }
                 }

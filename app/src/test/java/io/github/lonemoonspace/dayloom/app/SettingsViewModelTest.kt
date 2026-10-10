@@ -105,6 +105,11 @@ class SettingsViewModelTest {
 
         vm.setMorningBrief(true)
         assertTrue(vm.state.value.morningBrief)
+        assertEquals("07:00 by default", 7 * 60, vm.state.value.morningBriefMinute)
+        vm.setMorningBriefTime(6 * 60 + 30)
+        assertEquals(6 * 60 + 30, vm.state.value.morningBriefMinute)
+        vm.setMorningBriefTime(24 * 60)
+        assertEquals("an impossible time is not saved", 6 * 60 + 30, vm.state.value.morningBriefMinute)
 
         assertFalse(settings.state.value.onboardingDone)
         vm.finishOnboarding()

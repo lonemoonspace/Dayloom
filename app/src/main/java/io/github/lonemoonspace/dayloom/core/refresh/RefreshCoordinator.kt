@@ -135,17 +135,17 @@ class RefreshCoordinator(
     }
 
     /**
-     * Refreshes only the sources among [ids] that their [RefreshCadence] says are due; [inWindow] = the user is inside a daily
-     * window. The background worker passes only sources with [RefreshCadence.background].
+     * Refreshes only the sources among [ids] that their [RefreshCadence] says are due; [daytime] = it is daytime, when
+     * [RefreshCadence.busyInterval] applies. The background worker passes only sources with [RefreshCadence.background].
      * With [throttleFailures] a source that failed is not retried before its interval passes again, so polling the screen
      * every minute never hammers a broken service. The background worker passes false: a WorkManager retry right after a
      * failure must actually refetch.
-     * 只刷新 [ids] 里按各自 [RefreshCadence] 已到期的来源；[inWindow] = 用户正处于日常时间窗内。后台任务只传
+     * 只刷新 [ids] 里按各自 [RefreshCadence] 已到期的来源；[daytime] = 现在是白天，适用 [RefreshCadence.busyInterval]。后台任务只传
      * [RefreshCadence.background] 为 true 的来源。
      * [throttleFailures] 为 true 时，失败的来源要再等一个间隔才重试，页面每分钟轮询也不会反复敲一个坏掉的服务。
      * 后台任务传 false：失败后 WorkManager 的重试必须真的重新抓取。
      */
-    suspend fun refreshDue(ids: Set<SourceId>, trigger: Trigger, inWindow: Boolean, throttleFailures: Boolean): RefreshReport {
+    suspend fun refreshDue(ids: Set<SourceId>, trigger: Trigger, daytime: Boolean, throttleFailures: Boolean): RefreshReport {
         val sources = registered.value
         require(sources.keys.containsAll(ids)) { "unregistered sources: ${ids - sources.keys}" }
         val now = clock.instant()
@@ -153,7 +153,7 @@ class RefreshCoordinator(
         val due = ids.filterTo(mutableSetOf()) { id ->
             val source = sources.getValue(id)
             val last = listOfNotNull(lastFetchedAt(source), attempts[id]).maxOrNull()
-            RefreshCadencePolicy.isDue(source.cadence, inWindow, last, now)
+            RefreshCadencePolicy.isDue(source.cadence, daytime, last, now)
         }
         return refresh(due, trigger)
     }

@@ -11,7 +11,9 @@ import io.github.lonemoonspace.dayloom.core.storage.SnapshotStore
 import io.github.lonemoonspace.dayloom.core.time.AppClock
 import io.github.lonemoonspace.dayloom.feature.transit.domain.BoardResult
 import io.github.lonemoonspace.dayloom.feature.transit.domain.Boards
+import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteKind
 import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteMode
+import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteRoute
 import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteTrips
 import io.github.lonemoonspace.dayloom.feature.transit.domain.FavouriteBoard
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitPolicy
@@ -26,14 +28,16 @@ import kotlinx.coroutines.flow.map
 data class CommuteParams(val mode: CommuteMode, val origin: TransitStop, val destination: TransitStop, val options: Int)
 
 /**
- * `transit.commute`: trip options between the two commute stops, in the direction the daily windows call for.
- * `transit.commute`：两个通勤站点之间的出行方案，方向按日常时间窗决定。
+ * `transit.train` / `transit.bus`: trip options between one route's two stops on that kind of vehicle, in the direction the
+ * daily windows call for.
+ * `transit.train` / `transit.bus`：一条路线两个站点之间、只坐该类车辆的出行方案，方向按日常时间窗决定。
  */
 class CommuteSource(
     id: SourceId,
     store: SnapshotStore<CommuteTrips>,
     clock: AppClock,
-    settings: Flow<Triple<TransitStop, TransitStop, Int>>,
+    private val kind: CommuteKind,
+    route: Flow<CommuteRoute>,
     mode: Flow<CommuteMode>,
     private val provider: TransitProvider,
 ) : CachedSource<CommuteParams, CommuteTrips>(id, store, clock) {
@@ -47,24 +51,19 @@ class CommuteSource(
     override val cadence = RefreshCadence(
         interval = Duration.ofMinutes(30),
         busyInterval = Duration.ofMinutes(5),
-        busyInWindows = true,
+        busyByDay = true,
     )
 
-    override val inputs: Flow<SourceInput<CommuteParams>> = combine(settings, mode) { (origin, destination, options), m ->
-        inputFor(origin, destination, options, m)
+    override val inputs: Flow<SourceInput<CommuteParams>> = combine(route, mode) { r, m ->
+        inputFor(r.origin, r.destination, r.options, m)
     }
 
     override suspend fun fetch(params: CommuteParams, now: ZonedDateTime, previous: Snapshot<CommuteTrips>?): CommuteTrips {
         // A few more than shown, so the card still has options after the first ones leave. / 比显示的多取几个，前几班开走后卡片仍有方案。
         val count = params.options + EXTRA_OPTIONS
         return when (params.mode) {
-            CommuteMode.OUTBOUND -> CommuteTrips(params.mode, outbound = provider.planTrips(params.origin, params.destination, now, count))
-            CommuteMode.INBOUND -> CommuteTrips(params.mode, inbound = provider.planTrips(params.destination, params.origin, now, count))
-            CommuteMode.BOTH -> CommuteTrips(
-                params.mode,
-                outbound = provider.planTrips(params.origin, params.destination, now, 1 + EXTRA_OPTIONS),
-                inbound = provider.planTrips(params.destination, params.origin, now, 1 + EXTRA_OPTIONS),
-            )
+            CommuteMode.OUTBOUND -> CommuteTrips(params.mode, outbound = provider.planTrips(params.origin, params.destination, now, count, kind))
+            CommuteMode.INBOUND -> CommuteTrips(params.mode, inbound = provider.planTrips(params.destination, params.origin, now, count, kind))
         }
     }
 
@@ -98,7 +97,7 @@ class BoardsSource(
     override val cadence = RefreshCadence(
         interval = Duration.ofMinutes(15),
         busyInterval = Duration.ofMinutes(5),
-        busyInWindows = true,
+        busyByDay = true,
     )
 
     override val inputs: Flow<SourceInput<List<FavouriteBoard>>> = boards.map(::inputFor)

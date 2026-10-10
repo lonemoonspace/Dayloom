@@ -1,13 +1,9 @@
 package io.github.lonemoonspace.dayloom.app.settings
 
-import android.Manifest
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,8 +17,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,23 +34,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.lonemoonspace.dayloom.R
 import io.github.lonemoonspace.dayloom.core.i18n.asString
 import io.github.lonemoonspace.dayloom.core.location.Place
 import io.github.lonemoonspace.dayloom.core.location.PlaceCandidate
-import io.github.lonemoonspace.dayloom.core.routine.DailyWindow
-import io.github.lonemoonspace.dayloom.core.routine.Routine
-import io.github.lonemoonspace.dayloom.core.routine.WindowKind
 import io.github.lonemoonspace.dayloom.core.ui.InfoCard
-import io.github.lonemoonspace.dayloom.core.ui.SwitchRow
+import io.github.lonemoonspace.dayloom.core.ui.SecretInput
 import io.github.lonemoonspace.dayloom.core.ui.currentLocale
 import io.github.lonemoonspace.dayloom.core.ui.placeTitle
-import io.github.lonemoonspace.dayloom.core.ui.rememberTimeFormatter
 import io.github.lonemoonspace.dayloom.core.ui.userMessage
-import java.time.DayOfWeek
-import java.time.LocalTime
-import java.time.format.TextStyle
 
 /**
  * Saved places: Home and Work always listed, custom places below. Modules refer to these, so they are edited only here.
@@ -79,6 +70,14 @@ fun PlacesCard(
             PlaceRow(title = placeTitle(place), subtitle = place.name, onClick = { vm.edit(place) })
         }
         TextButton(onClick = { vm.edit(null) }) { Text(stringResource(R.string.places_add)) }
+        val key by vm.googleKey.collectAsStateWithLifecycle()
+        Text(
+            stringResource(R.string.places_google_key_note),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        SecretInput(stringResource(R.string.places_google_key), key, vm::saveGoogleKey)
     }
     if (editor != null) PlaceEditorDialog(editor, places.firstOrNull { it.id == editor.id }, vm)
 }
@@ -114,18 +113,17 @@ private fun PlaceRow(title: String, subtitle: String, onClick: () -> Unit) {
 }
 
 /**
- * Search by name or take the current position once; picking a result saves it. Location permission is asked for only
- * when the user taps the button.
- * 按名称搜索，或读取一次当前位置；选中一个结果即保存。只有用户点按钮时才请求定位权限。
+ * Search by address or name (Google with a key, Entur and OpenStreetMap without), or type coordinates; picking a result
+ * saves it.
+ * 按地址或名称搜索（有 Key 用 Google，没有用 Entur 与 OpenStreetMap），或直接输入坐标；选中一个结果即保存。
  */
 @Composable
 private fun PlaceEditorDialog(editor: PlaceEditor, existing: Place?, vm: SharedDataViewModel) {
     val locale = currentLocale()
     var query by rememberSaveable(editor.id) { mutableStateOf("") }
     val custom = editor.id.isEmpty() || existing?.isPreset == false
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) vm.locate(locale)
-    }
+    val key by vm.googleKey.collectAsStateWithLifecycle()
+    val google = key.display.isNotBlank()
     val title = when (editor.id) {
         Place.HOME -> stringResource(R.string.place_home)
         Place.WORK -> stringResource(R.string.place_work)
@@ -159,11 +157,6 @@ private fun PlaceEditorDialog(editor: PlaceEditor, existing: Place?, vm: SharedD
                     TextButton(onClick = { vm.search(query, locale) }, enabled = query.trim().length >= 2) {
                         Text(stringResource(R.string.places_search))
                     }
-                    TextButton(onClick = {
-                        if (vm.hasLocationPermission()) vm.locate(locale) else permission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-                    }) {
-                        Text(stringResource(R.string.places_use_location))
-                    }
                     if (editor.busy) {
                         Spacer(Modifier.width(8.dp))
                         CircularProgressIndicator(Modifier.padding(4.dp).width(20.dp), strokeWidth = 2.dp)
@@ -171,11 +164,10 @@ private fun PlaceEditorDialog(editor: PlaceEditor, existing: Place?, vm: SharedD
                 }
                 editor.error?.let { Text(it.userMessage().asString(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                 if (editor.noResults) Hint(stringResource(R.string.places_no_results))
-                if (editor.locateFailed) Hint(stringResource(R.string.places_locate_failed))
                 Column(Modifier.heightIn(max = 320.dp)) {
                     editor.results.forEach { candidate -> CandidateRow(candidate) { vm.choose(candidate) } }
                 }
-                Hint(stringResource(R.string.places_attribution))
+                Hint(stringResource(if (google) R.string.places_attribution_google else R.string.places_attribution))
             }
         },
         confirmButton = {
@@ -218,80 +210,22 @@ private fun Hint(text: String) {
 }
 
 /**
- * The daily windows shared by weather, transport and traffic: when the user leaves for work and heads home, on which days.
- * 天气、公交与路况共用的日常时间窗：哪几天、几点出门上班、几点回家。
+ * A fixed-width time button with tabular digits, so times line up whatever they are.
+ * 定宽、等宽数字的时间按钮，无论时间是多少都能对齐。
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun RoutineCard(routine: Routine, vm: SharedDataViewModel) {
-    var picking by rememberSaveable { mutableStateOf<String?>(null) }
-    var invalid by rememberSaveable { mutableStateOf(false) }
-    InfoCard(title = stringResource(R.string.settings_routine)) {
-        SwitchRow(
-            label = stringResource(R.string.routine_commute),
-            summary = stringResource(R.string.routine_commute_summary),
-            checked = routine.enabled,
-            onCheckedChange = vm::setCommute,
-        )
-        if (routine.enabled) {
-            WindowKind.entries.forEach { kind ->
-                WindowRow(kind, routine.window(kind)) { end -> picking = "${kind.name}:${if (end) "end" else "start"}" }
-            }
-            if (invalid) {
-                Text(stringResource(R.string.routine_window_invalid), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            }
-            Text(
-                stringResource(R.string.routine_working_days),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 6.dp),
-            )
-            val locale = currentLocale()
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                DayOfWeek.entries.forEach { day ->
-                    FilterChip(
-                        selected = routine.isWorkingDay(day),
-                        onClick = { vm.setWorkingDay(day.value, !routine.isWorkingDay(day)) },
-                        label = { Text(day.getDisplayName(TextStyle.SHORT, locale)) },
-                    )
-                }
-            }
-        }
-    }
-    picking?.let { key ->
-        val kind = WindowKind.valueOf(key.substringBefore(':'))
-        val end = key.endsWith(":end")
-        val window = routine.window(kind)
-        TimeDialog(
-            initialMinute = if (end) window.endMinute else window.startMinute,
-            onDismiss = { picking = null },
-            onConfirm = { minute ->
-                picking = null
-                val next = if (end) window.copy(endMinute = minute) else window.copy(startMinute = minute)
-                invalid = !vm.setWindow(kind, next)
-            },
-        )
+internal fun TimeButton(text: String, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, modifier = Modifier.width(TIME_BUTTON_WIDTH), contentPadding = PaddingValues(horizontal = 4.dp)) {
+        Text(text, style = MaterialTheme.typography.bodyLarge.copy(fontFeatureSettings = "tnum"), textAlign = TextAlign.Center)
     }
 }
 
-@Composable
-private fun WindowRow(kind: WindowKind, window: DailyWindow, onPick: (end: Boolean) -> Unit) {
-    val format = rememberTimeFormatter()
-    fun time(minute: Int) = LocalTime.MIDNIGHT.plusMinutes(minute.toLong()).format(format)
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            stringResource(if (kind == WindowKind.TO_WORK) R.string.routine_to_work else R.string.routine_back_home),
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f),
-        )
-        TextButton(onClick = { onPick(false) }) { Text(time(window.startMinute)) }
-        Text("–")
-        TextButton(onClick = { onPick(true) }) { Text(time(window.endMinute)) }
-    }
-}
+/** Wide enough for "12:30 PM" in a 12-hour locale. / 足够放下 12 小时制的「12:30 PM」。 */
+private val TIME_BUTTON_WIDTH = 96.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TimeDialog(initialMinute: Int, onDismiss: () -> Unit, onConfirm: (Int) -> Unit) {
+internal fun TimeDialog(initialMinute: Int, onDismiss: () -> Unit, onConfirm: (Int) -> Unit) {
     val state = rememberTimePickerState(
         initialHour = initialMinute / 60,
         initialMinute = initialMinute % 60,

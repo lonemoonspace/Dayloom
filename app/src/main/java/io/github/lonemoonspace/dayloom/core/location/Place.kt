@@ -31,8 +31,8 @@ data class Place(
 }
 
 /**
- * A search or device-location result before it is saved under an id.
- * 搜索或设备定位得到的结果，尚未以某个 id 保存。
+ * A search result or typed coordinates before they are saved under an id.
+ * 搜索或手动输入坐标得到的结果，尚未以某个 id 保存。
  */
 data class PlaceCandidate(
     val name: String,

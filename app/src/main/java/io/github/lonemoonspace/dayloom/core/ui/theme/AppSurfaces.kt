@@ -8,8 +8,8 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 /**
- * Card colours shared by every card. The dark card is darker than `primaryContainer`, on which status colours miss 4.5:1.
- * 所有卡片共用的底色。深色卡片比 `primaryContainer` 更暗，因为后者上的状态色达不到 4.5:1。
+ * Card colours shared by every card, taken from the wallpaper scheme by [DayloomTheme].
+ * 所有卡片共用的底色，由 [DayloomTheme] 从壁纸配色中取。
  */
 @Immutable
 class AppSurfaces(
@@ -18,15 +18,15 @@ class AppSurfaces(
     val tile: Color,
 )
 
-val LightAppSurfaces = AppSurfaces(card = Color(0xFFD8E8FF), tile = Color(0xFFE8F0FE))
-
-val DarkAppSurfaces = AppSurfaces(card = Color(0xFF0B3A66), tile = Color(0xFF0E2740))
-
 /**
- * Rain colour over a tile, marking a wet commute window; low enough that text on it keeps its contrast.
- * 叠在小块上的雨色，用来标出要带伞的通勤时段；足够淡，上面的文字仍保持对比度。
+ * The neutral tones [DayloomTheme] uses (M3 baseline values; a wallpaper only changes their faint hue): light cards are
+ * tone 100 on tone 96 tiles, dark cards tone 12 with tone 17 tiles. Used as the preview default and by the contrast test.
+ * [DayloomTheme] 用到的中性色明度（M3 基线值；壁纸只改变其中很淡的色相）：浅色卡片为明度 100、小块 96，深色卡片 12、小块 17。
+ * 作为预览默认值，也供对比度测试使用。
  */
-const val WET_TILE_RAIN_ALPHA = 0.14f
+val LightAppSurfaces = AppSurfaces(card = Color(0xFFFFFFFF), tile = Color(0xFFF7F2FA))
+
+val DarkAppSurfaces = AppSurfaces(card = Color(0xFF211F26), tile = Color(0xFF2B2930))
 
 val LocalAppSurfaces = staticCompositionLocalOf { LightAppSurfaces }
 

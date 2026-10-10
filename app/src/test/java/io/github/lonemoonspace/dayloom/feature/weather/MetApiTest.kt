@@ -34,12 +34,14 @@ class MetApiTest {
         server.shutdown()
     }
 
-    private fun api() = MetApi(OkHttpClient(), baseUrl = server.url("/weatherapi/locationforecast/2.0/compact"))
+    private fun api() = MetApi(OkHttpClient(), baseUrl = server.url("/weatherapi/locationforecast/2.0/complete"))
 
     private val body = """
         {"type":"Feature","properties":{"meta":{"updated_at":"2026-09-22T05:30:00Z","units":{}},"timeseries":[
-          {"time":"2026-09-22T06:00:00Z","data":{"instant":{"details":{"air_temperature":7.5,"wind_speed":3.2}},
-            "next_1_hours":{"summary":{"symbol_code":"lightrain_day"},"details":{"precipitation_amount":0.4}},
+          {"time":"2026-09-22T06:00:00Z","data":{"instant":{"details":{"air_temperature":7.5,"wind_speed":3.2,"apparent_air_temperature":5.1,
+              "wind_speed_of_gust":7.9,"ultraviolet_index_clear_sky":1.2}},
+            "next_1_hours":{"summary":{"symbol_code":"lightrain_day"},"details":{"precipitation_amount":0.4,
+              "probability_of_precipitation":63.0,"probability_of_thunder":1.5}},
             "next_6_hours":{"summary":{"symbol_code":"rain_day"},"details":{"precipitation_amount":2.1}}}},
           {"time":"2026-09-25T00:00:00Z","data":{"instant":{"details":{"air_temperature":4.0,"wind_speed":1.0}},
             "next_6_hours":{"summary":{"symbol_code":"cloudy"},"details":{"precipitation_amount":0.0}}}}
@@ -53,7 +55,7 @@ class MetApiTest {
         api().fetch(59.91235, 0.0001, ifModifiedSince = null)
 
         val request = server.takeRequest()
-        assertEquals("/weatherapi/locationforecast/2.0/compact?lat=59.9124&lon=0.0001", request.path)
+        assertEquals("/weatherapi/locationforecast/2.0/complete?lat=59.9124&lon=0.0001", request.path)
         assertNull(request.getHeader("If-Modified-Since"))
     }
 
@@ -70,6 +72,11 @@ class MetApiTest {
         assertEquals("lightrain_day", first.symbol)
         assertEquals(0.4, first.precipitation1h!!, 0.0)
         assertEquals(2.1, first.precipitation6h!!, 0.0)
+        assertEquals(5.1, first.apparentTemperature!!, 0.0)
+        assertEquals(7.9, first.windGust!!, 0.0)
+        assertEquals(1.2, first.uvIndex!!, 0.0)
+        assertEquals(63.0, first.precipProbability1h!!, 0.0)
+        assertEquals(1.5, first.thunderProbability1h!!, 0.0)
         // Beyond the hourly range the six-hour symbol stands in. / 超出逐小时范围时由 6 小时符号代替。
         assertEquals("cloudy", later.symbol)
         assertNull(later.precipitation1h)

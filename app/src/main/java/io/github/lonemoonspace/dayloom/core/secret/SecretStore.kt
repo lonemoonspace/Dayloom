@@ -36,3 +36,12 @@ interface SecretStore {
 }
 
 suspend fun SecretStore.current(id: String): SecretState = observe(id).first()
+
+/**
+ * Credentials owned by the shell rather than a module, namespaced `core.` like the shell's notification names.
+ * 属于外壳而非某个模块的凭据，与外壳的通知名称一样以 `core.` 为命名空间。
+ */
+object SharedSecrets {
+    /** One Google Maps Platform key for place search and every module that calls Google. / 地点搜索与所有调用 Google 的模块共用的一个 Google Maps Platform Key。 */
+    const val GOOGLE_MAPS = "core.google_maps"
+}

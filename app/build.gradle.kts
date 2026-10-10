@@ -6,6 +6,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
 }
 
 val keystoreProps = Properties()
@@ -30,8 +32,8 @@ android {
         targetSdk = 36
         // YYYYMMDDNN, fixed per release so builds on the same day or with a wrong clock stay predictable.
         // 按 YYYYMMDDNN 固定，避免同一天多次构建或系统时间错误导致升级/降级不可预测。
-        versionCode = 2026100902
-        versionName = "0.1.0-rc.1"
+        versionCode = 2026101004
+        versionName = "0.1.0-rc.6"
         // The APK is public: never put API keys in it. Keys are entered in the app's settings only.
         // APK 公开可下载：不放任何 API Key，Key 只在 App 设置页填写。
     }
@@ -99,6 +101,12 @@ androidComponents {
     beforeVariants(selector().withBuildType("release")) { variantBuilder ->
         variantBuilder.hostTests[com.android.build.api.variant.HostTestBuilder.UNIT_TEST_TYPE]?.enable = false
     }
+}
+
+// The schema of every Room version is committed, so each later version can be tested against it (frozen from v1.0.0).
+// 每个 Room 版本的 schema 都提交入库，以后每个新版本都能对照它测试迁移（从 v1.0.0 起冻结）。
+room {
+    schemaDirectory("$projectDir/schemas")
 }
 
 kotlin {
@@ -181,6 +189,10 @@ dependencies {
     implementation(libs.reorderable)
     // Lunar dates and solar terms for the calendar module, behind its LunarProvider. / 日历模块的农历与节气，藏在 LunarProvider 后面。
     implementation(libs.lunar)
+
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.work.runtime.ktx)

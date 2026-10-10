@@ -2,6 +2,10 @@ package io.github.lonemoonspace.dayloom.core.ui
 
 import android.text.format.DateFormat
 import androidx.compose.runtime.Composable
+import java.time.Instant
+import io.github.lonemoonspace.dayloom.R
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -57,5 +61,19 @@ fun rememberPatternFormatter(skeleton: String): DateTimeFormatter {
     val locale = currentLocale()
     return remember(locale, skeleton) {
         DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, skeleton), locale)
+    }
+}
+
+/**
+ * When data was fetched: "Just now", "3 min ago" within the hour, the clock time after that.
+ * 数据抓取的时间：「刚刚」，一小时内「3 分钟前」，再久显示时刻。
+ */
+@Composable
+fun updatedAgo(fetchedAt: Long, now: ZonedDateTime): String {
+    val minutes = Duration.between(Instant.ofEpochMilli(fetchedAt), now.toInstant()).toMinutes().toInt()
+    return when {
+        minutes < 1 -> stringResource(R.string.common_updated_now)
+        minutes < 60 -> pluralStringResource(R.plurals.common_updated_minutes, minutes, minutes)
+        else -> Instant.ofEpochMilli(fetchedAt).atZone(now.zone).format(rememberTimeFormatter())
     }
 }

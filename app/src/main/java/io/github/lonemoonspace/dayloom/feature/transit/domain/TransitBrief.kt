@@ -13,6 +13,19 @@ import java.time.format.DateTimeFormatter
  */
 object TransitBrief {
 
+    /**
+     * Train and bus each say their line when they have something, joined into the module's one line.
+     * 火车与公交有内容时各说一句，合成本模块的一行。
+     */
+    fun lines(trips: List<CommuteTrips>, now: ZonedDateTime): UiText? {
+        val parts = trips.mapNotNull { line(it, now) }
+        return when (parts.size) {
+            0 -> null
+            1 -> parts.single()
+            else -> UiText.Res(R.string.transit_brief_joined, parts.take(2))
+        }
+    }
+
     fun line(trips: CommuteTrips, now: ZonedDateTime): UiText? {
         val option = TransitPolicy.visibleOptions(trips.outbound, now, 1).firstOrNull() ?: return null
         val first = option.legs.first()

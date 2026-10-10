@@ -4,17 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.lonemoonspace.dayloom.core.error.AppError
 import io.github.lonemoonspace.dayloom.core.error.toAppError
-import io.github.lonemoonspace.dayloom.core.location.DeviceLocator
 import io.github.lonemoonspace.dayloom.core.location.Place
 import io.github.lonemoonspace.dayloom.core.location.PlaceBook
 import io.github.lonemoonspace.dayloom.core.location.PlaceCandidate
 import io.github.lonemoonspace.dayloom.core.location.PlaceSearch
-import io.github.lonemoonspace.dayloom.core.routine.DailyWindow
-import io.github.lonemoonspace.dayloom.core.routine.Routine
-import io.github.lonemoonspace.dayloom.core.routine.RoutinePolicy
-import io.github.lonemoonspace.dayloom.core.routine.WindowKind
-import io.github.lonemoonspace.dayloom.core.storage.SharedData
-import io.github.lonemoonspace.dayloom.core.storage.ValueStore
+import io.github.lonemoonspace.dayloom.core.secret.SecretState
+import io.github.lonemoonspace.dayloom.core.secret.SecretStore
+import io.github.lonemoonspace.dayloom.core.secret.SharedSecrets
 import java.util.Locale
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CancellationException
@@ -24,7 +20,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -41,21 +36,18 @@ data class PlaceEditor(
     val busy: Boolean = false,
     /** True after a search that found nothing. / 搜索后一个结果都没有时为 true。 */
     val noResults: Boolean = false,
-    /** True when the one-shot location found no position. / 单次定位拿不到位置时为 true。 */
-    val locateFailed: Boolean = false,
     val error: AppError? = null,
 )
 
 /**
- * The shared places and daily windows on the settings screen. Writes go to [appScope] so leaving the screen right after a
+ * The shared places and the Google key on the settings screen. Writes go to [appScope] so leaving the screen right after a
  * change does not cancel it.
- * 设置页上共用的地点与日常时间窗。写入放在 [appScope]，改完立刻离开页面也不会被取消。
+ * 设置页上共用的地点与 Google Key。写入放在 [appScope]，改完立刻离开页面也不会被取消。
  */
 class SharedDataViewModel(
     private val places: PlaceBook,
-    private val sharedData: ValueStore<SharedData>,
     private val search: PlaceSearch,
-    private val locator: DeviceLocator,
+    private val secrets: SecretStore,
     private val appScope: CoroutineScope,
     /** Where blocking network calls run; production passes Dispatchers.IO. / 阻塞网络调用在哪里运行；生产环境传 Dispatchers.IO。 */
     private val ioContext: CoroutineContext,
@@ -63,8 +55,9 @@ class SharedDataViewModel(
 
     val placeList: StateFlow<List<Place>> = places.all.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val routine: StateFlow<Routine> = sharedData.flow.map { it.routine }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Routine())
+    /** The Google key place search uses; shared with modules that call Google. / 地点搜索用的 Google Key，与调用 Google 的模块共用。 */
+    val googleKey: StateFlow<SecretState> = secrets.observe(SharedSecrets.GOOGLE_MAPS)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SecretState.EMPTY)
 
     private val _editor = MutableStateFlow<PlaceEditor?>(null)
     val editor: StateFlow<PlaceEditor?> = _editor.asStateFlow()
@@ -88,12 +81,9 @@ class SharedDataViewModel(
         editor.copy(results = results, noResults = results.isEmpty())
     }
 
-    fun locate(locale: Locale) = runInEditor { editor ->
-        val found = locator.locateOnce(locale)
-        if (found == null) editor.copy(locateFailed = true) else editor.copy(results = listOf(found))
+    fun saveGoogleKey(plain: String) {
+        appScope.launch { secrets.put(SharedSecrets.GOOGLE_MAPS, plain) }
     }
-
-    fun hasLocationPermission(): Boolean = locator.hasPermission()
 
     fun choose(candidate: PlaceCandidate) {
         val editor = _editor.value ?: return
@@ -116,26 +106,10 @@ class SharedDataViewModel(
         closeEditor()
     }
 
-    fun setCommute(enabled: Boolean) = updateRoutine { it.copy(enabled = enabled) }
-
-    /** Returns false (and saves nothing) for an empty window. / 时间窗为空时返回 false 且不保存。 */
-    fun setWindow(kind: WindowKind, window: DailyWindow): Boolean {
-        if (!RoutinePolicy.isValid(window)) return false
-        updateRoutine { if (kind == WindowKind.TO_WORK) it.copy(toWork = window) else it.copy(backHome = window) }
-        return true
-    }
-
-    fun setWorkingDay(isoDay: Int, working: Boolean) =
-        updateRoutine { it.copy(workingDays = if (working) it.workingDays + isoDay else it.workingDays - isoDay) }
-
-    private fun updateRoutine(transform: (Routine) -> Routine) {
-        appScope.launch { sharedData.update { it.copy(routine = transform(it.routine)) } }
-    }
-
     private fun runInEditor(block: suspend (PlaceEditor) -> PlaceEditor) {
         val start = _editor.value ?: return
         work?.cancel()
-        _editor.value = start.copy(busy = true, error = null, noResults = false, locateFailed = false)
+        _editor.value = start.copy(busy = true, error = null, noResults = false)
         work = viewModelScope.launch {
             val next = try {
                 block(start)

@@ -38,6 +38,8 @@ import io.github.lonemoonspace.dayloom.core.error.toAppError
 import io.github.lonemoonspace.dayloom.core.i18n.asString
 import io.github.lonemoonspace.dayloom.core.ui.userMessage
 import io.github.lonemoonspace.dayloom.feature.transit.TransitSettings
+import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteKind
+import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteRoute
 import io.github.lonemoonspace.dayloom.feature.transit.domain.FavouriteBoard
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitPolicy
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitProvider
@@ -48,11 +50,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
 /**
- * Commute stops, number of options and favourite stops. [update] runs in the app scope, set up by the module.
- * 通勤站点、方案数量与收藏站点。[update] 在应用级作用域里执行，由模块提供。
+ * One commute route's stops, number of options and disruption alerts. [update] runs in the app scope, set up by the module.
+ * 一条通勤路线的站点、方案数量与异常提醒。[update] 在应用级作用域里执行，由模块提供。
  */
 @Composable
-internal fun TransitSettingsSection(
+internal fun RouteSettingsSection(
+    kind: CommuteKind,
     settings: Flow<TransitSettings>,
     provider: TransitProvider,
     outsideNorway: Boolean,
@@ -60,34 +63,59 @@ internal fun TransitSettingsSection(
     update: ((TransitSettings) -> TransitSettings) -> Unit,
 ) {
     val saved by settings.collectAsStateWithLifecycle(initialValue = TransitSettings())
-    var picking by rememberSaveable { mutableStateOf<String?>(null) }
-    var editingBoard by rememberSaveable { mutableStateOf<String?>(null) }
+    val route = saved.route(kind)
+    var picking by rememberSaveable(kind) { mutableStateOf<String?>(null) }
+    fun updateRoute(transform: (CommuteRoute) -> CommuteRoute) = update { it.withRoute(kind, transform) }
 
     if (outsideNorway) Hint(stringResource(R.string.transit_region_note), color = MaterialTheme.colorScheme.error)
-
-    Label(stringResource(R.string.transit_commute_title))
-    StopRow(stringResource(R.string.transit_from), saved.origin) { picking = ORIGIN }
-    StopRow(stringResource(R.string.transit_to), saved.destination) { picking = DESTINATION }
+    Hint(stringResource(if (kind == CommuteKind.TRAIN) R.string.transit_train_note else R.string.transit_bus_note))
+    StopRow(stringResource(R.string.transit_from), route.origin) { picking = ORIGIN }
+    StopRow(stringResource(R.string.transit_to), route.destination) { picking = DESTINATION }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(stringResource(R.string.transit_options), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         TextButton(
-            onClick = { update { it.copy(options = (it.options - 1).coerceIn(TransitPolicy.OPTIONS_RANGE)) } },
-            enabled = saved.options > TransitPolicy.OPTIONS_RANGE.first,
+            onClick = { updateRoute { it.copy(options = (it.options - 1).coerceIn(TransitPolicy.OPTIONS_RANGE)) } },
+            enabled = route.options > TransitPolicy.OPTIONS_RANGE.first,
         ) { Text("−") }
-        Text(saved.options.toString(), style = MaterialTheme.typography.bodyLarge)
+        Text(route.options.toString(), style = MaterialTheme.typography.bodyLarge)
         TextButton(
-            onClick = { update { it.copy(options = (it.options + 1).coerceIn(TransitPolicy.OPTIONS_RANGE)) } },
-            enabled = saved.options < TransitPolicy.OPTIONS_RANGE.last,
+            onClick = { updateRoute { it.copy(options = (it.options + 1).coerceIn(TransitPolicy.OPTIONS_RANGE)) } },
+            enabled = route.options < TransitPolicy.OPTIONS_RANGE.last,
         ) { Text("+") }
     }
     NotifySwitch(
         label = stringResource(R.string.transit_notify_switch),
         summary = stringResource(R.string.transit_notify_switch_summary),
-        checked = saved.notify,
+        checked = route.notify,
         channelId = channelId,
-    ) { on -> update { it.copy(notify = on) } }
+    ) { on -> updateRoute { it.copy(notify = on) } }
+    Hint(stringResource(R.string.transit_attribution))
 
-    Label(stringResource(R.string.transit_boards_title))
+    when (picking) {
+        ORIGIN -> StopSearchDialog(provider, onDismiss = { picking = null }) { stop ->
+            picking = null
+            updateRoute { it.copy(origin = stop) }
+        }
+        DESTINATION -> StopSearchDialog(provider, onDismiss = { picking = null }) { stop ->
+            picking = null
+            updateRoute { it.copy(destination = stop) }
+        }
+    }
+}
+
+/**
+ * Favourite stops with their line and destination filters.
+ * 收藏站点及其线路与终点过滤条件。
+ */
+@Composable
+internal fun BoardsSettingsSection(
+    settings: Flow<TransitSettings>,
+    provider: TransitProvider,
+    update: ((TransitSettings) -> TransitSettings) -> Unit,
+) {
+    val saved by settings.collectAsStateWithLifecycle(initialValue = TransitSettings())
+    var editingBoard by rememberSaveable { mutableStateOf<String?>(null) }
+
     saved.boards.forEach { board ->
         Column(
             Modifier
@@ -102,16 +130,6 @@ internal fun TransitSettingsSection(
     TextButton(onClick = { editingBoard = NEW }) { Text(stringResource(R.string.transit_add_board)) }
     Hint(stringResource(R.string.transit_attribution))
 
-    when (picking) {
-        ORIGIN -> StopSearchDialog(provider, onDismiss = { picking = null }) { stop ->
-            picking = null
-            update { it.copy(origin = stop) }
-        }
-        DESTINATION -> StopSearchDialog(provider, onDismiss = { picking = null }) { stop ->
-            picking = null
-            update { it.copy(destination = stop) }
-        }
-    }
     editingBoard?.let { id ->
         val existing = saved.boards.firstOrNull { it.id == id }
         // Keyed by board, so the dialog's fields never carry over from another one. / 按收藏站点区分，对话框字段不会串到另一个。
@@ -281,11 +299,6 @@ private fun StopSearchDialog(provider: TransitProvider, onDismiss: () -> Unit, o
         confirmButton = {},
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
     )
-}
-
-@Composable
-private fun Label(text: String) {
-    Text(text, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
 }
 
 @Composable

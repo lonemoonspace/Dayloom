@@ -5,74 +5,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 
-// surfaceContainer* and outlineVariant are defined explicitly: left at the M3 baseline they keep a purple tint that clashes
-// with the blue-grey surfaces here. Card colours are in AppSurfaces.
-// surfaceContainer* 与 outlineVariant 必须显式定义：停留在 M3 基线时带紫调，与这里的蓝灰底色冲突。卡片底色见 AppSurfaces。
-private val LightColors = lightColorScheme(
-    primary = Color(0xFF185FA7),
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFD8E8FF),
-    onPrimaryContainer = Color(0xFF001C38),
-    secondary = Color(0xFF006B63),
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFF9CF2E8),
-    onSecondaryContainer = Color(0xFF00201D),
-    tertiary = Color(0xFF6D5900),
-    background = Color(0xFFF7F9FC),
-    onBackground = Color(0xFF191C20),
-    surface = Color(0xFFF7F9FC),
-    onSurface = Color(0xFF191C20),
-    surfaceVariant = Color(0xFFE1E6EE),
-    onSurfaceVariant = Color(0xFF424750),
-    surfaceContainerLowest = Color(0xFFFFFFFF),
-    surfaceContainerLow = Color(0xFFEFF3F9),
-    surfaceContainer = Color(0xFFE9EEF5),
-    surfaceContainerHigh = Color(0xFFE3E9F1),
-    surfaceContainerHighest = Color(0xFFDDE3EC),
-    surfaceBright = Color(0xFFF7F9FC),
-    surfaceDim = Color(0xFFD7DCE4),
-    outline = Color(0xFF73777F),
-    outlineVariant = Color(0xFFC3C8D1),
-)
-
-private val DarkColors = darkColorScheme(
-    primary = Color(0xFFA9C9F7),
-    onPrimary = Color(0xFF00315C),
-    primaryContainer = Color(0xFF004880),
-    onPrimaryContainer = Color(0xFFD8E8FF),
-    secondary = Color(0xFF80DBD1),
-    onSecondary = Color(0xFF003733),
-    secondaryContainer = Color(0xFF005049),
-    onSecondaryContainer = Color(0xFF9CF2E8),
-    tertiary = Color(0xFFE6C64F),
-    background = Color(0xFF101419),
-    onBackground = Color(0xFFE1E5EC),
-    surface = Color(0xFF101419),
-    onSurface = Color(0xFFE1E5EC),
-    surfaceVariant = Color(0xFF42474F),
-    onSurfaceVariant = Color(0xFFC2C7D0),
-    surfaceContainerLowest = Color(0xFF0B0E12),
-    surfaceContainerLow = Color(0xFF181C22),
-    surfaceContainer = Color(0xFF1C2027),
-    surfaceContainerHigh = Color(0xFF262A32),
-    surfaceContainerHighest = Color(0xFF31353D),
-    surfaceBright = Color(0xFF363A41),
-    surfaceDim = Color(0xFF101419),
-    outline = Color(0xFF8C9199),
-    outlineVariant = Color(0xFF42474F),
-)
-
+/** Material 3 Expressive proportions: cards at 20 dp, the weather card at 24 dp. / Material 3 Expressive 的比例：卡片 20 dp，天气主卡 24 dp。 */
 private val AppShapes = Shapes(
     small = RoundedCornerShape(10.dp),
-    medium = RoundedCornerShape(16.dp),
+    medium = RoundedCornerShape(20.dp),
     large = RoundedCornerShape(24.dp),
 )
 
@@ -101,15 +45,30 @@ private val AppTypography: Typography = Typography().run {
     )
 }
 
+/**
+ * Colours come from the wallpaper (Material You, always available from minSdk 33). Only the tones are fixed: the page is
+ * one step darker than the cards in light mode and one step lighter in dark mode, so cards stand out on any wallpaper, and
+ * status colours keep their contrast because neutral tones do not depend on the hue (see StatusColorsContrastTest).
+ * 颜色取自壁纸（Material You，minSdk 33 起总是可用）。固定的只有明度：浅色时页面比卡片暗一级，深色时卡片比页面亮一级，
+ * 任何壁纸下卡片都分得开；中性色的明度与色相无关，状态色的对比度因此不变（见 StatusColorsContrastTest）。
+ */
 @Composable
 fun DayloomTheme(content: @Composable () -> Unit) {
     val dark = isSystemInDarkTheme()
+    val context = LocalContext.current
+    val wallpaper = if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    val scheme = wallpaper.copy(background = if (dark) wallpaper.surface else wallpaper.surfaceContainer)
+    val surfaces = if (dark) {
+        AppSurfaces(card = scheme.surfaceContainer, tile = scheme.surfaceContainerHigh)
+    } else {
+        AppSurfaces(card = scheme.surfaceContainerLowest, tile = scheme.surfaceContainerLow)
+    }
     CompositionLocalProvider(
         LocalStatusColors provides if (dark) DarkStatusColors else LightStatusColors,
-        LocalAppSurfaces provides if (dark) DarkAppSurfaces else LightAppSurfaces,
+        LocalAppSurfaces provides surfaces,
     ) {
         MaterialTheme(
-            colorScheme = if (dark) DarkColors else LightColors,
+            colorScheme = scheme,
             typography = AppTypography,
             shapes = AppShapes,
             content = content,

@@ -5,6 +5,7 @@ import io.github.lonemoonspace.dayloom.core.json.AppJson
 import io.github.lonemoonspace.dayloom.core.network.decodeOrBadData
 import io.github.lonemoonspace.dayloom.core.network.executeOrAppError
 import io.github.lonemoonspace.dayloom.feature.transit.domain.BoardDeparture
+import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteKind
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitLeg
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitProvider
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitStop
@@ -19,6 +20,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import okhttp3.HttpUrl
@@ -62,13 +65,26 @@ class EnturProvider(
         }
     }
 
-    override suspend fun planTrips(from: TransitStop, to: TransitStop, at: ZonedDateTime, count: Int): List<TripOption> =
+    override suspend fun planTrips(from: TransitStop, to: TransitStop, at: ZonedDateTime, count: Int, kind: CommuteKind): List<TripOption> =
         withContext(io) {
             val variables = buildJsonObject {
                 put("from", from.id)
                 put("to", to.id)
                 put("at", at.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
                 put("count", count)
+                put(
+                    "modes",
+                    buildJsonArray {
+                        modesOf(kind).forEach { mode ->
+                            add(
+                                buildJsonObject {
+                                    put("transportMode", mode.mode)
+                                    if (mode.subModes.isNotEmpty()) put("transportSubModes", buildJsonArray { mode.subModes.forEach { add(it) } })
+                                },
+                            )
+                        }
+                    },
+                )
             }
             val response = decode(TripResponse.serializer(), post(TRIP_QUERY, variables), "trip response")
             failOnErrors(response.errors)
@@ -118,6 +134,8 @@ class EnturProvider(
             expectedArrival = millis(leg.expectedEndTime) ?: aimedArr,
             realtime = leg.realtime,
             cancelled = leg.fromEstimatedCall?.cancellation == true || leg.toEstimatedCall?.cancellation == true,
+            platform = leg.fromEstimatedCall?.quay?.publicCode.orEmpty(),
+            replacementBus = leg.transportSubmode == RAIL_REPLACEMENT_BUS,
         )
     }
 
@@ -132,6 +150,7 @@ class EnturProvider(
             expected = millis(call.expectedDepartureTime) ?: aimed,
             realtime = call.realtime,
             cancelled = call.cancellation,
+            replacementBus = call.serviceJourney?.transportSubmode == RAIL_REPLACEMENT_BUS,
         )
     }
 
@@ -168,26 +187,46 @@ class EnturProvider(
 
     companion object {
         const val SERVICE = "Entur"
+
+        /**
+         * Entur transport modes per commute kind; coaches run bus routes too. Walking to and between stops stays allowed.
+         * Train commutes also take rail replacement buses: during track work they are the only way the line runs, and a
+         * train card that shows nothing then is no help.
+         * 每种通勤对应的 Entur 交通方式；长途大巴也跑公交线路。到站与换乘之间的步行照样允许。火车通勤也包括铁路替代巴士：
+         * 线路施工时那是这条线唯一的运行方式，这时火车卡片什么都不显示就帮不上忙。
+         */
+        internal fun modesOf(kind: CommuteKind): List<EnturMode> = when (kind) {
+            CommuteKind.TRAIN -> listOf(EnturMode("rail"), EnturMode("bus", listOf(RAIL_REPLACEMENT_BUS)))
+            CommuteKind.BUS -> listOf(EnturMode("bus"), EnturMode("coach"))
+        }
+
+        /**
+         * Replacement buses keep the train line's code, and even the line's own mode still says `rail`; only the submode of
+         * the leg or service journey tells them apart.
+         * 替代巴士沿用火车的线路号，连线路本身的交通方式也仍是 `rail`；只有这一段或这趟车的子类型能区分出来。
+         */
+        internal const val RAIL_REPLACEMENT_BUS = "railReplacementBus"
         const val CLIENT_HEADER = "ET-Client-Name"
         const val CLIENT_NAME = "lonemoonspace-dayloom"
         private val JSON = "application/json".toMediaType()
 
         /**
-         * Any mode, so "any line" works. Cancelled options are included and flagged: hiding them would leave the user
-         * waiting for a train that will not come.
-         * 不限交通方式，「任意线路」才成立。被取消的方案也返回并标出：把它们藏起来，用户会在站台等一班不会来的车。
+         * Any line of the commute's modes, with transfers. Cancelled options are included and flagged: hiding them would
+         * leave the user waiting for a train that will not come.
+         * 该通勤交通方式下的任意线路，可换乘。被取消的方案也返回并标出：把它们藏起来，用户会在站台等一班不会来的车。
          */
         internal val TRIP_QUERY = """
-            query Trip(${'$'}from: String!, ${'$'}to: String!, ${'$'}at: DateTime, ${'$'}count: Int) {
+            query Trip(${'$'}from: String!, ${'$'}to: String!, ${'$'}at: DateTime, ${'$'}count: Int, ${'$'}modes: [TransportModes]) {
               trip(from: { place: ${'$'}from }, to: { place: ${'$'}to }, dateTime: ${'$'}at, numTripPatterns: ${'$'}count,
-                   includeRealtimeCancellations: true) {
+                   includeRealtimeCancellations: true,
+                   modes: { accessMode: foot, egressMode: foot, transportModes: ${'$'}modes }) {
                 tripPatterns {
                   legs {
-                    mode realtime aimedStartTime expectedStartTime aimedEndTime expectedEndTime
+                    mode transportSubmode realtime aimedStartTime expectedStartTime aimedEndTime expectedEndTime
                     line { publicCode }
                     fromPlace { name }
                     toPlace { name }
-                    fromEstimatedCall { cancellation destinationDisplay { frontText } }
+                    fromEstimatedCall { cancellation destinationDisplay { frontText } quay { publicCode } }
                     toEstimatedCall { cancellation }
                   }
                 }
@@ -206,12 +245,15 @@ class EnturProvider(
                 realtime cancellation aimedDepartureTime expectedDepartureTime
                 destinationDisplay { frontText }
                 quay { publicCode }
-                serviceJourney { line { publicCode transportMode } }
+                serviceJourney { transportSubmode line { publicCode transportMode } }
               }
             }
         """.trimIndent()
     }
 }
+
+/** One entry of the trip query's `transportModes`; no submodes means all of them. / 行程查询 `transportModes` 的一项；不列子类型即全部。 */
+internal data class EnturMode(val mode: String, val subModes: List<String> = emptyList())
 
 @Serializable
 internal data class GraphQlError(val message: String = "")
@@ -246,6 +288,7 @@ internal data class TripResponse(val data: Data? = null, val errors: List<GraphQ
 @Serializable
 internal data class Leg(
     val mode: String? = null,
+    val transportSubmode: String? = null,
     val realtime: Boolean = false,
     val aimedStartTime: String? = null,
     val expectedStartTime: String? = null,
@@ -261,7 +304,11 @@ internal data class Leg(
     data class Place(val name: String? = null)
 
     @Serializable
-    data class CallState(val cancellation: Boolean = false, val destinationDisplay: DestinationDisplay? = null)
+    data class CallState(
+        val cancellation: Boolean = false,
+        val destinationDisplay: DestinationDisplay? = null,
+        val quay: EstimatedCall.Quay? = null,
+    )
 }
 
 @Serializable
@@ -291,5 +338,5 @@ internal data class EstimatedCall(
     data class Quay(val publicCode: String? = null)
 
     @Serializable
-    data class ServiceJourney(val line: Line? = null)
+    data class ServiceJourney(val transportSubmode: String? = null, val line: Line? = null)
 }

@@ -328,7 +328,7 @@ val allModules: List<FeatureModule> = listOf(
 ### 11.2 公共交通 `transit`（第一版最大的一块）
 
 - **功能**
-  1. **通勤行程**，**火车**通勤与**公交**通勤分开，各有自己的站点、卡片、设置与异常开关：起点站 → 终点站（该类车辆的任意线路；Entur `trip` 查询限定为 `rail`，或 `bus` 与 `coach`），在上班窗口显示去程、下班窗口显示回程，窗口外显示双向最近一班。列出接下来 N 个方案：出发/到达时间、换乘次数与换乘站、每段的实时状态（准点/晚点 N 分/取消）。
+  1. **通勤行程**，**火车**通勤与**公交**通勤分开，各有自己的站点、卡片、设置与异常开关：起点站 → 终点站（该类车辆的任意线路；Entur `trip` 查询限定为 `rail` 加铁路替代巴士（`bus` 的 `railReplacementBus` 子类型，线路施工时只有它在跑；替代巴士沿用火车线路号，只能靠子类型认出，卡片上加巴士图标与「替代巴士」），或 `bus` 与 `coach`），在上班窗口显示去程、下班窗口显示回程，窗口外显示双向最近一班。列出接下来 N 个方案：出发/到达时间、换乘次数与换乘站、每段的实时状态（准点/晚点 N 分/取消）。
   2. **收藏站点发车板**：任意站点的实时发车，可按线路、终点、方向筛选（例：某站只看某条公交线路、开往某个终点的班次，可还原原项目「只显示全程车」的效果）。
 - **数据源**：Entur Journey Planner v3（GraphQL）`trip` 与 `stopPlace.estimatedCalls`；站点搜索用 Entur Geocoder。请求头 `ET-Client-Name: lonemoonspace-dayloom`。
 - **可插拔**：`TransitProvider` 接口（`searchStops`、`planTrips`、`departures`），第一版只有 `EnturProvider`。设置里地点不在挪威时提示「暂不支持该地区」。

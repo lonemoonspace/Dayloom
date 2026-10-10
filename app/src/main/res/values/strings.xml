@@ -327,6 +327,7 @@
         <item quantity="other">%1$d min</item>
     </plurals>
     <string name="transit_now">Now</string>
+    <string name="transit_replacement_bus">Replacement bus</string>
     <string name="transit_platform">Pl. %1$s</string>
     <string name="transit_on_time">On time</string>
     <plurals name="transit_late">

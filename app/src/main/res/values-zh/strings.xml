@@ -314,6 +314,7 @@
         <item quantity="other">%1$d 分钟</item>
     </plurals>
     <string name="transit_now">现在</string>
+    <string name="transit_replacement_bus">替代巴士</string>
     <string name="transit_platform">%1$s 站台</string>
     <string name="transit_on_time">准点</string>
     <plurals name="transit_late">

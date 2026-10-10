@@ -54,6 +54,8 @@ data class TransitLeg(
     val cancelled: Boolean = false,
     /** Platform or stop position the leg leaves from, e.g. `4` or `B`; empty when unknown. / 这一段出发的站台或候车位，如 `4`、`B`；未知时为空。 */
     val platform: String = "",
+    /** A bus running in place of the train, e.g. during track work. / 代替火车运行的巴士，例如线路施工期间。 */
+    val replacementBus: Boolean = false,
 )
 
 /** One way to make the trip: its legs in order; transfers happen between consecutive legs. / 一种出行方案：按顺序的各段；换乘发生在相邻两段之间。 */
@@ -108,6 +110,8 @@ data class BoardDeparture(
     val expected: Long = 0,
     val realtime: Boolean = false,
     val cancelled: Boolean = false,
+    /** A bus running in place of the train; its line code is still the train's. / 代替火车运行的巴士；线路号仍是火车的。 */
+    val replacementBus: Boolean = false,
 )
 
 @Serializable

@@ -14,13 +14,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -163,7 +166,7 @@ private fun OptionRow(option: TripOption, now: ZonedDateTime, divider: Boolean) 
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                option.legs.forEach { LineChip(it.line) }
+                option.legs.forEach { LineChip(it.line, it.replacementBus) }
                 Text(
                     text = "→ ${at(option.arrival)} · " + pluralStringResource(R.plurals.transit_minutes, minutes, minutes),
                     style = MaterialTheme.typography.bodySmall,
@@ -192,22 +195,47 @@ private fun detailText(option: TripOption): String {
         pluralStringResource(R.plurals.transit_transfers, option.transfers, option.legs.dropLast(1).map { it.toName }.distinct().joinToString(", "))
     }
     val platform = option.legs.first().platform
-    return if (platform.isEmpty()) route else route + " · " + stringResource(R.string.transit_platform, platform)
+    val parts = listOfNotNull(
+        // Said in words too: the bus leaves from a street stop, not the platform the user would head for.
+        // 也用文字说明：巴士从街边站点出发，而不是用户平时去的站台。
+        stringResource(R.string.transit_replacement_bus).takeIf { option.legs.any { it.replacementBus } },
+        route,
+        platform.takeIf { it.isNotEmpty() }?.let { stringResource(R.string.transit_platform, it) },
+    )
+    return parts.joinToString(" · ")
 }
 
-/** A line code as a small tinted tag, as on station signs. / 线路号做成小底色标签，像车站的指示牌。 */
+/**
+ * A line code as a small tinted tag, as on station signs. A replacement bus keeps the train's code, so it gets a bus icon
+ * and a different tint.
+ * 线路号做成小底色标签，像车站的指示牌。替代巴士沿用火车的线路号，所以加巴士图标并换一种底色。
+ */
 @Composable
-private fun LineChip(line: String) {
-    Text(
-        text = line.ifEmpty { "–" },
-        style = MaterialTheme.typography.labelMedium,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSecondaryContainer,
-        maxLines = 1,
+private fun LineChip(line: String, replacementBus: Boolean = false) {
+    val container = if (replacementBus) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.secondaryContainer
+    val content = if (replacementBus) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(6.dp))
+            .background(container, RoundedCornerShape(6.dp))
             .padding(horizontal = 6.dp, vertical = 1.dp),
-    )
+    ) {
+        if (replacementBus) {
+            Icon(
+                painterResource(R.drawable.ic_bus),
+                contentDescription = stringResource(R.string.transit_replacement_bus),
+                tint = content,
+                modifier = Modifier.size(12.dp).padding(end = 2.dp),
+            )
+        }
+        Text(
+            text = line.ifEmpty { "–" },
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = content,
+            maxLines = 1,
+        )
+    }
 }
 
 /**
@@ -250,7 +278,7 @@ internal fun BoardsCard(
 @Composable
 private fun DepartureRow(departure: BoardDeparture, now: ZonedDateTime) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
-        Box(Modifier.widthIn(min = 44.dp)) { LineChip(departure.line) }
+        Box(Modifier.widthIn(min = 44.dp)) { LineChip(departure.line, departure.replacementBus) }
         Text(
             departure.frontText,
             style = MaterialTheme.typography.bodyMedium,

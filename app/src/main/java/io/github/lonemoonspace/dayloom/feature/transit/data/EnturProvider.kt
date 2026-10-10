@@ -72,7 +72,19 @@ class EnturProvider(
                 put("to", to.id)
                 put("at", at.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
                 put("count", count)
-                put("modes", buildJsonArray { modesOf(kind).forEach { add(buildJsonObject { put("transportMode", it) }) } })
+                put(
+                    "modes",
+                    buildJsonArray {
+                        modesOf(kind).forEach { mode ->
+                            add(
+                                buildJsonObject {
+                                    put("transportMode", mode.mode)
+                                    if (mode.subModes.isNotEmpty()) put("transportSubModes", buildJsonArray { mode.subModes.forEach { add(it) } })
+                                },
+                            )
+                        }
+                    },
+                )
             }
             val response = decode(TripResponse.serializer(), post(TRIP_QUERY, variables), "trip response")
             failOnErrors(response.errors)
@@ -123,6 +135,7 @@ class EnturProvider(
             realtime = leg.realtime,
             cancelled = leg.fromEstimatedCall?.cancellation == true || leg.toEstimatedCall?.cancellation == true,
             platform = leg.fromEstimatedCall?.quay?.publicCode.orEmpty(),
+            replacementBus = leg.transportSubmode == RAIL_REPLACEMENT_BUS,
         )
     }
 
@@ -137,6 +150,7 @@ class EnturProvider(
             expected = millis(call.expectedDepartureTime) ?: aimed,
             realtime = call.realtime,
             cancelled = call.cancellation,
+            replacementBus = call.serviceJourney?.transportSubmode == RAIL_REPLACEMENT_BUS,
         )
     }
 
@@ -176,12 +190,22 @@ class EnturProvider(
 
         /**
          * Entur transport modes per commute kind; coaches run bus routes too. Walking to and between stops stays allowed.
-         * 每种通勤对应的 Entur 交通方式；长途大巴也跑公交线路。到站与换乘之间的步行照样允许。
+         * Train commutes also take rail replacement buses: during track work they are the only way the line runs, and a
+         * train card that shows nothing then is no help.
+         * 每种通勤对应的 Entur 交通方式；长途大巴也跑公交线路。到站与换乘之间的步行照样允许。火车通勤也包括铁路替代巴士：
+         * 线路施工时那是这条线唯一的运行方式，这时火车卡片什么都不显示就帮不上忙。
          */
-        internal fun modesOf(kind: CommuteKind): List<String> = when (kind) {
-            CommuteKind.TRAIN -> listOf("rail")
-            CommuteKind.BUS -> listOf("bus", "coach")
+        internal fun modesOf(kind: CommuteKind): List<EnturMode> = when (kind) {
+            CommuteKind.TRAIN -> listOf(EnturMode("rail"), EnturMode("bus", listOf(RAIL_REPLACEMENT_BUS)))
+            CommuteKind.BUS -> listOf(EnturMode("bus"), EnturMode("coach"))
         }
+
+        /**
+         * Replacement buses keep the train line's code, and even the line's own mode still says `rail`; only the submode of
+         * the leg or service journey tells them apart.
+         * 替代巴士沿用火车的线路号，连线路本身的交通方式也仍是 `rail`；只有这一段或这趟车的子类型能区分出来。
+         */
+        internal const val RAIL_REPLACEMENT_BUS = "railReplacementBus"
         const val CLIENT_HEADER = "ET-Client-Name"
         const val CLIENT_NAME = "lonemoonspace-dayloom"
         private val JSON = "application/json".toMediaType()
@@ -198,7 +222,7 @@ class EnturProvider(
                    modes: { accessMode: foot, egressMode: foot, transportModes: ${'$'}modes }) {
                 tripPatterns {
                   legs {
-                    mode realtime aimedStartTime expectedStartTime aimedEndTime expectedEndTime
+                    mode transportSubmode realtime aimedStartTime expectedStartTime aimedEndTime expectedEndTime
                     line { publicCode }
                     fromPlace { name }
                     toPlace { name }
@@ -221,12 +245,15 @@ class EnturProvider(
                 realtime cancellation aimedDepartureTime expectedDepartureTime
                 destinationDisplay { frontText }
                 quay { publicCode }
-                serviceJourney { line { publicCode transportMode } }
+                serviceJourney { transportSubmode line { publicCode transportMode } }
               }
             }
         """.trimIndent()
     }
 }
+
+/** One entry of the trip query's `transportModes`; no submodes means all of them. / 行程查询 `transportModes` 的一项；不列子类型即全部。 */
+internal data class EnturMode(val mode: String, val subModes: List<String> = emptyList())
 
 @Serializable
 internal data class GraphQlError(val message: String = "")
@@ -261,6 +288,7 @@ internal data class TripResponse(val data: Data? = null, val errors: List<GraphQ
 @Serializable
 internal data class Leg(
     val mode: String? = null,
+    val transportSubmode: String? = null,
     val realtime: Boolean = false,
     val aimedStartTime: String? = null,
     val expectedStartTime: String? = null,
@@ -310,5 +338,5 @@ internal data class EstimatedCall(
     data class Quay(val publicCode: String? = null)
 
     @Serializable
-    data class ServiceJourney(val line: Line? = null)
+    data class ServiceJourney(val transportSubmode: String? = null, val line: Line? = null)
 }

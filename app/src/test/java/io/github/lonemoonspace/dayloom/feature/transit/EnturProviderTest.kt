@@ -117,6 +117,31 @@ class EnturProviderTest {
     }
 
     @Test
+    fun `train commutes also ask for rail replacement buses and flag them`() = runTest {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"data":{"trip":{"tripPatterns":[{"legs":[
+                {"mode":"bus","transportSubmode":"railReplacementBus","aimedStartTime":"2026-10-05T07:40:00+02:00",
+                 "aimedEndTime":"2026-10-05T08:05:00+02:00","line":{"publicCode":"R1"},"fromPlace":{"name":"Stop A street"},"toPlace":{"name":"Stop B"}},
+                {"mode":"bus","transportSubmode":"localBus","aimedStartTime":"2026-10-05T08:10:00+02:00",
+                 "aimedEndTime":"2026-10-05T08:20:00+02:00","line":{"publicCode":"2"},"fromPlace":{"name":"Stop B"},"toPlace":{"name":"Stop C"}}
+                ]}]}}}""",
+            ),
+        )
+
+        val (replacement, ordinary) = provider().planTrips(a, b, now, 3, CommuteKind.TRAIN).single().legs
+
+        assertTrue(replacement.replacementBus)
+        assertEquals("R1", replacement.line)
+        assertFalse(ordinary.replacementBus)
+        val modes = AppJson.standard.parseToJsonElement(server.takeRequest().body.readUtf8()).jsonObject
+            .getValue("variables").jsonObject.getValue("modes").jsonArray.map { it.jsonObject }
+        assertEquals(listOf("rail", "bus"), modes.map { it.getValue("transportMode").jsonPrimitive.content })
+        assertFalse("transportSubModes" in modes[0])
+        assertEquals(listOf("railReplacementBus"), modes[1].getValue("transportSubModes").jsonArray.map { it.jsonPrimitive.content })
+    }
+
+    @Test
     fun `graphql errors, http errors and garbage become AppErrors`() = runTest {
         server.enqueue(MockResponse().setBody("""{"errors":[{"message":"bad place"}]}"""))
         assertTrue(runCatching { provider().planTrips(a, b, now, 1, CommuteKind.TRAIN) }.exceptionOrNull() is AppError.BadData)
@@ -132,7 +157,8 @@ class EnturProviderTest {
             MockResponse().setBody(
                 """{"data":{"stop0":{"estimatedCalls":[{"realtime":true,"cancellation":false,
                 "aimedDepartureTime":"2026-10-05T07:35:00+02:00","expectedDepartureTime":"2026-10-05T07:37:00+02:00",
-                "destinationDisplay":{"frontText":"Town C"},"quay":{"publicCode":"B"},"serviceJourney":{"line":{"publicCode":"31","transportMode":"bus"}}}]},
+                "destinationDisplay":{"frontText":"Town C"},"quay":{"publicCode":"B"},"serviceJourney":{"line":{"publicCode":"31","transportMode":"bus"}}},
+                {"aimedDepartureTime":"2026-10-05T07:40:00+02:00","serviceJourney":{"transportSubmode":"railReplacementBus","line":{"publicCode":"R1","transportMode":"rail"}}}]},
                 "stop1":null}}""",
             ),
         )
@@ -140,8 +166,10 @@ class EnturProviderTest {
         val result = provider().departures(listOf("NSR:StopPlace:1", "NSR:StopPlace:9"), now)
 
         assertEquals(setOf("NSR:StopPlace:1"), result.keys)
-        val departure = result.getValue("NSR:StopPlace:1").single()
+        val (departure, replacement) = result.getValue("NSR:StopPlace:1")
         assertEquals(BoardDeparture("31", "bus", "Town C", "B", departure.aimed, departure.aimed + 120_000, realtime = true, cancelled = false), departure)
+        // The line still says rail; the journey's submode marks the bus. / 线路仍写着 rail；靠这趟车的子类型认出巴士。
+        assertTrue(replacement.replacementBus)
         val variables = AppJson.standard.parseToJsonElement(server.takeRequest().body.readUtf8()).jsonObject.getValue("variables").jsonObject
         assertEquals("NSR:StopPlace:9", variables.getValue("stop1").jsonPrimitive.content)
         assertEquals(emptyMap<String, List<BoardDeparture>>(), provider().departures(emptyList(), now))

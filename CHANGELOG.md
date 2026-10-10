@@ -69,6 +69,8 @@ looks it up literally.
 - News settings: server and token are saved with one "Save and connect" button that shows the unread count or what went
   wrong (two separate save buttons made it easy to save only one); an address without a scheme gets https, and http://
   says why it cannot be used.
+- Review fixes: a match moved to another day after its kick-off reminder is reminded again at the new time; AI summary
+  requests ask for a single answer instead of a stream, and long titles are capped like the article text.
 - Module tabs: opening News could show another module's page, or an empty one if that module had been turned off since.
   Every module tab now has a route of its own, so each tab keeps only its own state.
 
@@ -116,5 +118,7 @@ looks it up literally.
   之后四天改为上下排列的四列。
 - 新闻设置：服务器与令牌用同一个「保存并连接」按钮保存，并显示未读数或出错原因（原来两个保存按钮，很容易只存了一个）；
   没写协议的地址自动补 https，http:// 会说明为什么不能用。
+- 审查修正：开赛提醒发出后又改期的比赛，会按新时间再提醒一次；AI 摘要请求明确要求一次性返回而不是流式，过长的标题与正文
+  一样有长度上限。
 - 模块标签页：打开「新闻」可能显示另一个模块的页面，若那个模块已被关闭则是空白页。现在每个模块标签页都有自己的路由，
   各自只保留自己的状态。

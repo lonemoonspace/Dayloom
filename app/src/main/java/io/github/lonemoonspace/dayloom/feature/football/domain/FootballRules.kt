@@ -13,9 +13,13 @@ import java.time.Instant
 import java.time.format.DateTimeFormatter
 import kotlinx.serialization.Serializable
 
-/** Ids of the matches a rule has already announced. / 规则已经通知过的比赛 id。 */
+/**
+ * What a rule has already announced: match ids for results, and for kick-offs the kick-off time each reminder was for, so
+ * a match moved to another day is reminded again.
+ * 规则已经通知过的内容：结果按比赛 id 记；开赛提醒还记下当时提醒的开球时间，比赛改期后会按新时间再提醒一次。
+ */
 @Serializable
-data class AnnouncedMatches(val ids: Set<Long> = emptySet())
+data class AnnouncedMatches(val ids: Set<Long> = emptySet(), val kickoffs: Map<Long, Long> = emptyMap())
 
 /**
  * Where the football notifications go; both rules share one id, so the final score replaces the kick-off reminder.
@@ -42,11 +46,11 @@ class KickoffRule(
     override suspend fun isEnabled(): Boolean = enabled()
 
     override suspend fun evaluate(input: RuleInput, previous: AnnouncedMatches): RuleDecision<AnnouncedMatches> {
-        val match = FootballPolicy.kickoffDue(matches().orEmpty(), input.now, previous.ids) ?: return RuleDecision(previous)
+        val match = FootballPolicy.kickoffDue(matches().orEmpty(), input.now, previous.kickoffs) ?: return RuleDecision(previous)
         val at = Instant.ofEpochMilli(match.kickoff).atZone(input.now.zone).format(TIME)
         val body = UiText.Res(R.string.football_notify_kickoff_body, listOf(fixture(match), at, match.competition))
         val notification = AppNotification(target.notificationId, target.channelId, UiText.Res(R.string.football_notify_kickoff), body, target.deepLink)
-        return RuleDecision(AnnouncedMatches(FootballPolicy.remember(previous.ids, match.id)), listOf(notification))
+        return RuleDecision(previous.copy(kickoffs = FootballPolicy.rememberKickoff(previous.kickoffs, match)), listOf(notification))
     }
 }
 

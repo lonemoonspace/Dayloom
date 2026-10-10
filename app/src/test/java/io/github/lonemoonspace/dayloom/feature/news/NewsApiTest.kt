@@ -77,6 +77,12 @@ class NewsApiTest {
     }
 
     @Test
+    fun `the summary prompt caps the title like the text`() {
+        val prompt = io.github.lonemoonspace.dayloom.feature.news.domain.SummaryPrompt.user("x".repeat(5_000), "body")
+        assertEquals(io.github.lonemoonspace.dayloom.feature.news.domain.SummaryPrompt.TITLE_CHARS + "\n\nbody".length, prompt.length)
+    }
+
+    @Test
     fun `the summarizer gets the app language's prompt and a bearer key`() = runTest {
         server.enqueue(MockResponse().setBody("""{"choices":[{"message":{"role":"assistant","content":"  • Point  "}}]}"""))
         val answer = LlmApi(OkHttpClient()).summarize(base, "key", "model-x", "Title", "Text", "zh")
@@ -88,8 +94,11 @@ class NewsApiTest {
         assertEquals("model-x", body.getValue("model").jsonPrimitive.content)
         val system = body.getValue("messages").jsonArray.first().jsonObject.getValue("content").jsonPrimitive.content
         assertTrue(system.contains("简体中文"))
+        assertEquals("one JSON answer, not a stream", "false", body.getValue("stream").jsonPrimitive.content)
 
         server.enqueue(MockResponse().setBody("""{"choices":[]}"""))
+        assertTrue(runCatching { LlmApi(OkHttpClient()).summarize(base, "key", "m", "T", "X", "en") }.exceptionOrNull() is AppError.BadData)
+        server.enqueue(MockResponse().setBody("""{"choices":[{"message":{"role":"assistant","content":null}}]}"""))
         assertTrue(runCatching { LlmApi(OkHttpClient()).summarize(base, "key", "m", "T", "X", "en") }.exceptionOrNull() is AppError.BadData)
         server.enqueue(MockResponse().setResponseCode(401).setBody("""{"error":{"message":"bad key"}}"""))
         assertEquals(401, (runCatching { LlmApi(OkHttpClient()).summarize(base, "key", "m", "T", "X", "en") }.exceptionOrNull() as AppError.Http).code)

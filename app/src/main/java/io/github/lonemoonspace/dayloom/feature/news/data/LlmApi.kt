@@ -34,6 +34,9 @@ class LlmApi(http: OkHttpClient, private val io: CoroutineContext = Dispatchers.
             val payload = buildJsonObject {
                 put("model", model)
                 put("temperature", 0.3)
+                // Some compatible servers stream by default; the answer is read as one JSON body.
+                // 有些兼容接口默认流式返回；这里按一个完整的 JSON 读取回答。
+                put("stream", false)
                 putJsonArray("messages") {
                     addJsonObject {
                         put("role", "system")

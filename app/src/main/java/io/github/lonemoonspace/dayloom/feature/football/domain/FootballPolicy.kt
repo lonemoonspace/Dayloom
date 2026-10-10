@@ -112,9 +112,10 @@ object FootballPolicy {
      * The match to remind about: not started, kicking off within [KICKOFF_LEAD], not reminded yet.
      * 要提醒的比赛：还没开始、[KICKOFF_LEAD] 内开球、尚未提醒过。
      */
-    fun kickoffDue(matches: List<Match>, now: ZonedDateTime, notified: Set<Long>): Match? {
+    fun kickoffDue(matches: List<Match>, now: ZonedDateTime, notified: Map<Long, Long>): Match? {
         val nowMillis = now.toInstant().toEpochMilli()
-        return matches.filter { it.status.isUpcoming && it.id !in notified }
+        // Reminded for another kick-off time means the match was moved: remind again. / 提醒过的开球时间不同说明比赛改期了：再提醒一次。
+        return matches.filter { it.status.isUpcoming && notified[it.id] != it.kickoff }
             .filter { it.kickoff > nowMillis && it.kickoff - nowMillis <= KICKOFF_LEAD.toMillis() }
             .minByOrNull { it.kickoff }
     }
@@ -133,6 +134,10 @@ object FootballPolicy {
 
     /** Ids remembered by the rules: enough for a season's worth of overlapping fetches, without growing forever. / 规则记住的 id：足够覆盖相互重叠的多次抓取，又不会无限增长。 */
     fun remember(notified: Set<Long>, id: Long): Set<Long> = (notified.sortedDescending().take(MEMORY - 1) + id).toSet()
+
+    /** The kick-off reminded for [match], keeping the most recent ones. / 记下 [match] 提醒时的开球时间，只保留最近的若干场。 */
+    fun rememberKickoff(notified: Map<Long, Long>, match: Match): Map<Long, Long> =
+        (notified - match.id).entries.sortedByDescending { it.value }.take(MEMORY - 1).associate { it.key to it.value } + (match.id to match.kickoff)
 
     /**
      * football-data.org v4 counts a shoot-out into `fullTime`. The score of play is regular plus extra time where given,

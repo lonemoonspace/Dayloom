@@ -122,9 +122,10 @@ class FootballPolicyTest {
     @Test
     fun `kick-off reminders and results are due once and only while fresh`() {
         val soon = match(1, now.plusMinutes(45), MatchStatus.TIMED)
-        assertEquals(1L, FootballPolicy.kickoffDue(listOf(soon), now, emptySet())?.id)
-        assertNull("already reminded", FootballPolicy.kickoffDue(listOf(soon), now, setOf(1L)))
-        assertNull("too early", FootballPolicy.kickoffDue(listOf(match(2, now.plusHours(2), MatchStatus.TIMED)), now, emptySet()))
+        assertEquals(1L, FootballPolicy.kickoffDue(listOf(soon), now, emptyMap())?.id)
+        assertNull("already reminded", FootballPolicy.kickoffDue(listOf(soon), now, mapOf(1L to soon.kickoff)))
+        assertEquals("reminded for an earlier date, then moved", 1L, FootballPolicy.kickoffDue(listOf(soon), now, mapOf(1L to soon.kickoff - 86_400_000))?.id)
+        assertNull("too early", FootballPolicy.kickoffDue(listOf(match(2, now.plusHours(2), MatchStatus.TIMED)), now, emptyMap()))
 
         val ended = match(3, now.minusHours(2), MatchStatus.FINISHED, goals = 2 to 0)
         assertEquals(3L, FootballPolicy.resultDue(listOf(ended), now, emptySet())?.id)
@@ -167,6 +168,9 @@ class FootballPolicyTest {
         val fixture = UiText.Res(R.string.football_fixture, listOf("Team A", "Team B"))
         assertEquals(UiText.Res(R.string.football_notify_kickoff_body, listOf(fixture, "18:30", "League")), first.notifications.single().body)
         assertTrue(rule.evaluate(RuleInput(RefreshReport(emptyMap(), Instant.EPOCH), now), first.newState).notifications.isEmpty())
+        val remembered = (1L..60L).fold(emptyMap<Long, Long>()) { acc, id -> FootballPolicy.rememberKickoff(acc, match(id, now.plusMinutes(id), MatchStatus.TIMED)) }
+        assertEquals("bounded", 40, remembered.size)
+        assertTrue("the latest kick-offs are kept", 60L in remembered && 1L !in remembered)
     }
 
     @Test

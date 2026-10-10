@@ -8,7 +8,10 @@ package io.github.lonemoonspace.dayloom.feature.news.domain
 object SummaryPrompt {
     fun system(language: String): String = if (language.startsWith("zh")) ZH else EN
 
-    fun user(title: String, text: String): String = "$title\n\n$text"
+    /** The title is capped like the text, so an odd feed cannot make a summary expensive. / 标题与正文一样有上限，异常的订阅源也不会让摘要变贵。 */
+    fun user(title: String, text: String): String = "${title.take(TITLE_CHARS)}\n\n$text"
+
+    const val TITLE_CHARS = 300
 
     private const val EN =
         "You summarize news articles for a busy reader. Reply in English with three to five short bullet points covering " +

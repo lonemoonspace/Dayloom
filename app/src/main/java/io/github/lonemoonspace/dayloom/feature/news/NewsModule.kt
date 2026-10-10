@@ -18,6 +18,8 @@ import io.github.lonemoonspace.dayloom.core.module.ModuleContext
 import io.github.lonemoonspace.dayloom.core.module.ModuleInstance
 import io.github.lonemoonspace.dayloom.core.module.ModuleTab
 import io.github.lonemoonspace.dayloom.core.module.SettingsSection
+import io.github.lonemoonspace.dayloom.core.refresh.SourceInput
+import io.github.lonemoonspace.dayloom.core.refresh.SourceResult
 import io.github.lonemoonspace.dayloom.core.refresh.Trigger
 import io.github.lonemoonspace.dayloom.core.secret.SecretState
 import io.github.lonemoonspace.dayloom.feature.news.data.LlmApi
@@ -30,17 +32,21 @@ import io.github.lonemoonspace.dayloom.feature.news.domain.ArticleFilter
 import io.github.lonemoonspace.dayloom.feature.news.domain.NewsSyncPolicy
 import io.github.lonemoonspace.dayloom.feature.news.domain.StoredArticle
 import io.github.lonemoonspace.dayloom.feature.news.domain.SyncSummary
+import io.github.lonemoonspace.dayloom.feature.news.ui.ConnectResult
 import io.github.lonemoonspace.dayloom.feature.news.ui.NewsActions
 import io.github.lonemoonspace.dayloom.feature.news.ui.NewsCard
 import io.github.lonemoonspace.dayloom.feature.news.ui.NewsSettingsSection
 import io.github.lonemoonspace.dayloom.feature.news.ui.NewsTab
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 
 /**
@@ -69,6 +75,9 @@ data class NewsSettings(
     val llmUrl: String = "",
     val llmModel: String = "",
 )
+
+/** Saved values reach the source's inputs through DataStore within milliseconds; this is only a safety net. / 保存的值经 DataStore 几毫秒内就到达来源输入；这只是兜底。 */
+private const val INPUT_WAIT_MS = 5_000L
 
 private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
     private val store = ctx.settings(NewsSettings.serializer(), NewsSettings())
@@ -121,10 +130,33 @@ private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
             saved = saved,
             token = tokenState,
             llmKey = keyState,
-            saveToken = { plain -> ctx.appScope.launch { token.put(plain) } },
+            connect = ::connect,
             saveLlmKey = { plain -> ctx.appScope.launch { llmKey.put(plain) } },
         ) { transform -> ctx.appScope.launch { store.update(transform) } }
     }
+
+    /**
+     * Saves the server (and a new token), waits until the sync source sees them, then syncs once through the coordinator.
+     * Runs in the app scope, so leaving Settings halfway still saves everything.
+     * 保存服务器（及新令牌），等同步来源看到新值后，经协调器同步一次。放在应用级作用域里运行，中途离开设置页也会全部保存。
+     */
+    private suspend fun connect(url: String, plainToken: String?): ConnectResult = ctx.appScope.async {
+        try {
+            store.update { it.copy(serverUrl = url) }
+            if (plainToken != null) token.put(plainToken)
+            withTimeoutOrNull(INPUT_WAIT_MS) { source.inputs.first { it is SourceInput.Ready<*> && it.key == url } }
+                ?: return@async ConnectResult.Failed(AppError.NotConfigured(uiText(R.string.news_setup_token)))
+            when (val result = ctx.coordinator.refresh(setOf(source.id), Trigger.USER).results[source.id]) {
+                is SourceResult.Success -> ConnectResult.Connected(articles.observeSummary().first().unread)
+                is SourceResult.Failed -> ConnectResult.Failed(result.error)
+                is SourceResult.Skipped, null -> ConnectResult.Failed(AppError.Offline())
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            ConnectResult.Failed(e as? AppError ?: AppError.Unexpected(e))
+        }
+    }.await()
 
     // Writes go to the app scope, so leaving the tab right after a tap does not cancel them. / 写入放在应用级作用域，点完立刻离开也不会被取消。
     private val actions = object : NewsActions {

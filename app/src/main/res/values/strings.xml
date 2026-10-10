@@ -526,7 +526,13 @@
     <string name="news_llm_url">Endpoint, e.g. https://api.example.org/v1</string>
     <string name="news_llm_model">Model name</string>
     <string name="news_llm_key">API key</string>
-    <string name="news_url_invalid">Enter a full https:// address.</string>
+    <string name="news_url_invalid">Not a usable address, e.g. https://reader.example.org</string>
+    <string name="news_url_http">Only https:// works: over http:// the token would cross the network in clear text, and Android blocks it.</string>
+    <string name="news_connect">Save and connect</string>
+    <plurals name="news_connected">
+        <item quantity="one">Connected · %1$d unread article</item>
+        <item quantity="other">Connected · %1$d unread articles</item>
+    </plurals>
     <string name="news_all_read">All caught up.</string>
     <string name="news_none">Nothing here yet.</string>
     <string name="news_filter_unread">Unread</string>

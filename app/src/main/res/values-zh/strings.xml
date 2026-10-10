@@ -511,7 +511,12 @@
     <string name="news_llm_url">接口地址，如 https://api.example.org/v1</string>
     <string name="news_llm_model">模型名称</string>
     <string name="news_llm_key">API Key</string>
-    <string name="news_url_invalid">请输入完整的 https:// 地址。</string>
+    <string name="news_url_invalid">地址无法使用，示例：https://reader.example.org</string>
+    <string name="news_url_http">只支持 https://：用 http:// 时令牌会在网络上明文传输，Android 也会拦截这种连接。</string>
+    <string name="news_connect">保存并连接</string>
+    <plurals name="news_connected">
+        <item quantity="other">已连接 · %1$d 篇未读</item>
+    </plurals>
     <string name="news_all_read">全部读完了。</string>
     <string name="news_none">这里还没有内容。</string>
     <string name="news_filter_unread">未读</string>

@@ -114,7 +114,11 @@ class NewsSyncPolicyTest {
         assertEquals("https://reader.example.org", NewsSyncPolicy.normalizeBaseUrl("  https://reader.example.org/ "))
         assertEquals("https://api.example.org/v1", NewsSyncPolicy.normalizeBaseUrl("https://api.example.org/v1/"))
         assertNull(NewsSyncPolicy.normalizeBaseUrl("http://reader.example.org"))
-        assertNull(NewsSyncPolicy.normalizeBaseUrl("reader.example.org"))
+        // Without a scheme people mean https. / 没写协议时指的就是 https。
+        assertEquals("https://reader.example.org/miniflux", NewsSyncPolicy.normalizeBaseUrl("reader.example.org/miniflux/"))
+        assertTrue(NewsSyncPolicy.isPlainHttp(" http://192.168.1.2:8080"))
+        assertNull(NewsSyncPolicy.normalizeBaseUrl("ftp://reader.example.org"))
+        assertNull(NewsSyncPolicy.normalizeBaseUrl("   "))
         assertNull(NewsSyncPolicy.normalizeBaseUrl("https://"))
     }
 

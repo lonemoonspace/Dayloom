@@ -130,16 +130,24 @@ object NewsSyncPolicy {
 
     /**
      * A base URL the user typed: trimmed, without a trailing slash, https only (the token must not travel in clear text);
-     * null when unusable.
-     * 用户输入的基础地址：去掉首尾空白与末尾斜杠，只接受 https（令牌不能明文传输）；无法使用时为 null。
+     * an address typed without a scheme gets https, since that is what people mean. Null when unusable.
+     * 用户输入的基础地址：去掉首尾空白与末尾斜杠，只接受 https（令牌不能明文传输）；没写协议的地址补上 https，因为大家指的就是它。
+     * 无法使用时为 null。
      */
     fun normalizeBaseUrl(text: String): String? {
-        val trimmed = text.trim().trimEnd('/')
-        if (!trimmed.startsWith("https://", ignoreCase = true)) return null
-        val host = trimmed.substring("https://".length).substringBefore('/').substringBefore(':')
+        val typed = text.trim()
+        if (typed.isEmpty() || isPlainHttp(typed)) return null
+        // The scheme is looked for before the slashes are trimmed, or "https://" would turn into a host named "https:".
+        // 先找协议再去掉斜杠，否则「https://」会变成名为「https:」的主机。
+        val withScheme = (if ("://" in typed) typed else "https://$typed").trimEnd('/')
+        if (!withScheme.startsWith("https://", ignoreCase = true)) return null
+        val host = withScheme.substring("https://".length).substringBefore('/').substringBefore(':')
         if (host.isBlank() || host.contains(' ')) return null
-        return trimmed
+        return withScheme
     }
+
+    /** True for an http:// address, which gets its own explanation. / http:// 地址返回 true，界面单独说明原因。 */
+    fun isPlainHttp(text: String): Boolean = text.trim().startsWith("http://", ignoreCase = true)
 
     /**
      * Plain text for the summarizer: tags dropped, entities decoded, whitespace collapsed, cut to [maxChars] so a long

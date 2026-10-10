@@ -42,8 +42,8 @@ looks it up literally.
     favourite stops have their own settings card. The train commute also finds rail replacement buses (during track work
     they are the only service), marked with a bus icon and "Replacement bus"; departure boards mark them too.
   - Places: no device location and no location permission. Search uses Google Places with your own Google Maps key (the
-    same key as Traffic, now entered once under Places), falls back to Open-Meteo without a key, and accepts typed
-    coordinates.
+    same key as Traffic, now entered once under Places) only if you have one; without a key, street addresses come from
+    Entur (Norway) and OpenStreetMap (elsewhere). Typed coordinates are accepted too.
   - Daily routine: the to-work and back-home times apply every day; the commute switch and working-day selection are gone,
     and the time buttons line up.
 - New look (direction B): colours follow the wallpaper (Material You); the weather is one card in the theme colour with the
@@ -92,7 +92,7 @@ looks it up literally.
   - 公共交通：火车与公交通勤分开，各有自己的站点、卡片、设置与异常提醒；收藏站点有单独的设置卡片。火车通勤也会找到铁路替代巴士
     （线路施工时只有它在跑），用巴士图标和「替代巴士」标出；发车板上同样标出。
   - 地点：不再使用设备定位，也不申请定位权限。搜索用你自己的 Google Maps Key 调 Google Places（与路况共用一个 Key，现在只需在
-    「地点」里填一次）；没有 Key 时退回 Open-Meteo；也可以直接输入坐标。
+    「地点」里填一次），但只是可选项；没有 Key 时街道地址来自 Entur（挪威）与 OpenStreetMap（其他地方）。也可以直接输入坐标。
   - 日常作息：去程与返程时间每天都生效；去掉了通勤开关与工作日选择，时间按钮上下对齐。
 - 新外观（方向 B）：颜色跟随壁纸（Material You）；天气是一整块主题色的主卡，包含几个时间点、降雨、穿衣与提示胶囊以及之后四天；
   火车与公交卡片的标题行有线条图标、路线与更新时间，每个方案一行，含线路、到达、用时、换乘、站台与状态胶囊；节气是时钟旁的

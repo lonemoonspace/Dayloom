@@ -88,7 +88,7 @@ io.github.lonemoonspace.dayloom
 │   ├── secret/                  // SecretStore, SecretBox
 │   ├── network/                 // OkHttp, connectivity, credential redirect guard
 │   ├── time/                    // AppClock, time zone
-│   ├── location/                // Place, place search (Google / Open-Meteo / coordinates)
+│   ├── location/                // Place, place search (Google / Entur / OpenStreetMap / coordinates)
 │   ├── routine/                 // Daily windows (to work / back home), saved places (home / work)
 │   ├── i18n/                    // UiText, language switching
 │   ├── error/  json/  work/  ui/
@@ -265,7 +265,7 @@ All notifications are off by default (opt-in), for the same reason as in the ori
 Weather, public transport, traffic and the morning brief all need "where is home, where is work, when do I leave". To avoid every module asking separately, these live in core:
 
 - **Saved places (`core/location`)**: `Place(id, label, name, lat, lon, countryCode?)`. Two preset slots, "Home" and "Work", plus custom places.
-  - Search: **Google Places API (New) Text Search** with the user's own key (street addresses and named places); without a key, **Open-Meteo Geocoding** (worldwide, free, no key, towns only). Coordinates typed by hand ("59.9139, 10.7522") are always accepted as they are.
+  - Search: **Google Places API (New) Text Search** with the user's own key (street addresses and named places); without a key, **Entur Geocoder** first (Norwegian street addresses, places, points of interest and stops; free, no key, addresses from Kartverket), and **Nominatim** (OpenStreetMap, worldwide) when it finds nothing or fails; Nominatim's policy asks for an identifying User-Agent, at most about one request a second and no search-as-you-type, so it is only called when Search is pressed. Google is optional: nobody should need a key just to enter an address (decided after the rc.4 test). Coordinates typed by hand ("59.9139, 10.7522") are always accepted as they are.
   - No device location: the app asks for no location permission at all (decided after the rc.1 test, §19).
 - **Daily windows (`core/routine`)**: to-work window and back-home window (may cross midnight, same validation rules as the original project). They apply every day; there is no commute switch and no working-day selection.
 
@@ -422,7 +422,7 @@ Module settings refer to these shared items — weather defaults to "Home", traf
 |---|---|---|
 | Weather | MET Norway | CC BY 4.0, attribution required; User-Agent with contact information |
 | Public transport | Entur | NLOD, attribution required; `ET-Client-Name` header |
-| Place search | Google Places API (New) with the user's key; Open-Meteo Geocoding without | Google Maps attribution shown with the results; Open-Meteo CC BY 4.0, attribution required |
+| Place search | Google Places API (New) with the user's key; Entur Geocoder and Nominatim without | Google Maps attribution shown with the results; Entur under NLOD; OpenStreetMap under ODbL, "© OpenStreetMap contributors" required |
 | Traffic | Google Routes | User's own key, subject to Google's terms |
 | Football | football-data.org | User's own key, subject to its terms |
 | Lunar calendar | lunar-java (`cn.6tail:lunar`) | MIT, copyright notice required; not the Hong Kong Observatory table |

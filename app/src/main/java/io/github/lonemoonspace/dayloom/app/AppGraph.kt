@@ -10,7 +10,9 @@ import io.github.lonemoonspace.dayloom.app.work.BackgroundRound
 import io.github.lonemoonspace.dayloom.core.i18n.AppLanguage
 import io.github.lonemoonspace.dayloom.core.i18n.SystemAppLanguage
 import io.github.lonemoonspace.dayloom.core.location.GooglePlacesSearch
-import io.github.lonemoonspace.dayloom.core.location.OpenMeteoGeocoder
+import io.github.lonemoonspace.dayloom.core.location.EnturGeocoder
+import io.github.lonemoonspace.dayloom.core.location.FallbackSearch
+import io.github.lonemoonspace.dayloom.core.location.NominatimSearch
 import io.github.lonemoonspace.dayloom.core.location.PlaceBook
 import io.github.lonemoonspace.dayloom.core.location.PlaceFinder
 import io.github.lonemoonspace.dayloom.core.location.PlaceSearch
@@ -103,7 +105,7 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
 
     val placeSearch: PlaceSearch = PlaceFinder(
         google = GooglePlacesSearch(http),
-        fallback = OpenMeteoGeocoder(http),
+        fallback = FallbackSearch(EnturGeocoder(http), NominatimSearch(http)),
         googleKey = { secrets.usable(SharedSecrets.GOOGLE_MAPS) },
     )
 

@@ -87,7 +87,7 @@ io.github.lonemoonspace.dayloom
 │   ├── secret/                  // SecretStore、SecretBox
 │   ├── network/                 // OkHttp、联网状态、凭据重定向防护
 │   ├── time/                    // AppClock、时区
-│   ├── location/                // 地点（Place）、地点搜索（Google / Open-Meteo / 坐标）
+│   ├── location/                // 地点（Place）、地点搜索（Google / Entur / OpenStreetMap / 坐标）
 │   ├── routine/                 // 日常时间窗（上班/下班）、常用地点（家/公司）
 │   ├── i18n/                    // UiText、语言切换
 │   ├── error/  json/  work/  ui/
@@ -264,7 +264,7 @@ val allModules: List<FeatureModule> = listOf(
 天气、公共交通、路况、早间简报都需要「家在哪、公司在哪、什么时候出门」。为避免每个模块各问一遍，放在 core 里共享：
 
 - **常用地点（`core/location`）**：`Place(id, label, name, lat, lon, countryCode?)`。预置「家」「公司」两个槽位，可加自定义地点。
-  - 搜索：有用户自己的 Key 时用 **Google Places API（新版）文本搜索**（街道地址与具名地点）；没有 Key 时用 **Open-Meteo Geocoding**（全球、免费、无需 Key，只认城镇）。手动输入的坐标（「59.9139, 10.7522」）总是直接采用。
+  - 搜索：有用户自己的 Key 时用 **Google Places API（新版）文本搜索**（街道地址与具名地点）；没有 Key 时先用 **Entur Geocoder**（挪威的街道地址、地名、地标与站点，免费、无需 Key，地址来自 Kartverket），找不到或出错时用 **Nominatim**（OpenStreetMap，全球；使用政策要求可识别的 User-Agent、每秒最多约一次、不能边输入边搜索，所以只在按「搜索」时调用）。Google 只是可选项：用户不必为了填地址去申请 Key（rc.4 测试后决定）。手动输入的坐标（「59.9139, 10.7522」）总是直接采用。
   - 不用设备定位：App 不申请任何定位权限（rc.1 测试后决定，见 §19）。
 - **日常时间窗（`core/routine`）**：上班窗口、下班窗口（支持跨午夜，沿用原项目校验规则）。每天都生效，没有通勤开关，也不选工作日。
 
@@ -421,7 +421,7 @@ val allModules: List<FeatureModule> = listOf(
 |---|---|---|
 | 天气 | MET Norway | CC BY 4.0，需注明来源；User-Agent 带联系方式 |
 | 公共交通 | Entur | NLOD，需注明来源；请求头 `ET-Client-Name` |
-| 地点搜索 | 有 Key 时用 Google Places API（新版），没有时用 Open-Meteo Geocoding | 结果旁注明来自 Google 地图；Open-Meteo 为 CC BY 4.0，需注明来源 |
+| 地点搜索 | 有 Key 时用 Google Places API（新版），没有时用 Entur Geocoder 与 Nominatim | 结果旁注明来自 Google 地图；Entur 为 NLOD；OpenStreetMap 为 ODbL，需注明「© OpenStreetMap 贡献者」 |
 | 路况 | Google Routes | 用户自己的 Key，受 Google 服务条款约束 |
 | 足球 | football-data.org | 用户自己的 Key，受其条款约束 |
 | 农历 | lunar-java（`cn.6tail:lunar`） | MIT，需附版权声明；不使用香港天文台对照表 |

@@ -91,8 +91,9 @@ class GooglePlacesSearch(
 
 /**
  * The place search the settings use: coordinates typed by hand are taken as they are; otherwise Google when the user has
- * a key, else Open-Meteo, which knows towns but not street addresses.
- * 设置页用的地点搜索：手动输入的坐标直接采用；否则有 Key 时用 Google，没有时用 Open-Meteo（只认城镇，不认街道地址）。
+ * a key, else [fallback], which needs no key (Entur for Norway, OpenStreetMap elsewhere).
+ * 设置页用的地点搜索：手动输入的坐标直接采用；否则有 Key 时用 Google，没有时用不需要 Key 的 [fallback]（挪威用 Entur，
+ * 其他地方用 OpenStreetMap）。
  */
 class PlaceFinder(
     private val google: GooglePlacesSearch,

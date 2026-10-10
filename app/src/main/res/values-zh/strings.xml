@@ -376,11 +376,11 @@
     <string name="places_search_hint">地址、地点名称或坐标</string>
     <string name="places_search">搜索</string>
     <string name="places_no_results">没有找到地点。</string>
-    <string name="places_attribution">没有 Google Key 时用 Open-Meteo 搜索（CC BY 4.0），只认城镇，不认街道地址。直接输入坐标（如 59.9139, 10.7522）总是可以的。</string>
+    <string name="places_attribution">搜索来源：Entur（挪威的地址与地点，NLOD），其他地方用 OpenStreetMap（© OpenStreetMap 贡献者，ODbL）。直接输入坐标（如 59.9139, 10.7522）总是可以的。</string>
     <string name="places_remove">删除</string>
     <string name="places_attribution_google">搜索结果来自 Google 地图。也可以直接输入坐标，如 59.9139, 10.7522。</string>
     <string name="places_google_key">Google Maps API Key（可选）</string>
-    <string name="places_google_key_note">Key 启用 Places API (New) 后即可搜索街道地址。路况模块也用这个 Key。超出每月免费额度的请求会向你的 Google 账号计费。Key 只保存在本机。</string>
+    <string name="places_google_key_note">搜索不需要它：没有 Key 也能搜地址。填入启用了 Places API (New) 的 Key 后改用 Google 搜索。路况模块需要这个 Key。超出每月免费额度的请求会向你的 Google 账号计费。Key 只保存在本机。</string>
     <string name="settings_routine">日常作息</string>
     <string name="routine_note">每天都按这两个时段；公共交通与路况随之切换方向。</string>
     <string name="routine_to_work">去程</string>
@@ -555,10 +555,10 @@
     <string name="about_close">关闭</string>
     <string name="about_source_weather">天气：挪威气象局 MET Norway（api.met.no），CC BY 4.0 许可。</string>
     <string name="about_source_transit">公共交通：Entur，挪威政府开放数据许可（NLOD）。</string>
-    <string name="about_source_places">没有 Key 时的地点搜索：Open-Meteo Geocoding，CC BY 4.0 许可，数据基于 GeoNames。</string>
+    <string name="about_source_places">没有 Key 时的地点搜索：Entur Geocoder（Kartverket 地址，NLOD 许可）与 Nominatim，© OpenStreetMap 贡献者，ODbL 许可。</string>
     <string name="about_source_google">有 Key 时的地点搜索与路况：Google Maps Platform（Places API、Routes API），遵循 Google 的条款。</string>
     <string name="about_source_football">足球：football-data.org，使用你自己的 Key，遵循其条款。</string>
     <string name="about_source_news">新闻：你自己的 Miniflux 服务器。AI 摘要：你配置的接口。</string>
     <string name="about_source_lunar">农历与节气：用 lunar-java（MIT）在手机上计算。</string>
-    <string name="about_privacy_body">Dayloom 没有自己的服务器，也不收集任何数据：没有统计、没有崩溃上报、没有广告。\n\n你的设置、地点与 Key 只保存在本机。不做云备份；换机迁移会复制设置，但不复制 Key——Key 用本机的 Android Keystore 加密。\n\nApp 只联系你打开的模块对应的服务，并且只发送它需要的内容：家的坐标发给挪威气象局，你的站点发给 Entur，地点搜索里输入的文字发给 Google 或 Open-Meteo，已保存的地点发给 Google Routes，关注的球队发给 football-data.org，令牌发给你自己的 Miniflux 服务器。只有在你点「生成摘要」时，文章正文才会发给你配置的 AI 接口。\n\nApp 不申请定位权限。只有在你打开某个通知时，才会申请通知权限。</string>
+    <string name="about_privacy_body">Dayloom 没有自己的服务器，也不收集任何数据：没有统计、没有崩溃上报、没有广告。\n\n你的设置、地点与 Key 只保存在本机。不做云备份；换机迁移会复制设置，但不复制 Key——Key 用本机的 Android Keystore 加密。\n\nApp 只联系你打开的模块对应的服务，并且只发送它需要的内容：家的坐标发给挪威气象局，你的站点发给 Entur，地点搜索里输入的文字发给 Google，没有 Key 时发给 Entur 与 OpenStreetMap，已保存的地点发给 Google Routes，关注的球队发给 football-data.org，令牌发给你自己的 Miniflux 服务器。只有在你点「生成摘要」时，文章正文才会发给你配置的 AI 接口。\n\nApp 不申请定位权限。只有在你打开某个通知时，才会申请通知权限。</string>
 </resources>

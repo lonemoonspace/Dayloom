@@ -19,7 +19,7 @@ The app only contacts the services of the modules you turn on, and sends each on
 |---|---|---|
 | Weather | MET Norway (api.met.no) | The coordinates of Home, rounded to four decimals |
 | Public transport | Entur | The stops you chose; what you type into stop search |
-| Places | Google Places API with your key, otherwise Open-Meteo | What you type into place search |
+| Places | Google Places API with your key, otherwise Entur and OpenStreetMap (Nominatim) | What you type into place search |
 | Traffic | Google Routes API with your key | The coordinates of the two places you chose |
 | Football | football-data.org with your key | The competition and team you follow |
 | News | Your own Miniflux server | Your token; read and starred changes |

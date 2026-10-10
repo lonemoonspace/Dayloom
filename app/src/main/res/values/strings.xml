@@ -391,11 +391,11 @@
     <string name="places_search_hint">Address, place or coordinates</string>
     <string name="places_search">Search</string>
     <string name="places_no_results">No places found.</string>
-    <string name="places_attribution">Without a Google key, search uses Open-Meteo (CC BY 4.0), which knows towns but not street addresses. Coordinates such as 59.9139, 10.7522 always work.</string>
+    <string name="places_attribution">Search: Entur (Norwegian addresses and places, NLOD), elsewhere OpenStreetMap (© OpenStreetMap contributors, ODbL). Coordinates such as 59.9139, 10.7522 always work.</string>
     <string name="places_remove">Remove</string>
     <string name="places_attribution_google">Search results from Google Maps. Coordinates such as 59.9139, 10.7522 also work.</string>
     <string name="places_google_key">Google Maps API key (optional)</string>
-    <string name="places_google_key_note">With a key that has the Places API (New) enabled, you can search for street addresses. Traffic uses the same key. Requests beyond the free monthly quota are billed to your Google account. The key stays on this phone.</string>
+    <string name="places_google_key_note">Not needed for search: addresses work without it. With a key that has the Places API (New) enabled, search uses Google instead. Traffic needs this key. Requests beyond the free monthly quota are billed to your Google account. The key stays on this phone.</string>
     <string name="settings_routine">Daily routine</string>
     <string name="routine_note">These times apply every day. Transport and traffic switch direction with them.</string>
     <string name="routine_to_work">To work</string>
@@ -576,10 +576,10 @@
     <string name="about_close">Close</string>
     <string name="about_source_weather">Weather: MET Norway (api.met.no), under CC BY 4.0.</string>
     <string name="about_source_transit">Public transport: Entur, under the Norwegian Licence for Open Government Data (NLOD).</string>
-    <string name="about_source_places">Place search without a key: Open-Meteo Geocoding, under CC BY 4.0, based on GeoNames.</string>
+    <string name="about_source_places">Place search without a key: Entur Geocoder (Kartverket addresses, NLOD) and Nominatim, © OpenStreetMap contributors, under ODbL.</string>
     <string name="about_source_google">Place search and traffic with your key: Google Maps Platform (Places API, Routes API), under Google\'s terms.</string>
     <string name="about_source_football">Football: football-data.org, with your own key, under its terms.</string>
     <string name="about_source_news">News: your own Miniflux server. AI summaries: the endpoint you configure.</string>
     <string name="about_source_lunar">Lunar calendar and solar terms: computed on the phone with lunar-java (MIT).</string>
-    <string name="about_privacy_body">Dayloom has no server of its own and collects nothing: no analytics, no crash reports, no ads.\n\nYour settings, places and keys stay on this phone. There is no cloud backup; moving to a new phone copies your settings but not your keys, which are encrypted with this phone\'s Android Keystore.\n\nThe app only contacts the services of the modules you turn on, and sends each only what it needs: the coordinates of Home to MET Norway, your stops to Entur, what you type into place search to Google or Open-Meteo, your saved places to Google Routes, your team to football-data.org, and your token to your own Miniflux server. An article\'s text goes to your AI endpoint only when you tap Summarize.\n\nThe app asks for no location permission. It asks for the notification permission only when you turn on a notification.</string>
+    <string name="about_privacy_body">Dayloom has no server of its own and collects nothing: no analytics, no crash reports, no ads.\n\nYour settings, places and keys stay on this phone. There is no cloud backup; moving to a new phone copies your settings but not your keys, which are encrypted with this phone\'s Android Keystore.\n\nThe app only contacts the services of the modules you turn on, and sends each only what it needs: the coordinates of Home to MET Norway, your stops to Entur, what you type into place search to Google, or else to Entur and OpenStreetMap, your saved places to Google Routes, your team to football-data.org, and your token to your own Miniflux server. An article\'s text goes to your AI endpoint only when you tap Summarize.\n\nThe app asks for no location permission. It asks for the notification permission only when you turn on a notification.</string>
 </resources>

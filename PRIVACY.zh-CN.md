@@ -18,7 +18,7 @@ App 只联系你打开的模块对应的服务，并且只发送它需要的内�
 |---|---|---|
 | 天气 | 挪威气象局（api.met.no） | 家的坐标，保留四位小数 |
 | 公共交通 | Entur | 你选的站点；站点搜索里输入的文字 |
-| 地点 | 有 Key 时用 Google Places API，否则用 Open-Meteo | 地点搜索里输入的文字 |
+| 地点 | 有 Key 时用 Google Places API，否则用 Entur 与 OpenStreetMap（Nominatim） | 地点搜索里输入的文字 |
 | 路况 | 用你的 Key 调 Google Routes API | 你选的两个地点的坐标 |
 | 足球 | 用你的 Key 调 football-data.org | 你关注的赛事与球队 |
 | 新闻 | 你自己的 Miniflux 服务器 | 你的令牌；已读与收藏的修改 |

@@ -118,8 +118,9 @@ private fun PlaceRow(title: String, subtitle: String, onClick: () -> Unit) {
 }
 
 /**
- * Search by address or name (Google with a key, Open-Meteo without), or type coordinates; picking a result saves it.
- * 按地址或名称搜索（有 Key 用 Google，没有用 Open-Meteo），或直接输入坐标；选中一个结果即保存。
+ * Search by address or name (Google with a key, Entur and OpenStreetMap without), or type coordinates; picking a result
+ * saves it.
+ * 按地址或名称搜索（有 Key 用 Google，没有用 Entur 与 OpenStreetMap），或直接输入坐标；选中一个结果即保存。
  */
 @Composable
 private fun PlaceEditorDialog(editor: PlaceEditor, existing: Place?, vm: SharedDataViewModel) {

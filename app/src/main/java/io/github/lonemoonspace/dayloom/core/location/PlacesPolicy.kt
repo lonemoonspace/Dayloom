@@ -2,6 +2,7 @@ package io.github.lonemoonspace.dayloom.core.location
 
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.text.Normalizer
 import java.util.Locale
 
 /**
@@ -73,4 +74,26 @@ object PlacesPolicy {
         Place.WORK -> 1
         else -> 2
     }
+
+    /**
+     * Whether a result matches what was typed: every word of three or more letters must appear in its name or region. Needed because Entur always answers with its closest Norwegian match, so "Hauptstraße 5 Berlin"
+     * would otherwise return a street in Skjåk instead of falling back to the worldwide search. Letters are compared
+     * without accents (ø, æ, å, ß and the like), since people often type "Lillestrom". A word Entur lacks only means the
+     * worldwide search gets a turn, which copes with it too.
+     * 结果是否与输入相符：输入里每个三个字母以上的词都要出现在它的名称或地区里。之所以需要，是因为 Entur 总会给出它最接近的
+     * 挪威结果，否则「Hauptstraße 5 Berlin」会返回 Skjåk 的一条街，而不是退到全球搜索。比较时不计重音（ø、æ、å、ß 等），
+     * 因为很多人会输入「Lillestrom」。Entur 缺某个词只意味着轮到全球搜索，它同样能处理。
+     */
+    fun isRelevant(query: String, candidate: PlaceCandidate): Boolean {
+        val words = fold(query).split(Regex("[^\\p{L}]+")).filter { it.length >= 3 }
+        // Nothing to compare (a house number, or a script written without spaces): trust the service.
+        // 没有可比较的词（只有门牌号，或不用空格分词的文字）：相信服务的结果。
+        if (words.isEmpty()) return true
+        val text = fold(candidate.name + " " + candidate.detail)
+        return words.all { it in text }
+    }
+
+    private fun fold(text: String): String = Normalizer.normalize(text.lowercase(Locale.ROOT), Normalizer.Form.NFD)
+        .replace(Regex("\\p{M}+"), "")
+        .replace("ø", "o").replace("æ", "ae").replace("ß", "ss").replace("đ", "d").replace("ł", "l")
 }

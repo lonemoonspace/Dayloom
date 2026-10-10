@@ -319,7 +319,7 @@ Module settings refer to these shared items — weather defaults to "Home", traf
 
 ### 11.1 Weather `weather`
 
-- **Features**: the weather at Home now (feels-like, wind and gusts), then the day: until 18:00 today, from 18:00 tomorrow (`DayOutlookPolicy`, daytime hours 06:00–22:00): low/high and feels-like, a three-hourly timeline, rain spells with amount and chance, what to wear (from the lowest feels-like temperature) and tips (umbrella, heavy rain, thunder, snow, icy roads, strong wind, heat, sunscreen, layers); then a four-day strip.
+- **Features**: the weather at Home now (feels-like, wind and gusts), then the day: until 18:00 today, from 18:00 tomorrow (`DayOutlookPolicy`, daytime hours 06:00–22:00): low/high and feels-like, an hourly temperature curve (high and low marked) with rain bars underneath (rain spells shaded and labelled with amount and chance, the hour marked every three hours), what to wear (from the lowest feels-like temperature) and tips (umbrella, heavy rain, thunder, snow, icy roads, strong wind, heat, sunscreen, layers); then a four-day strip.
 - **Data source**: MET Norway Locationforecast 2.0 `complete` (worldwide; `complete` for feels-like, gusts, UV and rain probability).
 - **Settings**: none — always Home.
 - **Sources**: `weather.forecast`.

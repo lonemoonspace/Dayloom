@@ -21,7 +21,7 @@ enum class WeatherTip { THUNDER, HEAVY_RAIN, UMBRELLA, SNOW, SLIPPERY, STRONG_WI
 /** A stretch of hours with rain worth an umbrella; [end] is exclusive. / 一段需要带伞的降雨时段；[end] 不含。 */
 data class RainSpell(val start: ZonedDateTime, val end: ZonedDateTime)
 
-/** One hour of the day's timeline. / 当天时间线上的一个小时。 */
+/** One hour of the day's chart. / 当天图表上的一个小时。 */
 data class HourWeather(val time: ZonedDateTime, val symbolCode: String, val temperature: Double?, val precipMm: Double)
 
 /**
@@ -47,8 +47,8 @@ data class DayOutlook(
     val uvMax: Double?,
     val clothing: ClothingLevel,
     val tips: List<WeatherTip>,
-    /** Every [DayOutlookPolicy.TIMELINE_STEP_HOURS] hours across the window. / 时间窗内每 [DayOutlookPolicy.TIMELINE_STEP_HOURS] 小时一个点。 */
-    val timeline: List<HourWeather>,
+    /** Every hour of the window, for the temperature curve and rain bars. / 时间窗内的每个小时，用于温度曲线与雨量柱。 */
+    val hours: List<HourWeather>,
 )
 
 /**
@@ -126,11 +126,13 @@ object DayOutlookPolicy {
             uvMax = summary.uvMax,
             clothing = clothing(summary.feelsMin),
             tips = tips(summary),
-            timeline = hours
-                .filter { (t, _) -> (t.hour - DAY_START_HOUR) % TIMELINE_STEP_HOURS == 0L }
-                .map { (t, p) -> HourWeather(t, p.symbol1h, p.temperature, p.precipMm) },
+            hours = hours.map { (t, p) -> HourWeather(t, p.symbol1h, p.temperature, p.precipMm) },
         )
     }
+
+    /** The hours labelled under the chart: every [TIMELINE_STEP_HOURS] hours from 06:00. / 图表下方标注的钟点：从 06:00 起每 [TIMELINE_STEP_HOURS] 小时一个。 */
+    fun ticks(hours: List<HourWeather>): List<HourWeather> =
+        hours.filter { (it.time.hour - DAY_START_HOUR) % TIMELINE_STEP_HOURS == 0L }
 
     /**
      * People dress for the coldest part of the day they are out in, so the lowest feels-like temperature decides.

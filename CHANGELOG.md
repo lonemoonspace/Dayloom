@@ -63,6 +63,8 @@ looks it up literally.
 - Layout fixes found by rendering the home screen: card titles no longer cut the route short, the timetable time of a late
   departure sits under the expected one (12-hour clocks fit), the four-day strip uses weekday names, the English lunar
   line puts the date first, and the date keeps its colour in dark mode. README screenshots added.
+- Weather card: the day is now a temperature curve with its high and low and rain bars underneath, rain spells shaded
+  and labelled with amount and chance; the advice pills fit one row and the next four days are stacked columns.
 - News settings: server and token are saved with one "Save and connect" button that shows the unread count or what went
   wrong (two separate save buttons made it easy to save only one); an address without a scheme gets https, and http://
   says why it cannot be used.
@@ -108,6 +110,8 @@ looks it up literally.
 - 打磨（M7）：设置里的「关于」卡片可以查看数据来源、隐私声明与开源许可（含 lunar-java 的 MIT 声明）；隐私声明另见 `PRIVACY.zh-CN.md`。
 - 渲染首页时发现并修正的排版问题：卡片标题不再过早截断路线；晚点班次的时刻表时间放到预计时间下面（12 小时制也放得下）；四天预报
   一律用星期；英文农历一行先写日期；深色模式下日期颜色正确。README 加入截图。
+- 天气卡片：这一天改为温度曲线（标出最高与最低）加下方的雨量柱，降雨时段加底色并标注雨量与概率；建议胶囊排成一行，
+  之后四天改为上下排列的四列。
 - 新闻设置：服务器与令牌用同一个「保存并连接」按钮保存，并显示未读数或出错原因（原来两个保存按钮，很容易只存了一个）；
   没写协议的地址自动补 https，http:// 会说明为什么不能用。
 - 模块标签页：打开「新闻」可能显示另一个模块的页面，若那个模块已被关闭则是空白页。现在每个模块标签页都有自己的路由，

@@ -102,9 +102,10 @@ class DayOutlookPolicyTest {
     }
 
     @Test
-    fun `timeline every three hours from six`() {
+    fun `every daytime hour for the chart, labelled every three hours from six`() {
         val outlook = DayOutlookPolicy.outlook(points(), at(5, 6))!!
-        assertEquals(listOf(6, 9, 12, 15, 18, 21), outlook.timeline.map { it.time.hour })
+        assertEquals((6..21).toList(), outlook.hours.map { it.time.hour })
+        assertEquals(listOf(6, 9, 12, 15, 18, 21), DayOutlookPolicy.ticks(outlook.hours).map { it.time.hour })
     }
 
     @Test

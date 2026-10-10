@@ -99,7 +99,11 @@ internal fun MatchStatusChip(match: Match) {
     val colors = MaterialTheme.statusColors
     when (match.status) {
         MatchStatus.IN_PLAY -> StatusChip(
-            match.minute?.let { stringResource(R.string.football_live_minute, it) } ?: stringResource(R.string.football_live),
+            when {
+                match.minute != null && match.injuryTime != null -> stringResource(R.string.football_live_minute_added, match.minute, match.injuryTime)
+                match.minute != null -> stringResource(R.string.football_live_minute, match.minute)
+                else -> stringResource(R.string.football_live)
+            },
             colors.red,
         )
         MatchStatus.PAUSED -> StatusChip(stringResource(R.string.football_half_time), colors.red)

@@ -45,9 +45,9 @@ class FootballDataApiTest {
            "competition":{"name":"League A","code":"PL"},
            "homeTeam":{"id":3,"name":"Team C FC"},"awayTeam":{"id":1,"name":"Team A FC"},
            "score":{"fullTime":{"home":null,"away":null}}},
-          {"id":13,"utcDate":"2026-10-14T19:00:00Z","status":"LIVE","homeTeam":{"id":1},"awayTeam":{"id":4},"score":{"fullTime":{"home":0,"away":0}}},
+          {"id":13,"utcDate":"2026-10-14T19:00:00Z","status":"LIVE","minute":90,"injuryTime":4,"homeTeam":{"id":1},"awayTeam":{"id":4},"score":{"fullTime":{"home":0,"away":0}}},
           {"id":14,"utcDate":null,"status":"SCHEDULED"},
-          {"id":15,"utcDate":"2026-10-20T19:00:00Z","status":"SOMETHING_NEW"}
+          {"id":15,"utcDate":"2026-10-20T19:00:00Z","status":"SOMETHING_NEW","minute":"45+2","injuryTime":null}
         ]}
     """.trimIndent()
 
@@ -70,6 +70,11 @@ class FootballDataApiTest {
         assertNull("no shoot-out, no pens", matches[1].homePens)
         assertEquals(MatchStatus.IN_PLAY, matches[2].status)
         assertEquals(MatchStatus.UNKNOWN, matches[3].status)
+        assertEquals(90 to 4, matches[2].minute to matches[2].injuryTime)
+        // An odd minute is read, not fatal. / 异常的分钟值照样读出，不会让解码失败。
+        assertEquals(45, matches[3].minute)
+        assertNull(matches[3].injuryTime)
+        assertNull(matches[0].minute)
     }
 
     @Test

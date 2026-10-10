@@ -19,6 +19,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
@@ -86,6 +89,10 @@ class FootballDataApi(
             null
         }
 
+        /** 52, "52" and "45+2" all give the leading number; anything else gives null. / 52、"52" 与 "45+2" 都取开头的数字；其他情况为 null。 */
+        internal fun minuteOf(raw: JsonElement?): Int? =
+            (raw as? JsonPrimitive)?.takeUnless { it is JsonNull }?.content?.trim()?.takeWhile { it.isDigit() }?.toIntOrNull()
+
         internal fun status(raw: String?): MatchStatus = when (raw) {
             // "LIVE" is the umbrella value some responses use for in-play matches. / 有些响应用「LIVE」笼统表示进行中。
             "LIVE" -> MatchStatus.IN_PLAY
@@ -131,7 +138,9 @@ internal data class MatchDto(
     val utcDate: String? = null,
     val status: String? = null,
     val matchday: Int? = null,
-    val minute: Int? = null,
+    /** Documented as a number; read leniently so an odd value never fails the whole response. / 文档写的是数字；宽松读取，异常的值不会让整个响应解码失败。 */
+    val minute: JsonElement? = null,
+    val injuryTime: JsonElement? = null,
     val competition: CompetitionDto = CompetitionDto(),
     val homeTeam: TeamDto = TeamDto(),
     val awayTeam: TeamDto = TeamDto(),
@@ -161,7 +170,8 @@ internal data class MatchDto(
             awayGoals = away,
             homePens = if (shootout) score.penalties?.home else null,
             awayPens = if (shootout) score.penalties?.away else null,
-            minute = minute,
+            minute = FootballDataApi.minuteOf(minute),
+            injuryTime = FootballDataApi.minuteOf(injuryTime)?.takeIf { it > 0 },
         )
     }
 }

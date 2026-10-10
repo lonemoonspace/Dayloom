@@ -50,6 +50,8 @@ data class Match(
     val awayPens: Int? = null,
     /** Minute of play while live, when the API reports it. / 进行中时的比赛分钟（接口提供时）。 */
     val minute: Int? = null,
+    /** Stoppage time added to [minute], e.g. 3 for 90+3. / 加在 [minute] 上的补时，例如 90+3 里的 3。 */
+    val injuryTime: Int? = null,
 )
 
 /** The snapshot of `football.matches`: the followed team's recent and coming matches. / `football.matches` 的快照：关注球队近期与接下来的比赛。 */

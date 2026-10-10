@@ -478,6 +478,7 @@
     <string name="football_brief">%1$s at %2$s</string>
     <string name="football_live">Live</string>
     <string name="football_live_minute">%1$d\'</string>
+    <string name="football_live_minute_added">%1$d+%2$d\'</string>
     <string name="football_half_time">Half time</string>
     <string name="football_full_time">Full time</string>
     <string name="football_postponed">Postponed</string>

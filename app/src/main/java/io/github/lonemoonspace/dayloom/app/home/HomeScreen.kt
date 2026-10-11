@@ -11,7 +11,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,7 +34,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.lonemoonspace.dayloom.R
-import io.github.lonemoonspace.dayloom.core.ui.DuotoneIcon
 import io.github.lonemoonspace.dayloom.core.ui.InfoCard
 import io.github.lonemoonspace.dayloom.core.ui.SkeletonLines
 import io.github.lonemoonspace.dayloom.core.ui.plusBars
@@ -121,7 +123,7 @@ private fun EditableCardList(cards: List<HomeCardEntry>, onSaveOrder: (List<Stri
                         },
                     titleAction = {
                         IconButton(onClick = {}, modifier = Modifier.draggableHandle()) {
-                            DuotoneIcon(R.drawable.ic_menu, contentDescription = dragHandle)
+                            Icon(Icons.Default.Menu, contentDescription = dragHandle)
                         }
                     },
                 ) {}

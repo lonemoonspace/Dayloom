@@ -1,12 +1,13 @@
 """
-Generates every icon drawable of the app: launcher, module and button icons, status icons and the notification icon.
+Generates the launcher icon, its themed-icon layer and the notification icon into the app's resources, and the woven set of
+module, button and status icons into `scripts/icons/generated/`, which the app does not use for now.
 Run from the repository root: `python3 scripts/icons/gen_icons.py [preview.html]`. Edit the shapes here, not the XML.
-生成 App 的全部图标矢量图：启动器、模块与按钮图标、状态图标和通知图标。
-在仓库根目录运行：`python3 scripts/icons/gen_icons.py [preview.html]`。要改形状就改这里，不要手改 XML。
+把启动器图标、主题图标层和通知图标生成到 App 资源里；模块、按钮与状态图标这套编织图标生成到 `scripts/icons/generated/`，
+App 暂时不用。在仓库根目录运行：`python3 scripts/icons/gen_icons.py [preview.html]`。要改形状就改这里，不要手改 XML。
 
-Module and button icons use two colour keys: black is the ink and pure green the accent; `DuotoneIcon` maps them to theme
-colours. Status and notification icons are single-colour and tinted as usual.
-模块与按钮图标用两种颜色键：黑色是墨色，纯绿是强调色，由 `DuotoneIcon` 换成主题颜色。状态图标和通知图标是单色的，照常着色。
+The woven set uses two colour keys: black is the ink and pure green the accent; drawing it needs a colour filter that maps
+them to theme colours. Status and notification icons are single-colour and tinted as usual.
+编织图标用两种颜色键：黑色是墨色，纯绿是强调色，绘制时需要一个把它们换成主题颜色的颜色滤镜。状态图标和通知图标是单色的，照常着色。
 """
 import math
 import os
@@ -17,6 +18,8 @@ from geometry import Arc, Line, Strand, ang, circle, circle_intersections, cut, 
 INK, ACC = "ink", "acc"
 W = 1.75
 OUT = os.path.join(os.path.dirname(__file__), "..", "..", "app", "src", "main", "res", "drawable")
+# Kept outside the resources so they neither ship in the APK nor count as unused. / 放在资源目录外：不进 APK，也不算未使用资源。
+GENERATED = os.path.join(os.path.dirname(__file__), "generated")
 
 
 def strand(prims, color, closed=False, name="", width=W):
@@ -339,19 +342,20 @@ def svg(strokes, fills, palette, viewbox, px):
     return "".join(parts) + "</svg>"
 
 
-def write(name, text):
-    with open(os.path.join(OUT, name + ".xml"), "w", encoding="utf-8") as f:
+def write(name, text, folder=OUT):
+    os.makedirs(folder, exist_ok=True)
+    with open(os.path.join(folder, name + ".xml"), "w", encoding="utf-8") as f:
         f.write(text)
 
 
 def main(preview=None):
     two_tone = {INK: "#FF000000", ACC: "#FF00FF00"}
-    note_en = "Black is the ink and green the accent; draw it with DuotoneIcon. Crossings are real gaps, so a single-colour tint also works."
-    note_zh = "黑色是墨色、绿色是强调色，用 DuotoneIcon 绘制；交叉处是真实的缝，单色着色也能正常显示。"
+    note_en = "Black is the ink and green the accent. Crossings are real gaps, so a single-colour tint also works."
+    note_zh = "黑色是墨色、绿色是强调色；交叉处是真实的缝，单色着色也能正常显示。"
     cells = []
     for name, (build, en, zh) in TWO_TONE.items():
         strokes, fills = render(*build())
-        write(name, vector_xml(strokes, fills, 24, 24, two_tone, f"{en} {note_en}", f"{zh}{note_zh}"))
+        write(name, vector_xml(strokes, fills, 24, 24, two_tone, f"{en} {note_en}", f"{zh}{note_zh}"), GENERATED)
         cells.append((name, svg(strokes, fills, {INK: "#17212B", ACC: "#0F8A7E"}, "0 0 24 24", 96),
                       svg(strokes, fills, {INK: "#E3E8EE", ACC: "#7FD1C7"}, "0 0 24 24", 24)))
 
@@ -363,7 +367,7 @@ def main(preview=None):
         for color, d in fill_list:
             fills.setdefault(color, []).append(d)
         write(name, vector_xml(strokes, fills, 24, 24, STATUS_PALETTE, f"{en} Coloured by the Icon tint; tinted shapes keep their own alpha.",
-                               f"{zh}颜色由 Icon 的 tint 决定，淡色部分保持各自的透明度。"))
+                               f"{zh}颜色由 Icon 的 tint 决定，淡色部分保持各自的透明度。"), GENERATED)
 
     fill_list, stroke_list = NOTIFICATION
     write("ic_notification", vector_xml({("white", 1.8, cap): [d] for d, cap in stroke_list}, {c: [d] for c, d in fill_list},

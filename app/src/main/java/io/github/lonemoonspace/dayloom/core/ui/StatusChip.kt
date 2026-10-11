@@ -33,7 +33,7 @@ fun StatusChip(text: String, color: Color, @DrawableRes icon: Int? = null) {
         ) {
             if (icon != null) {
                 // The text already states the status; the icon is not read out again. / 文字已说明状态，图标不重复朗读。
-                Icon(painterResource(icon), contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
+                Icon(painterResource(icon), contentDescription = null, tint = color, modifier = Modifier.size(12.dp))
                 Spacer(Modifier.width(3.dp))
             }
             Text(text = text, color = color, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)

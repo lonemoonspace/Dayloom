@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
@@ -33,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -45,7 +47,6 @@ import io.github.lonemoonspace.dayloom.R
 import io.github.lonemoonspace.dayloom.core.error.AppError
 import io.github.lonemoonspace.dayloom.core.error.toAppError
 import io.github.lonemoonspace.dayloom.core.i18n.asString
-import io.github.lonemoonspace.dayloom.core.ui.DuotoneIcon
 import io.github.lonemoonspace.dayloom.core.ui.InfoCard
 import io.github.lonemoonspace.dayloom.core.ui.SkeletonLines
 import io.github.lonemoonspace.dayloom.core.ui.currentLocale
@@ -185,7 +186,7 @@ private fun ArticleRow(article: StoredArticle, now: ZonedDateTime, onClick: () -
                 maxLines = 1,
                 modifier = Modifier.weight(1f),
             )
-            if (article.starred) Icon(painterResource(R.drawable.ic_star), contentDescription = stringResource(R.string.news_starred), tint = MaterialTheme.statusColors.amber, modifier = Modifier.size(16.dp))
+            if (article.starred) Icon(Icons.Default.Star, contentDescription = stringResource(R.string.news_starred), tint = MaterialTheme.statusColors.amber, modifier = Modifier.size(16.dp))
         }
         Text(
             article.title,
@@ -221,7 +222,7 @@ private fun ArticleDetail(article: StoredArticle, now: ZonedDateTime, onClose: (
     ) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onClose) { DuotoneIcon(R.drawable.ic_back, contentDescription = stringResource(R.string.news_back)) }
+                IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.news_back)) }
                 Text(article.feedTitle, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text(article.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)

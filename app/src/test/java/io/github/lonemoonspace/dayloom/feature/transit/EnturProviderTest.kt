@@ -117,6 +117,31 @@ class EnturProviderTest {
     }
 
     @Test
+    fun `nothing in Entur's own search window is asked again with a long window`() = runTest {
+        server.enqueue(
+            MockResponse().setBody("""{"data":{"trip":{"routingErrors":[{"code":"noTransitConnectionInSearchWindow"}],"tripPatterns":[]}}}"""),
+        )
+        server.enqueue(MockResponse().setBody(tripBody))
+
+        val options = provider().planTrips(a, b, now, 3, CommuteKind.TRAIN)
+
+        assertEquals(1, options.size)
+        fun windowOf(request: okhttp3.mockwebserver.RecordedRequest) =
+            AppJson.standard.parseToJsonElement(request.body.readUtf8()).jsonObject.getValue("variables").jsonObject["window"]
+        // The first request leaves the window to Entur. / 第一次请求由 Entur 决定时间窗。
+        assertEquals(null, windowOf(server.takeRequest()))
+        assertEquals(EnturProvider.LONG_SEARCH_WINDOW_MINUTES, windowOf(server.takeRequest())?.jsonPrimitive?.content?.toInt())
+    }
+
+    @Test
+    fun `an empty answer without that routing error is not asked again`() = runTest {
+        server.enqueue(MockResponse().setBody("""{"data":{"trip":{"routingErrors":[{"code":"noStopsInRange"}],"tripPatterns":[]}}}"""))
+
+        assertTrue(provider().planTrips(a, b, now, 3, CommuteKind.TRAIN).isEmpty())
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test
     fun `train commutes also ask for rail replacement buses and flag them`() = runTest {
         server.enqueue(
             MockResponse().setBody(

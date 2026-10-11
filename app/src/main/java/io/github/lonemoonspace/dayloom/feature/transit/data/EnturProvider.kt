@@ -67,33 +67,48 @@ class EnturProvider(
 
     override suspend fun planTrips(from: TransitStop, to: TransitStop, at: ZonedDateTime, count: Int, kind: CommuteKind): List<TripOption> =
         withContext(io) {
-            val variables = buildJsonObject {
-                put("from", from.id)
-                put("to", to.id)
-                put("at", at.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
-                put("count", count)
-                put(
-                    "modes",
-                    buildJsonArray {
-                        modesOf(kind).forEach { mode ->
-                            add(
-                                buildJsonObject {
-                                    put("transportMode", mode.mode)
-                                    if (mode.subModes.isNotEmpty()) put("transportSubModes", buildJsonArray { mode.subModes.forEach { add(it) } })
-                                },
-                            )
-                        }
-                    },
-                )
+            val first = queryTrips(from, to, at, count, kind, window = null)
+            // Entur picks a search window of an hour or two by itself; on a quiet evening line the next train can be further
+            // away than that, so an empty answer for this reason is asked again with a long window.
+            // Entur 自己选一两个小时的搜索时间窗；晚上班次稀少的线路，下一班车可能比这还远，所以因此查空时用长时间窗再查一次。
+            val trip = if (first.tripPatterns.isEmpty() && first.routingErrors.any { it.code == NO_CONNECTION_IN_WINDOW }) {
+                queryTrips(from, to, at, count, kind, window = LONG_SEARCH_WINDOW_MINUTES)
+            } else {
+                first
             }
-            val response = decode(TripResponse.serializer(), post(TRIP_QUERY, variables), "trip response")
-            failOnErrors(response.errors)
-            response.data?.trip?.tripPatterns.orEmpty().mapNotNull { pattern ->
+            trip.tripPatterns.mapNotNull { pattern ->
                 // Walking legs only connect rides; a pattern with no ride at all is just a walk. / 步行段只是连接各段；一段车都不坐的方案只是步行。
                 val legs = pattern.legs.filter { it.mode != "foot" }.mapNotNull(::toLeg)
                 legs.takeIf { it.isNotEmpty() }?.let(::TripOption)
             }
         }
+
+    /** One trip request; a null [window] leaves the search window to Entur. / 一次行程请求；[window] 为空时由 Entur 决定搜索时间窗。 */
+    private fun queryTrips(from: TransitStop, to: TransitStop, at: ZonedDateTime, count: Int, kind: CommuteKind, window: Int?): TripResponse.Trip {
+        val variables = buildJsonObject {
+            put("from", from.id)
+            put("to", to.id)
+            put("at", at.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+            put("count", count)
+            if (window != null) put("window", window)
+            put(
+                "modes",
+                buildJsonArray {
+                    modesOf(kind).forEach { mode ->
+                        add(
+                            buildJsonObject {
+                                put("transportMode", mode.mode)
+                                if (mode.subModes.isNotEmpty()) put("transportSubModes", buildJsonArray { mode.subModes.forEach { add(it) } })
+                            },
+                        )
+                    }
+                },
+            )
+        }
+        val response = decode(TripResponse.serializer(), post(TRIP_QUERY, variables), "trip response")
+        failOnErrors(response.errors)
+        return response.data?.trip ?: TripResponse.Trip()
+    }
 
     override suspend fun departures(stopIds: List<String>, at: ZonedDateTime): Map<String, List<BoardDeparture>> =
         withContext(io) {
@@ -206,6 +221,12 @@ class EnturProvider(
          * 替代巴士沿用火车的线路号，连线路本身的交通方式也仍是 `rail`；只有这一段或这趟车的子类型能区分出来。
          */
         internal const val RAIL_REPLACEMENT_BUS = "railReplacementBus"
+
+        /** Entur's routing error for "nothing within the search window". / Entur 表示「搜索时间窗内没有车」的路由错误码。 */
+        internal const val NO_CONNECTION_IN_WINDOW = "noTransitConnectionInSearchWindow"
+
+        /** Six hours reach past an evening gap to the last trains of the day. / 六小时足以越过晚间的空档，找到当天最后几班车。 */
+        internal const val LONG_SEARCH_WINDOW_MINUTES = 360
         const val CLIENT_HEADER = "ET-Client-Name"
         const val CLIENT_NAME = "lonemoonspace-dayloom"
         private val JSON = "application/json".toMediaType()
@@ -216,10 +237,11 @@ class EnturProvider(
          * 该通勤交通方式下的任意线路，可换乘。被取消的方案也返回并标出：把它们藏起来，用户会在站台等一班不会来的车。
          */
         internal val TRIP_QUERY = """
-            query Trip(${'$'}from: String!, ${'$'}to: String!, ${'$'}at: DateTime, ${'$'}count: Int, ${'$'}modes: [TransportModes]) {
+            query Trip(${'$'}from: String!, ${'$'}to: String!, ${'$'}at: DateTime, ${'$'}count: Int, ${'$'}window: Int, ${'$'}modes: [TransportModes]) {
               trip(from: { place: ${'$'}from }, to: { place: ${'$'}to }, dateTime: ${'$'}at, numTripPatterns: ${'$'}count,
-                   includeRealtimeCancellations: true,
+                   searchWindow: ${'$'}window, includeRealtimeCancellations: true,
                    modes: { accessMode: foot, egressMode: foot, transportModes: ${'$'}modes }) {
+                routingErrors { code }
                 tripPatterns {
                   legs {
                     mode transportSubmode realtime aimedStartTime expectedStartTime aimedEndTime expectedEndTime
@@ -279,7 +301,10 @@ internal data class TripResponse(val data: Data? = null, val errors: List<GraphQ
     data class Data(val trip: Trip? = null)
 
     @Serializable
-    data class Trip(val tripPatterns: List<Pattern> = emptyList())
+    data class Trip(val tripPatterns: List<Pattern> = emptyList(), val routingErrors: List<RoutingError> = emptyList())
+
+    @Serializable
+    data class RoutingError(val code: String = "")
 
     @Serializable
     data class Pattern(val legs: List<Leg> = emptyList())

@@ -2,11 +2,11 @@ package io.github.lonemoonspace.dayloom.feature.calendar.ui
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
@@ -25,7 +26,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.lonemoonspace.dayloom.R
-import io.github.lonemoonspace.dayloom.core.ui.StatusChip
 import io.github.lonemoonspace.dayloom.core.ui.rememberMinuteTick
 import io.github.lonemoonspace.dayloom.core.ui.rememberPatternFormatter
 import io.github.lonemoonspace.dayloom.core.ui.rememberTimeFormatter
@@ -40,9 +40,9 @@ import java.time.temporal.ChronoUnit
 import java.time.temporal.IsoFields
 
 /**
- * The clock header (no card around it), in two aligned rows: the time with the solar term on the right, then the date and
- * week with the stem-branch year and lunar date on the right; holidays below.
- * 时钟页头（不套卡片），两行对齐：时间与右侧的节气；日期、周数与右侧的干支年和农历日期；节日在下面。
+ * The clock header (no card around it), in two aligned rows: the time with the holiday and the solar term stacked on the
+ * right, then the date and week with the stem-branch year and lunar date on the right.
+ * 时钟页头（不套卡片），两行对齐：时间与右侧上下排列的节日和节气；日期、周数与右侧的干支年和农历日期。
  */
 @Composable
 internal fun CalendarHeader(showLunar: Boolean, countries: Set<HolidayCountry>, lunar: LunarProvider) {
@@ -54,17 +54,19 @@ internal fun CalendarHeader(showLunar: Boolean, countries: Set<HolidayCountry>, 
             .fillMaxWidth()
             .padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 4.dp),
     ) {
-        Row(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = now.format(rememberTimeFormatter()),
                 fontSize = 44.sp,
                 lineHeight = 46.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.alignByBaseline(),
             )
             Spacer(Modifier.weight(1f))
-            if (day != null) SolarTermText(date, lunar, Modifier.alignByBaseline())
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (countries.isNotEmpty()) HolidayPills(date, countries, lunar, solarTermsShown = showLunar)
+                if (day != null) SolarTermText(date, lunar)
+            }
         }
         Row(Modifier.fillMaxWidth()) {
             // ISO 8601 weeks (Monday first), as Norwegian calendars count them. / 周数按 ISO 8601（周一为一周开始），与挪威日历一致。
@@ -98,7 +100,6 @@ internal fun CalendarHeader(showLunar: Boolean, countries: Set<HolidayCountry>, 
                 )
             }
         }
-        if (countries.isNotEmpty()) HolidayRow(date, countries, lunar, solarTermsShown = showLunar)
     }
 }
 
@@ -107,22 +108,31 @@ internal fun CalendarHeader(showLunar: Boolean, countries: Set<HolidayCountry>, 
  * 当天的节气（高亮），否则是下一个节气的倒计时。
  */
 @Composable
-private fun SolarTermText(date: LocalDate, lunar: LunarProvider, modifier: Modifier) {
+private fun SolarTermText(date: LocalDate, lunar: LunarProvider) {
     val termToday = remember(date) { lunar.solarTermOn(date) }
     val next = remember(date) { if (termToday == null) lunar.nextSolarTerm(date) else null }
     val terms = stringArrayResource(R.array.calendar_solar_terms)
     val text = termToday?.let { stringResource(R.string.calendar_solar_term_today, terms[it.ordinal]) }
         ?: next?.let { countdown(terms[it.term.ordinal], ChronoUnit.DAYS.between(date, it.date).toInt()) }
         ?: return
-    // A pill like the other statuses; today's term is highlighted. / 与其他状态一样是胶囊；当天的节气高亮。
-    val color = if (termToday != null) MaterialTheme.statusColors.green else MaterialTheme.colorScheme.onSurfaceVariant
+    // Today's term is highlighted. / 当天的节气高亮。
+    HeaderPill(text, if (termToday != null) MaterialTheme.statusColors.green else MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+/**
+ * Holidays and solar terms share one pill style and size, so the two countdowns read as a pair.
+ * 节日与节气用同一种胶囊样式和字号，两个倒计时看起来是一组。
+ */
+@Composable
+private fun HeaderPill(text: String, color: Color) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelMedium,
         color = color,
         fontWeight = FontWeight.SemiBold,
         maxLines = 1,
-        modifier = modifier
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier
             .background(color.copy(alpha = 0.12f), CircleShape)
             .padding(horizontal = 8.dp, vertical = 2.dp),
     )
@@ -134,25 +144,15 @@ private fun SolarTermText(date: LocalDate, lunar: LunarProvider, modifier: Modif
  * 当天的节日显示为红色标签；下一个节日在 [HolidayPolicy.COUNTDOWN_DAYS] 天以内时显示倒计时。两者都没有时不占位。
  */
 @Composable
-private fun HolidayRow(date: LocalDate, countries: Set<HolidayCountry>, lunar: LunarProvider, solarTermsShown: Boolean) {
+private fun HolidayPills(date: LocalDate, countries: Set<HolidayCountry>, lunar: LunarProvider, solarTermsShown: Boolean) {
     val today = remember(date, countries, solarTermsShown) { HolidayPolicy.on(date, countries, lunar, solarTermsShown) }
     val upcoming = remember(date, countries, solarTermsShown) { HolidayPolicy.upcoming(date, countries, lunar, solarTermsShown) }
-    if (today.isEmpty() && upcoming == null) return
-    Spacer(Modifier.height(4.dp))
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        if (today.isNotEmpty()) {
-            StatusChip(today.map { stringResource(it.nameRes()) }.joinToString(" · "), MaterialTheme.statusColors.red)
-            if (upcoming != null) Spacer(Modifier.width(6.dp))
-        }
-        upcoming?.let { next ->
-            Text(
-                text = countdown(next.holidays.map { stringResource(it.nameRes()) }.joinToString(" · "), next.daysUntil),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+    if (today.isNotEmpty()) HeaderPill(today.map { stringResource(it.nameRes()) }.joinToString(" · "), MaterialTheme.statusColors.red)
+    upcoming?.let { next ->
+        HeaderPill(
+            countdown(next.holidays.map { stringResource(it.nameRes()) }.joinToString(" · "), next.daysUntil),
+            MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

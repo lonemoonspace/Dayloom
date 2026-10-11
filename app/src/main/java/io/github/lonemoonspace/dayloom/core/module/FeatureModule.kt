@@ -3,6 +3,7 @@ package io.github.lonemoonspace.dayloom.core.module
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import io.github.lonemoonspace.dayloom.core.i18n.UiText
 import io.github.lonemoonspace.dayloom.core.notify.BriefContributor
 import io.github.lonemoonspace.dayloom.core.notify.ChannelSpec
@@ -96,10 +97,16 @@ class HomeCard(
     val content: @Composable () -> Unit,
 )
 
-/** A bottom-navigation tab; its route and deep link are `dayloom://<moduleId>`. / 底部导航标签页；路由与深链为 `dayloom://<模块id>`。 */
+/**
+ * A bottom-navigation tab; its route and deep link are `dayloom://<moduleId>`. [iconContent], when given, draws the tab's
+ * icon instead of [icon] (the football tab shows the followed team's crest) and receives the tint the bar would use.
+ * 底部导航标签页；路由与深链为 `dayloom://<模块id>`。给出 [iconContent] 时由它代替 [icon] 绘制图标（足球标签页显示关注球队的队徽），
+ * 参数是导航栏本来要用的着色。
+ */
 class ModuleTab(
     @param:StringRes val label: Int,
     @param:DrawableRes val icon: Int,
+    val iconContent: (@Composable (tint: Color) -> Unit)? = null,
     val content: @Composable () -> Unit,
 )
 

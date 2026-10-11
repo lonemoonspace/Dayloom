@@ -2,7 +2,6 @@ package io.github.lonemoonspace.dayloom.app.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.lonemoonspace.dayloom.app.ActiveModule
 import io.github.lonemoonspace.dayloom.app.ModulePolicy
 import io.github.lonemoonspace.dayloom.core.i18n.AppLanguage
 import io.github.lonemoonspace.dayloom.core.i18n.LanguageChoice
@@ -20,7 +19,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-data class ModuleToggle(val module: FeatureModule, val enabled: Boolean)
+/**
+ * A module's switch and its settings cards; the cards are listed even while it is off, so the settings can be shown greyed out.
+ * 模块的开关及其设置卡片；关闭时也列出这些卡片，好让设置以灰色显示。
+ */
+data class ModuleToggle(val module: FeatureModule, val enabled: Boolean, val sections: List<SettingsSection> = emptyList())
 
 data class SettingsState(
     val language: LanguageChoice = LanguageChoice.SYSTEM,
@@ -28,8 +31,6 @@ data class SettingsState(
     val timeZoneOverride: String = "",
     val effectiveZone: String = "",
     val modules: List<ModuleToggle> = emptyList(),
-    /** Settings cards of the enabled modules, in registry order. / 已开启模块的设置卡片，按注册表顺序。 */
-    val sections: List<SettingsCardEntry> = emptyList(),
     val morningBrief: Boolean = false,
     /** Minutes after midnight. / 午夜起的分钟数。 */
     val morningBriefMinute: Int = 7 * 60,
@@ -38,22 +39,22 @@ data class SettingsState(
 class SettingsViewModel(
     private val modules: List<FeatureModule>,
     private val settings: ValueStore<AppSettings>,
-    active: StateFlow<List<ActiveModule>?>,
+    /** A module's settings cards; creating its instance for this does not start its refreshes. / 模块的设置卡片；为此创建实例不会启动它的刷新。 */
+    private val sectionsOf: (FeatureModule) -> List<SettingsSection>,
     zone: StateFlow<ZoneId>,
     private val language: AppLanguage,
 ) : ViewModel() {
 
     private val languageChoice = MutableStateFlow(language.current())
 
-    val state: StateFlow<SettingsState> = combine(settings.flow, active, zone, languageChoice) { s, act, z, lang ->
+    val state: StateFlow<SettingsState> = combine(settings.flow, zone, languageChoice) { s, z, lang ->
         val infos = modules.map { ModulePolicy.ModuleInfo(it.id, it.defaultEnabled, it.notificationIds) }
         val enabled = ModulePolicy.enabledIds(infos, s.moduleEnabled).toSet()
         SettingsState(
             language = lang,
             timeZoneOverride = s.timeZoneOverride,
             effectiveZone = z.id,
-            modules = modules.map { ModuleToggle(it, it.id in enabled) },
-            sections = act.orEmpty().flatMap { a -> a.instance.settingsSections.mapIndexed { i, section -> SettingsCardEntry(a, section, i) } },
+            modules = modules.map { ModuleToggle(it, it.id in enabled, sectionsOf(it)) },
             morningBrief = s.morningBrief,
             morningBriefMinute = s.morningBriefMinute,
         )
@@ -94,4 +95,3 @@ class SettingsViewModel(
 }
 
 /** One settings card; [index] keeps the list keys of a module's cards apart. / 一张设置卡片；[index] 让同一模块的多张卡片列表键不重复。 */
-class SettingsCardEntry(val active: ActiveModule, val section: SettingsSection, val index: Int)

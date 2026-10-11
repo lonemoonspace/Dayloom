@@ -5,6 +5,7 @@ import io.github.lonemoonspace.dayloom.feature.news.domain.RemoteEntry
 import io.github.lonemoonspace.dayloom.feature.news.domain.StoredArticle
 import java.time.Duration
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -135,5 +136,45 @@ class NewsSyncPolicyTest {
         assertEquals(2, summary.unread)
         assertEquals(1, summary.starred)
         assertEquals(listOf(2L, 1L), summary.latest.map { it.id })
+    }
+
+    @Test
+    fun `excerpts are fetched newest first, unread or starred, and not again during the retry wait`() {
+        val long = "<p>" + "word ".repeat(40) + "</p>"
+        val articles = listOf(
+            stored(1, age = 3 * day),
+            stored(2, age = day),
+            stored(3, read = true),
+            stored(4, read = true, starred = true, age = 2 * day),
+            stored(5).copy(contentHtml = long),
+        )
+        assertEquals(listOf(2L, 4L, 1L), NewsSyncPolicy.fullTextDue(articles, triedAt = emptyMap(), nowMillis = now).map { it.id })
+        val tried = mapOf(2L to now - NewsSyncPolicy.FULL_TEXT_RETRY.toMillis() + 1, 1L to now - NewsSyncPolicy.FULL_TEXT_RETRY.toMillis())
+        assertEquals(listOf(4L, 1L), NewsSyncPolicy.fullTextDue(articles, tried, now).map { it.id })
+        assertEquals(1, NewsSyncPolicy.fullTextDue(articles, emptyMap(), now, limit = 1).size)
+    }
+
+    @Test
+    fun `list items carry a one-line preview and whether the full text is here, and search covers title, source and text`() {
+        val excerpt = NewsSyncPolicy.listItem(stored(1).copy(contentHtml = "<p>Short</p>"))
+        val full = NewsSyncPolicy.listItem(stored(2).copy(feedTitle = "Tech Site", contentHtml = "<p>First line</p><p>" + "Rocket launch. ".repeat(10) + "</p>"))
+        assertEquals(false, excerpt.fullText)
+        assertEquals(true, full.fullText)
+        assertTrue("no line breaks in the preview", '\n' !in full.preview)
+        assertTrue(NewsSyncPolicy.matches(full, "rocket"))
+        assertTrue(NewsSyncPolicy.matches(full, "tech"))
+        assertTrue(NewsSyncPolicy.matches(full, "title 2"))
+        assertTrue(NewsSyncPolicy.matches(full, "  "))
+        assertFalse(NewsSyncPolicy.matches(excerpt, "rocket"))
+    }
+
+    @Test
+    fun `a sync keeps full text fetched here when the feed sends only an excerpt`() {
+        val long = "<p>" + "word ".repeat(40) + "</p>"
+        val local = listOf(stored(1).copy(contentHtml = long))
+        val kept = NewsSyncPolicy.merge(local, listOf(remote(1)), emptyList(), emptyMap(), emptyMap(), now).upsert.single()
+        assertEquals(long, kept.contentHtml)
+        val longer = remote(1).copy(contentHtml = "<p>" + "new ".repeat(40) + "</p>")
+        assertEquals(longer.contentHtml, NewsSyncPolicy.merge(local, listOf(longer), emptyList(), emptyMap(), emptyMap(), now).upsert.single().contentHtml)
     }
 }

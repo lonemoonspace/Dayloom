@@ -1,23 +1,17 @@
 package io.github.lonemoonspace.dayloom.feature.football.ui
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -32,13 +26,10 @@ import io.github.lonemoonspace.dayloom.core.ui.rememberPatternFormatter
 import io.github.lonemoonspace.dayloom.core.ui.rememberTimeFormatter
 import io.github.lonemoonspace.dayloom.core.ui.theme.statusColors
 import io.github.lonemoonspace.dayloom.core.ui.userMessage
-import io.github.lonemoonspace.dayloom.feature.football.domain.FootballPolicy
 import io.github.lonemoonspace.dayloom.feature.football.domain.Match
 import io.github.lonemoonspace.dayloom.feature.football.domain.MatchStatus
 import io.github.lonemoonspace.dayloom.feature.football.domain.Outcome
-import io.github.lonemoonspace.dayloom.feature.football.domain.Standings
 import io.github.lonemoonspace.dayloom.feature.football.domain.TeamRef
-import java.time.Duration
 import java.time.Instant
 import java.time.ZonedDateTime
 
@@ -130,118 +121,14 @@ internal fun kickoffDay(match: Match, now: ZonedDateTime): String {
     }
 }
 
-/**
- * A fixture or result from the followed team's side: date, home/away, opponent, competition; the score with a W/D/L pill
- * for results, the kick-off time for fixtures.
- * 从关注球队角度看的一场赛程或赛果：日期、主客、对手、赛事；赛果显示比分与胜平负胶囊，赛程显示开球时间。
- */
 @Composable
-internal fun MatchRow(match: Match, teamId: Int, now: ZonedDateTime, crests: CrestLoader, divider: Boolean) {
-    if (divider) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-    val opponent = FootballPolicy.opponent(match, teamId)
-    val home = FootballPolicy.isHome(match, teamId)
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 5.dp)) {
-        Column(Modifier.widthIn(min = 64.dp)) {
-            Text(kickoffDay(match, now), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
-            Text(
-                if (match.status.isFinished) competitionLabel(match.competitionCode, match.competition) else kickoffTime(match, now),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-        }
-        Spacer(Modifier.width(6.dp))
-        Text(
-            stringResource(if (home) R.string.football_home_abbr else R.string.football_away_abbr),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-            modifier = Modifier
-                .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(5.dp))
-                .padding(horizontal = 5.dp, vertical = 1.dp),
-        )
-        Spacer(Modifier.width(6.dp))
-        Crest(opponent, crests, size = 22.dp)
-        Spacer(Modifier.width(6.dp))
-        Text(
-            opponent.label,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        if (match.status.isFinished || match.status.isLive) {
-            // From the followed team's side, its goals first. / 从关注球队的角度，先写它的进球数。
-            val ours = if (home) match.homeGoals else match.awayGoals
-            val theirs = if (home) match.awayGoals else match.homeGoals
-            Text("${ours ?: "–"}–${theirs ?: "–"}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(6.dp))
-        }
-        FootballPolicy.outcome(match, teamId)?.let { OutcomePill(it) } ?: MatchStatusChip(match)
-    }
-}
-
-@Composable
-private fun OutcomePill(outcome: Outcome) {
+internal fun OutcomePill(outcome: Outcome) {
     val colors = MaterialTheme.statusColors
     when (outcome) {
         Outcome.WIN -> StatusChip(stringResource(R.string.football_outcome_win), colors.green)
         Outcome.DRAW -> StatusChip(stringResource(R.string.football_outcome_draw), colors.gray)
         Outcome.LOSS -> StatusChip(stringResource(R.string.football_outcome_loss), colors.red)
     }
-}
-
-/**
- * The table, compact: position, crest, team, played, goal difference, points; the followed team highlighted. Group stages
- * show only the followed team's group, which is what the user wants to know.
- * 紧凑的积分表：名次、队徽、球队、场次、净胜球、积分；关注球队高亮。小组赛只显示关注球队所在的组，那才是用户想看的。
- */
-@Composable
-internal fun TableRows(standings: Standings, teamId: Int, crests: CrestLoader) {
-    val group = standings.groups.firstOrNull { g -> g.rows.any { it.team.id == teamId } } ?: standings.groups.firstOrNull() ?: return
-    if (group.group.isNotBlank()) {
-        Text(
-            stringResource(R.string.football_group, group.group.removePrefix("GROUP_").replace('_', ' ')),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-    Row(Modifier.padding(vertical = 2.dp)) {
-        HeaderCell("#", Modifier.width(24.dp))
-        Spacer(Modifier.weight(1f))
-        HeaderCell(stringResource(R.string.football_table_played), Modifier.width(30.dp))
-        HeaderCell(stringResource(R.string.football_table_gd), Modifier.width(36.dp))
-        HeaderCell(stringResource(R.string.football_table_points), Modifier.width(34.dp))
-    }
-    group.rows.forEach { row ->
-        val ours = row.team.id == teamId
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(if (ours) Modifier.background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(8.dp)) else Modifier)
-                .padding(vertical = 2.dp),
-        ) {
-            val weight = if (ours) FontWeight.Bold else null
-            Text(row.position.toString(), style = MaterialTheme.typography.labelMedium, fontWeight = weight, textAlign = TextAlign.Center, modifier = Modifier.width(24.dp))
-            Crest(row.team, crests, size = 18.dp)
-            Spacer(Modifier.width(6.dp))
-            Text(row.team.label, style = MaterialTheme.typography.bodySmall, fontWeight = weight, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            NumberCell(row.played.toString(), weight, Modifier.width(30.dp))
-            NumberCell(if (row.goalDifference > 0) "+${row.goalDifference}" else row.goalDifference.toString(), weight, Modifier.width(36.dp))
-            NumberCell(row.points.toString(), FontWeight.Bold, Modifier.width(34.dp))
-        }
-    }
-}
-
-@Composable
-private fun HeaderCell(text: String, modifier: Modifier) {
-    Text(text, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = modifier)
-}
-
-@Composable
-private fun NumberCell(text: String, weight: FontWeight?, modifier: Modifier) {
-    Text(text, style = MaterialTheme.typography.bodySmall, fontWeight = weight, textAlign = TextAlign.Center, modifier = modifier)
 }
 
 @Composable
@@ -287,6 +174,3 @@ internal fun competitionName(code: String): Int? = when (code) {
  */
 @Composable
 internal fun competitionLabel(code: String, apiName: String): String = competitionName(code)?.let { stringResource(it) } ?: apiName
-
-/** Arranges cards with the same spacing as the home screen. / 与首页相同的卡片间距。 */
-internal val CardSpacing = Arrangement.spacedBy(8.dp)

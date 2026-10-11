@@ -55,7 +55,7 @@ class SettingsViewModelTest {
     private fun vm() = SettingsViewModel(
         modules = modules,
         settings = settings,
-        active = MutableStateFlow(emptyList()),
+        sectionsOf = { emptyList() },
         zone = MutableStateFlow(ZoneId.of("Europe/Oslo")),
         language = language,
     )

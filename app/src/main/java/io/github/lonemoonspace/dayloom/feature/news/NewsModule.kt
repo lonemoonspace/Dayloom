@@ -29,6 +29,7 @@ import io.github.lonemoonspace.dayloom.feature.news.data.NewsSync
 import io.github.lonemoonspace.dayloom.feature.news.data.NewsSyncSource
 import io.github.lonemoonspace.dayloom.feature.news.data.RoomArticleStore
 import io.github.lonemoonspace.dayloom.feature.news.domain.ArticleFilter
+import io.github.lonemoonspace.dayloom.feature.news.domain.ArticleItem
 import io.github.lonemoonspace.dayloom.feature.news.domain.NewsSyncPolicy
 import io.github.lonemoonspace.dayloom.feature.news.domain.StoredArticle
 import io.github.lonemoonspace.dayloom.feature.news.domain.SyncSummary
@@ -37,13 +38,16 @@ import io.github.lonemoonspace.dayloom.feature.news.ui.NewsActions
 import io.github.lonemoonspace.dayloom.feature.news.ui.NewsCard
 import io.github.lonemoonspace.dayloom.feature.news.ui.NewsSettingsSection
 import io.github.lonemoonspace.dayloom.feature.news.ui.NewsTab
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -78,6 +82,9 @@ data class NewsSettings(
 
 /** Saved values reach the source's inputs through DataStore within milliseconds; this is only a safety net. / 保存的值经 DataStore 几毫秒内就到达来源输入；这只是兜底。 */
 private const val INPUT_WAIT_MS = 5_000L
+
+/** Cached list items beyond the current list before the cache is pruned. / 缓存的列表项比当前列表多出这么多时才清理。 */
+private const val ITEM_CACHE_SLACK = 50
 
 private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
     private val store = ctx.settings(NewsSettings.serializer(), NewsSettings())
@@ -175,6 +182,14 @@ private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
             ctx.appScope.launch { sync.markStarred(id, starred) }
         }
 
+        override fun fetchFullText(article: StoredArticle) {
+            ctx.appScope.launch {
+                val base = NewsSyncPolicy.normalizeBaseUrl(store.get().serverUrl) ?: return@launch
+                val key = token.usable().ifBlank { return@launch }
+                sync.fetchFullText(base, key, article.id)
+            }
+        }
+
         override suspend fun summarize(article: StoredArticle, language: String) {
             val settings = store.get()
             val base = NewsSyncPolicy.normalizeBaseUrl(settings.llmUrl)
@@ -198,12 +213,29 @@ private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
         }
     }
 
+    /**
+     * List items by article id; the text is stripped from the HTML only when the HTML changes, not on every read or star.
+     * 按文章 id 缓存的列表项；只有 HTML 变了才重新提取文字，标已读或收藏时不重算。
+     */
+    private val items = ConcurrentHashMap<Long, ArticleItem>()
+
+    private fun itemsOf(list: List<StoredArticle>): List<ArticleItem> {
+        if (items.size > list.size + ITEM_CACHE_SLACK) items.keys.retainAll(list.mapTo(HashSet()) { it.id })
+        return list.map { article ->
+            items[article.id]?.takeIf { it.article.contentHtml == article.contentHtml }?.copy(article = article)
+                ?: NewsSyncPolicy.listItem(article).also { items[article.id] = it }
+        }
+    }
+
     @Composable
     private fun Tab() {
         var filter by rememberSaveable { mutableStateOf(ArticleFilter.UNREAD) }
+        var query by rememberSaveable { mutableStateOf("") }
         var openId by rememberSaveable { mutableStateOf<Long?>(null) }
         val isReady by ready.collectAsStateWithLifecycle(initialValue = true)
-        val list by remember(filter) { articles.observe(filter) }.collectAsStateWithLifecycle(initialValue = null)
+        val listItems by remember(filter) { articles.observe(filter).map(::itemsOf).flowOn(Dispatchers.Default) }
+            .collectAsStateWithLifecycle(initialValue = null)
+        val list = remember(listItems, query) { listItems?.filter { NewsSyncPolicy.matches(it, query) } }
         val open by remember(openId) { openId?.let { articles.observe(it) } ?: flowOf(null) }.collectAsStateWithLifecycle(initialValue = null)
         val counts by remember { articles.observeSummary() }.collectAsStateWithLifecycle(initialValue = null)
         val status by ctx.coordinator.status.collectAsStateWithLifecycle()
@@ -220,6 +252,8 @@ private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
             configured = isReady,
             filter = filter,
             onFilter = { filter = it },
+            query = query,
+            onQuery = { query = it },
             articles = list,
             open = open,
             onClose = { openId = null },

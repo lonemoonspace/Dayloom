@@ -104,6 +104,25 @@ object FootballPolicy {
     }
 
     /** The other team, seen from the followed one. / 从关注球队看的对手。 */
+    /**
+     * Competition ranks of a goals-sorted scorers list: players level on goals share a rank, and the next rank skips past
+     * them (1, 2, 2, 2, 5).
+     * 按进球排好序的射手榜名次：进球数相同的球员名次相同，下一个名次跳过他们（1, 2, 2, 2, 5）。
+     */
+    fun scorerRanks(scorers: List<Scorer>): List<Int> = scorers.mapIndexed { i, s ->
+        if (i > 0 && scorers[i - 1].goals == s.goals) -1 else i + 1
+    }.runningReduce { previous, rank -> if (rank == -1) previous else rank }
+
+    /**
+     * Time left until [kickoff] in whole days, hours and minutes; null once the match is due, when the status says the rest.
+     * 距 [kickoff] 开球还剩的整天、小时与分钟；到点后为空，由比赛状态说明。
+     */
+    fun countdown(kickoff: Long, now: Instant): Countdown? {
+        val left = Duration.between(now, Instant.ofEpochMilli(kickoff))
+        if (left.isNegative || left.isZero) return null
+        return Countdown(left.toDays().toInt(), left.toHoursPart(), left.toMinutesPart())
+    }
+
     fun opponent(match: Match, teamId: Int): TeamRef = if (match.home.id == teamId) match.away else match.home
 
     fun isHome(match: Match, teamId: Int): Boolean = match.home.id == teamId

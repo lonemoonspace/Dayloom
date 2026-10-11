@@ -24,4 +24,7 @@ interface ArticleStore {
     suspend fun markStarred(id: Long, starred: Boolean)
 
     suspend fun saveSummary(id: Long, summary: String, language: String)
+
+    /** Replaces an article's text with its full text. / 用全文替换文章正文。 */
+    suspend fun saveContent(id: Long, html: String)
 }

@@ -7,6 +7,7 @@ import io.github.lonemoonspace.dayloom.core.refresh.RefreshReport
 import io.github.lonemoonspace.dayloom.core.refresh.SourceId
 import io.github.lonemoonspace.dayloom.core.refresh.SourceResult
 import io.github.lonemoonspace.dayloom.feature.football.domain.AnnouncedMatches
+import io.github.lonemoonspace.dayloom.feature.football.domain.Countdown
 import io.github.lonemoonspace.dayloom.feature.football.domain.FootballBrief
 import io.github.lonemoonspace.dayloom.feature.football.domain.FootballNotifyTarget
 import io.github.lonemoonspace.dayloom.feature.football.domain.FootballPolicy
@@ -15,6 +16,7 @@ import io.github.lonemoonspace.dayloom.feature.football.domain.Match
 import io.github.lonemoonspace.dayloom.feature.football.domain.MatchStatus
 import io.github.lonemoonspace.dayloom.feature.football.domain.Outcome
 import io.github.lonemoonspace.dayloom.feature.football.domain.ResultRule
+import io.github.lonemoonspace.dayloom.feature.football.domain.Scorer
 import io.github.lonemoonspace.dayloom.feature.football.domain.TeamRef
 import java.time.Duration
 import java.time.Instant
@@ -179,5 +181,22 @@ class FootballPolicyTest {
         val fixture = UiText.Res(R.string.football_fixture, listOf("Team A", "Team B"))
         assertEquals(UiText.Res(R.string.football_brief, listOf(fixture, "21:00")), FootballBrief.line(listOf(tonight), now))
         assertNull(FootballBrief.line(listOf(match(2, now.plusDays(1), MatchStatus.TIMED)), now))
+    }
+
+    @Test
+    fun `scorers level on goals share a rank and the next rank skips past them`() {
+        val goals = listOf(12, 7, 7, 7, 6, 6, 5)
+        val ranks = FootballPolicy.scorerRanks(goals.map { Scorer(goals = it) })
+        assertEquals(listOf(1, 2, 2, 2, 5, 5, 7), ranks)
+        assertEquals(emptyList<Int>(), FootballPolicy.scorerRanks(emptyList()))
+    }
+
+    @Test
+    fun `the countdown runs in days, hours and minutes and stops at kick-off`() {
+        val now = Instant.parse("2026-10-11T19:00:00Z")
+        val kickoff = now.plus(Duration.ofDays(2).plusHours(23).plusMinutes(5)).toEpochMilli()
+        assertEquals(Countdown(2, 23, 5), FootballPolicy.countdown(kickoff, now))
+        assertNull(FootballPolicy.countdown(now.toEpochMilli(), now))
+        assertNull(FootballPolicy.countdown(now.minusSeconds(60).toEpochMilli(), now))
     }
 }

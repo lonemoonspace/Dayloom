@@ -13,6 +13,7 @@ import io.github.lonemoonspace.dayloom.core.storage.SnapshotStore
 import io.github.lonemoonspace.dayloom.core.time.AppClock
 import io.github.lonemoonspace.dayloom.feature.football.domain.FootballPolicy
 import io.github.lonemoonspace.dayloom.feature.football.domain.Match
+import io.github.lonemoonspace.dayloom.feature.football.domain.Scorers
 import io.github.lonemoonspace.dayloom.feature.football.domain.Standings
 import io.github.lonemoonspace.dayloom.feature.football.domain.TeamMatches
 import java.time.Duration
@@ -68,6 +69,36 @@ class MatchesSource(
         val today = now.toLocalDate()
         val matches = api.teamMatches(key, params, today.minusDays(FootballPolicy.PAST_DAYS), today.plusDays(FootballPolicy.FUTURE_DAYS))
         return TeamMatches(teamId = params, matches = matches.sortedBy { it.kickoff }).also { known = it.matches }
+    }
+}
+
+/**
+ * `football.scorers`: the top scorers of the competition the team was picked from, on the same cadence as its table.
+ * `football.scorers`：挑选球队时所在赛事的射手榜，刷新节奏与积分表相同。
+ */
+class ScorersSource(
+    id: SourceId,
+    store: SnapshotStore<Scorers>,
+    clock: AppClock,
+    competition: Flow<String>,
+    secret: Flow<SecretState>,
+    private val apiKey: suspend () -> String,
+    private val api: FootballDataApi,
+) : CachedSource<String, Scorers>(id, store, clock) {
+
+    override val schemaVersion = 1
+
+    override val maxAge: Duration = Duration.ofDays(2)
+
+    override val cadence = RefreshCadence(interval = Duration.ofHours(6))
+
+    override val inputs: Flow<SourceInput<String>> = combine(competition, secret) { code, s ->
+        keyedInput(code.takeIf { it.isNotBlank() }, key = "competition:$code", secret = s, missing = R.string.football_setup_team)
+    }
+
+    override suspend fun fetch(params: String, now: ZonedDateTime, previous: Snapshot<Scorers>?): Scorers {
+        val key = apiKey().ifBlank { throw AppError.NotConfigured(uiText(R.string.football_setup_key)) }
+        return api.scorers(key, params)
     }
 }
 

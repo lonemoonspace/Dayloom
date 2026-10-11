@@ -33,6 +33,9 @@ import kotlinx.coroutines.sync.withLock
 class NewsSync(private val store: ArticleStore, private val api: MinifluxApi, private val onPushError: (Exception) -> Unit = {}) {
     private val lock = Mutex()
 
+    /** When each excerpt-only article's full text was last tried and failed. / 每篇只有摘要的文章上次抓全文失败的时刻。 */
+    private val fullTextTried = ConcurrentHashMap<Long, Long>()
+
     /** Read states already sent since the last sync, so opening articles does not resend them. / 上次同步以来已发出的已读状态，打开文章时不再重复发送。 */
     private val sentSinceSync = ConcurrentHashMap<Long, Boolean>()
 
@@ -52,7 +55,7 @@ class NewsSync(private val store: ArticleStore, private val api: MinifluxApi, pr
             onPushError(e)
             false
         }
-        return lock.withLock {
+        lock.withLock {
             val result = NewsSyncPolicy.merge(
                 local = store.all(),
                 unread = unread,
@@ -63,8 +66,40 @@ class NewsSync(private val store: ArticleStore, private val api: MinifluxApi, pr
             )
             store.apply(result)
             sentSinceSync.clear()
-            NewsSyncPolicy.summary(store.all())
         }
+        fetchFullTexts(baseUrl, token, nowMillis)
+        return lock.withLock { NewsSyncPolicy.summary(store.all()) }
+    }
+
+    /**
+     * Fetches the full text of a few excerpt-only articles; one that fails waits before it is tried again, and never fails
+     * the sync.
+     * 为几篇只有摘要的文章抓取全文；失败的等一段时间再试，也不会让同步失败。
+     */
+    private suspend fun fetchFullTexts(baseUrl: String, token: String, nowMillis: Long) {
+        fullTextTried.entries.removeIf { nowMillis - it.value >= NewsSyncPolicy.FULL_TEXT_RETRY.toMillis() }
+        val due = lock.withLock { NewsSyncPolicy.fullTextDue(store.all(), fullTextTried, nowMillis) }
+        for (article in due) {
+            if (!fetchFullText(baseUrl, token, article.id)) fullTextTried[article.id] = nowMillis
+        }
+    }
+
+    /**
+     * Fetches one article's full text and keeps it when it is more than an excerpt; false when it could not be had.
+     * 抓取一篇文章的全文，比摘要长时保存；拿不到时返回 false。
+     */
+    suspend fun fetchFullText(baseUrl: String, token: String, id: Long): Boolean {
+        val html = try {
+            api.fetchContent(baseUrl, token, id)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // The excerpt stays; a later sync or opening the article tries again. / 摘要保留；之后的同步或打开文章时再试。
+            return false
+        }
+        if (NewsSyncPolicy.isStub(html)) return false
+        lock.withLock { store.saveContent(id, html) }
+        return true
     }
 
     suspend fun markRead(id: Long, read: Boolean, nowMillis: Long) = lock.withLock { store.markRead(id, read, if (read) nowMillis else 0) }

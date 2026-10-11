@@ -550,8 +550,10 @@
     <string name="news_filter_unread">Unread</string>
     <string name="news_filter_starred">Starred</string>
     <string name="news_filter_all">All</string>
-    <string name="news_starred">Starred</string>
-    <string name="news_has_summary">AI summary</string>
+    <string name="news_search_hint">Search titles, sources or text</string>
+    <string name="news_search_clear">Clear search</string>
+    <string name="news_full_text">Full text saved</string>
+    <string name="news_no_matches">No articles match the search.</string>
     <string name="news_back">Back to the list</string>
     <string name="news_open_original">Open original</string>
     <string name="news_star">Star</string>

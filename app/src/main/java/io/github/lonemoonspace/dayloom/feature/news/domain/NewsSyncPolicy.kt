@@ -87,7 +87,8 @@ object NewsSyncPolicy {
                 title = entry.title,
                 url = entry.url,
                 author = entry.author,
-                contentHtml = entry.contentHtml,
+                // Full text fetched here outlives a feed that only ever sends an excerpt. / 本机抓到的全文不会被只发摘要的订阅源覆盖。
+                contentHtml = if (old != null && isStub(entry.contentHtml) && !isStub(old.contentHtml)) old.contentHtml else entry.contentHtml,
                 publishedAt = entry.publishedAt,
                 read = read,
                 starred = old?.pendingStarred ?: entry.starred,
@@ -122,6 +123,7 @@ object NewsSyncPolicy {
 
     /** The home card's view of the stored articles. / 首页卡片眼中的本地文章。 */
     fun summary(articles: List<StoredArticle>, headlines: Int = 3): SyncSummary = SyncSummary(
+        total = articles.size,
         unread = articles.count { !it.read },
         starred = articles.count { it.starred },
         latest = articles.filter { !it.read }.sortedByDescending { it.publishedAt }.take(headlines)
@@ -165,4 +167,44 @@ object NewsSyncPolicy {
         .take(maxChars)
 
     const val SUMMARY_INPUT_CHARS = 12_000
+
+    /** Shorter readable text than this is a feed's excerpt, not the article. / 可读文字短于这个长度的是订阅源的摘要，不是全文。 */
+    const val STUB_TEXT_CHARS = 100
+
+    /** Full texts fetched per sync, so a backlog of excerpts does not turn one sync into hundreds of requests. / 每次同步抓取的全文篇数，积压的摘要不会让一次同步变成几百个请求。 */
+    const val FULL_TEXT_PER_SYNC = 10
+
+    /** A failed full-text fetch waits this long before it is tried again. / 抓取全文失败后，等这么久再试。 */
+    val FULL_TEXT_RETRY: Duration = Duration.ofMinutes(30)
+
+    fun isStub(html: String): Boolean = plainText(html, Int.MAX_VALUE).length < STUB_TEXT_CHARS
+
+    /**
+     * Excerpt-only articles worth fetching in full: unread or starred, not tried in the last [FULL_TEXT_RETRY], newest first.
+     * 值得抓取全文的只有摘要的文章：未读或已收藏、最近 [FULL_TEXT_RETRY] 内没试过的，最新的在前。
+     */
+    fun fullTextDue(articles: List<StoredArticle>, triedAt: Map<Long, Long>, nowMillis: Long, limit: Int = FULL_TEXT_PER_SYNC): List<StoredArticle> =
+        articles.asSequence()
+            .filter { !it.read || it.starred }
+            .filter { a -> triedAt[a.id]?.let { nowMillis - it < FULL_TEXT_RETRY.toMillis() } != true }
+            .sortedByDescending { it.publishedAt }
+            .filter { isStub(it.contentHtml) }
+            .take(limit)
+            .toList()
+
+    /** The article as the list shows it: a one-paragraph preview, and whether its full text is here. / 列表里显示的文章：一段预览，以及全文是否已在本机。 */
+    fun listItem(article: StoredArticle): ArticleItem {
+        val text = plainText(article.contentHtml, Int.MAX_VALUE)
+        return ArticleItem(article, text.replace('\n', ' ').take(PREVIEW_CHARS), text, text.length >= STUB_TEXT_CHARS)
+    }
+
+    /** Case-insensitive match on title, source or text; a blank query matches everything. / 不区分大小写匹配标题、来源或正文；空查询全部匹配。 */
+    fun matches(item: ArticleItem, query: String): Boolean {
+        val q = query.trim()
+        if (q.isEmpty()) return true
+        return item.article.title.contains(q, ignoreCase = true) || item.article.feedTitle.contains(q, ignoreCase = true) ||
+            item.text.contains(q, ignoreCase = true)
+    }
+
+    private const val PREVIEW_CHARS = 160
 }

@@ -85,6 +85,9 @@ interface ArticleDao {
 
     @Query("UPDATE article SET summary = :summary, summaryLanguage = :language WHERE id = :id")
     suspend fun saveSummary(id: Long, summary: String, language: String)
+
+    @Query("UPDATE article SET contentHtml = :html WHERE id = :id")
+    suspend fun saveContent(id: Long, html: String)
 }
 
 /** `dayloom.db`, version 1; its schema is exported to `app/schemas/`. / `dayloom.db` 第 1 版；schema 导出到 `app/schemas/`。 */
@@ -115,6 +118,8 @@ class RoomArticleStore(private val dao: ArticleDao) : ArticleStore {
     override suspend fun markStarred(id: Long, starred: Boolean) = dao.markStarred(id, starred)
 
     override suspend fun saveSummary(id: Long, summary: String, language: String) = dao.saveSummary(id, summary, language)
+
+    override suspend fun saveContent(id: Long, html: String) = dao.saveContent(id, html)
 }
 
 private fun ArticleEntity.toArticle() = StoredArticle(

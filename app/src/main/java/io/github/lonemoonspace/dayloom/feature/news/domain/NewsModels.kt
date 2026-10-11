@@ -53,4 +53,7 @@ data class Headline(val id: Long = 0, val title: String = "", val feed: String =
 
 /** The snapshot of `news.sync`: what the home card shows; the articles themselves live in Room. / `news.sync` 的快照：首页卡片显示的内容；文章本身在 Room 里。 */
 @Serializable
-data class SyncSummary(val unread: Int = 0, val starred: Int = 0, val latest: List<Headline> = emptyList())
+data class SyncSummary(val unread: Int = 0, val starred: Int = 0, val latest: List<Headline> = emptyList(), val total: Int = 0)
+
+/** An article with what the list shows of it; [text] is its plain text, for search. / 文章及其在列表里显示的内容；[text] 是纯文本，供搜索用。 */
+data class ArticleItem(val article: StoredArticle, val preview: String, val text: String, val fullText: Boolean)

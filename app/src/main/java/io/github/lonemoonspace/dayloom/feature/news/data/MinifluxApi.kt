@@ -49,6 +49,20 @@ class MinifluxApi(private val http: OkHttpClient, private val io: CoroutineConte
         send(token, Request.Builder().url(url(baseUrl, "v1/entries/$id/bookmark")).put(ByteArray(0).toRequestBody(null)))
     }
 
+    /**
+     * The original article's full text as Miniflux scrapes it. `update_content` makes Miniflux keep it too, so later syncs
+     * send the full text instead of the feed's excerpt.
+     * Miniflux 抓取的原文全文。`update_content` 让 Miniflux 同时保存它，之后的同步就会发来全文而不是订阅源的摘要。
+     */
+    suspend fun fetchContent(baseUrl: String, token: String, id: Long): String = withContext(io) {
+        val url = url(baseUrl, "v1/entries/$id/fetch-content").newBuilder().addQueryParameter("update_content", "true").build()
+        http.newCall(Request.Builder().url(url).header(TOKEN_HEADER, token).build()).executeOrAppError().use { response ->
+            val body = response.body.string()
+            if (!response.isSuccessful) throw AppError.Http(SERVICE, response.code, body.take(200))
+            decodeOrBadData(SERVICE, "content response") { AppJson.standard.decodeFromString(ContentDto.serializer(), body) }.content
+        }
+    }
+
     private suspend fun entries(baseUrl: String, token: String, filter: Pair<String, String>): List<RemoteEntry> = withContext(io) {
         val url = url(baseUrl, "v1/entries").newBuilder()
             .addQueryParameter(filter.first, filter.second)
@@ -119,3 +133,6 @@ internal data class EntryDto(
 
 @Serializable
 internal data class FeedDto(val title: String = "")
+
+@Serializable
+internal data class ContentDto(val content: String = "")

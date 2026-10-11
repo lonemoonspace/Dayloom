@@ -42,9 +42,11 @@ class NewsApiTest {
         server.shutdown()
     }
 
-    private fun entries(vararg ids: Long, starred: Boolean = false) = """{"total":${ids.size},"entries":[""" +
+    /** Full-length bodies by default, so a sync fetches no full text; [excerpt] sends feed excerpts instead. / 默认是完整正文，同步时不抓全文；[excerpt] 改发订阅源摘要。 */
+    private fun entries(vararg ids: Long, starred: Boolean = false, excerpt: Boolean = false) = """{"total":${ids.size},"entries":[""" +
         ids.joinToString(",") {
-            """{"id":$it,"status":"unread","title":"T$it","url":"https://example.org/$it","content":"<p>B$it</p>",
+            val body = if (excerpt) "B$it" else "Body $it. ".repeat(20)
+            """{"id":$it,"status":"unread","title":"T$it","url":"https://example.org/$it","content":"<p>$body</p>",
                "published_at":"2026-10-09T08:00:00+02:00","starred":$starred,"reading_time":4,"feed":{"title":"Feed"}}"""
         } + "]}"
 
@@ -117,9 +119,39 @@ class NewsApiTest {
         override suspend fun markRead(id: Long, read: Boolean, readAt: Long) = edit(id) { it.copy(read = read, pendingRead = read, readAt = readAt) }
         override suspend fun markStarred(id: Long, starred: Boolean) = edit(id) { it.copy(starred = starred, pendingStarred = starred) }
         override suspend fun saveSummary(id: Long, summary: String, language: String) = edit(id) { it.copy(summary = summary, summaryLanguage = language) }
+        override suspend fun saveContent(id: Long, html: String) = edit(id) { it.copy(contentHtml = html) }
         private fun edit(id: Long, f: (StoredArticle) -> StoredArticle) {
             rows.value[id]?.let { rows.value = rows.value + (id to f(it)) }
         }
+    }
+
+    @Test
+    fun `excerpts get their full text after a sync, and a failure waits before the next try`() = runTest {
+        val store = MemoryStore()
+        val sync = NewsSync(store, MinifluxApi(OkHttpClient()))
+        val full = "<p>" + "Full text. ".repeat(20) + "</p>"
+        server.enqueue(MockResponse().setBody(entries(1, 2, excerpt = true)))
+        server.enqueue(MockResponse().setBody(entries()))
+        // Newest first; both were published at the same time, so either order is fine. / 新的在前；两篇发布时间相同，顺序不限。
+        server.enqueue(MockResponse().setBody("""{"content":${kotlinx.serialization.json.JsonPrimitive(full)}}"""))
+        server.enqueue(MockResponse().setResponseCode(502))
+        val now = java.time.Instant.parse("2026-10-09T12:00:00Z").toEpochMilli()
+
+        sync.sync(base, "tok", nowMillis = now)
+
+        val requests = (1..4).map { server.takeRequest() }
+        assertTrue(requests.drop(2).all { it.path!!.contains("/fetch-content?update_content=true") })
+        val fetched = requests[2].path!!.substringAfter("entries/").substringBefore("/").toLong()
+        assertEquals(full, store.all().single { it.id == fetched }.contentHtml)
+        val failed = store.all().single { it.id != fetched }
+        assertEquals("the excerpt stays", "<p>B${failed.id}</p>", failed.contentHtml)
+
+        // Within the retry wait only the downloads go out. / 等待期内只有下载请求。
+        server.enqueue(MockResponse().setBody(entries(1, 2, excerpt = true)))
+        server.enqueue(MockResponse().setBody(entries()))
+        sync.sync(base, "tok", nowMillis = now + 60_000)
+        assertEquals(6, server.requestCount)
+        assertEquals("the fetched full text survives an excerpt-only sync", full, store.all().single { it.id == fetched }.contentHtml)
     }
 
     @Test

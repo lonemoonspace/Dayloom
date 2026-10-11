@@ -534,8 +534,10 @@
     <string name="news_filter_unread">未读</string>
     <string name="news_filter_starred">收藏</string>
     <string name="news_filter_all">全部</string>
-    <string name="news_starred">已收藏</string>
-    <string name="news_has_summary">有 AI 摘要</string>
+    <string name="news_search_hint">搜索标题、来源或正文</string>
+    <string name="news_search_clear">清除搜索</string>
+    <string name="news_full_text">已缓存全文</string>
+    <string name="news_no_matches">没有符合搜索的文章。</string>
     <string name="news_back">返回列表</string>
     <string name="news_open_original">打开原文</string>
     <string name="news_star">收藏</string>

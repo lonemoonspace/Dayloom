@@ -82,6 +82,10 @@ looks it up literally.
 - Settings: every module has one card with its on/off switch in the title row and its settings below; while a module is off
   its settings stay visible but greyed out and locked. The separate module list is gone (the onboarding keeps it).
 - Pull to refresh on the home screen and every module tab.
+- Football tab laid out like the original app: a switch between fixtures, the table and the top scorers. Fixtures open with a
+  large card for the next match (crests, kick-off, countdown), then the coming matches and the recent results with a win,
+  draw or loss edge; the table and the new top-scorers list show the matchday and update time and highlight the followed
+  team. The team is no longer named at the top, and its crest is the tab's icon.
 
 - 项目骨架（M0）：带注册表、宿主与命名空间存储的模块系统；从 PersonalAssistant 移植并泛化的刷新协调器与通知引擎；
   卡片可拖动排序的首页；语言、时区与模块开关设置；中英文资源；架构测试与字符串一致性测试；CI 与发版 workflow。
@@ -139,3 +143,6 @@ looks it up literally.
 - 设置：每个模块一张卡片，标题行里是开关，下面是它的设置；模块关闭时设置仍然可见，但变灰且不能修改。单独的模块列表去掉了
   （首次启动引导里保留）。
 - 首页和各模块标签页都可以下拉刷新。
+- 足球标签页改用原 App 的布局：在赛程、积分榜与射手榜之间切换。赛程最上面是下一场的大卡片（队徽、开球时间、倒计时），
+  然后是近期赛程和最近赛果（左边色条标出胜平负）；积分榜和新增的射手榜显示轮次与更新时间，并高亮关注球队。顶部不再写队名，
+  标签图标改为关注球队的队徽。

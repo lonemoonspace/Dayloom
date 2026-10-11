@@ -226,7 +226,7 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?) {
                         val tab = m.instance.tab ?: return@forEach
                         val label = stringResource(tab.label)
                         add(NavTab(currentModuleId == m.module.id, label, { navController.navigateToTab(Routes.module(m.module.id)) }) { tint ->
-                            Icon(painterResource(tab.icon), contentDescription = null, tint = tint)
+                            tab.iconContent?.invoke(tint) ?: Icon(painterResource(tab.icon), contentDescription = null, tint = tint)
                         })
                     }
                     add(NavTab(route == Routes.SETTINGS, settings, { navController.navigateToTab(Routes.SETTINGS) }) { tint ->

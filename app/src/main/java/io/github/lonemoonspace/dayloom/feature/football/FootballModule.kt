@@ -1,25 +1,25 @@
 package io.github.lonemoonspace.dayloom.feature.football
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.lonemoonspace.dayloom.R
-import io.github.lonemoonspace.dayloom.core.i18n.UiText
 import io.github.lonemoonspace.dayloom.core.i18n.uiText
 import io.github.lonemoonspace.dayloom.core.module.CardPlacement
 import io.github.lonemoonspace.dayloom.core.module.ConfigState
@@ -33,14 +33,14 @@ import io.github.lonemoonspace.dayloom.core.notify.BriefContributor
 import io.github.lonemoonspace.dayloom.core.notify.ChannelSpec
 import io.github.lonemoonspace.dayloom.core.refresh.Trigger
 import io.github.lonemoonspace.dayloom.core.secret.SecretState
-import io.github.lonemoonspace.dayloom.core.ui.InfoCard
-import io.github.lonemoonspace.dayloom.core.ui.SkeletonLines
-import io.github.lonemoonspace.dayloom.core.ui.plusBars
 import io.github.lonemoonspace.dayloom.core.time.minuteTicks
+import io.github.lonemoonspace.dayloom.core.ui.InfoCard
+import io.github.lonemoonspace.dayloom.core.ui.plusBars
 import io.github.lonemoonspace.dayloom.core.ui.rememberMinuteTick
 import io.github.lonemoonspace.dayloom.core.ui.updatedAgo
 import io.github.lonemoonspace.dayloom.feature.football.data.FootballDataApi
 import io.github.lonemoonspace.dayloom.feature.football.data.MatchesSource
+import io.github.lonemoonspace.dayloom.feature.football.data.ScorersSource
 import io.github.lonemoonspace.dayloom.feature.football.data.StandingsSource
 import io.github.lonemoonspace.dayloom.feature.football.domain.FootballBrief
 import io.github.lonemoonspace.dayloom.feature.football.domain.FootballNotifyTarget
@@ -48,19 +48,17 @@ import io.github.lonemoonspace.dayloom.feature.football.domain.FootballPolicy
 import io.github.lonemoonspace.dayloom.feature.football.domain.KickoffRule
 import io.github.lonemoonspace.dayloom.feature.football.domain.Match
 import io.github.lonemoonspace.dayloom.feature.football.domain.ResultRule
+import io.github.lonemoonspace.dayloom.feature.football.domain.Scorers
 import io.github.lonemoonspace.dayloom.feature.football.domain.Standings
 import io.github.lonemoonspace.dayloom.feature.football.domain.TeamMatches
 import io.github.lonemoonspace.dayloom.feature.football.domain.TeamRef
-import io.github.lonemoonspace.dayloom.feature.football.ui.Attribution
-import io.github.lonemoonspace.dayloom.feature.football.ui.CardSpacing
 import io.github.lonemoonspace.dayloom.feature.football.ui.Crest
 import io.github.lonemoonspace.dayloom.feature.football.ui.CrestLoader
-import io.github.lonemoonspace.dayloom.feature.football.ui.ErrorLine
 import io.github.lonemoonspace.dayloom.feature.football.ui.FootballSettingsSection
+import io.github.lonemoonspace.dayloom.feature.football.ui.FootballTab
+import io.github.lonemoonspace.dayloom.feature.football.ui.FootballTabData
 import io.github.lonemoonspace.dayloom.feature.football.ui.Hint
-import io.github.lonemoonspace.dayloom.feature.football.ui.MatchRow
 import io.github.lonemoonspace.dayloom.feature.football.ui.Scoreboard
-import io.github.lonemoonspace.dayloom.feature.football.ui.TableRows
 import io.github.lonemoonspace.dayloom.feature.football.ui.competitionLabel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -144,7 +142,17 @@ private class FootballInstance(private val ctx: ModuleContext) : ModuleInstance 
         ctx.appScope.launch { matches.observe().collect { snapshot -> matches.known = snapshot?.value?.matches.orEmpty() } }
     }
 
-    override val sources = listOf(matches, standings)
+    private val scorers = ScorersSource(
+        id = ctx.sourceId("scorers"),
+        store = ctx.snapshots(ctx.sourceId("scorers"), Scorers.serializer()),
+        clock = ctx.clock,
+        competition = store.flow.map { it.competition }.distinctUntilChanged(),
+        secret = key.observe(),
+        apiKey = key::usable,
+        api = api,
+    )
+
+    override val sources = listOf(matches, standings, scorers)
 
     override val configured: Flow<ConfigState> = combine(store.flow, key.observe()) { s, secret ->
         when {
@@ -167,7 +175,7 @@ private class FootballInstance(private val ctx: ModuleContext) : ModuleInstance 
         ) { HomeMatchCard() },
     )
 
-    override val tab = ModuleTab(label = R.string.football_title, icon = R.drawable.ic_football) { Tab() }
+    override val tab = ModuleTab(label = R.string.football_title, icon = R.drawable.ic_football, iconContent = { tint -> TabIcon(tint) }) { Tab() }
 
     override val settings = SettingsSection {
         val saved by store.flow.collectAsStateWithLifecycle(initialValue = FootballSettings())
@@ -226,105 +234,88 @@ private class FootballInstance(private val ctx: ModuleContext) : ModuleInstance 
     }
 
     /**
-     * The tab: team, the match of the moment, fixtures, results and the table. While it is open the due sources are
-     * refreshed every minute, which during a match means a live score.
-     * 标签页：球队、当下的比赛、赛程、赛果与积分榜。页面打开期间每分钟刷新到期的来源，比赛进行中即为实时比分。
+     * The tab: fixtures, the table and the top scorers. While it is open the due sources are refreshed every minute, which
+     * during a match means a live score.
+     * 标签页：赛程、积分榜与射手榜。页面打开期间每分钟刷新到期的来源，比赛进行中即为实时比分。
      */
     @Composable
     private fun Tab() {
         val settings by store.flow.collectAsStateWithLifecycle(initialValue = null)
         val matchSnapshot by matches.observe().collectAsStateWithLifecycle(initialValue = null)
         val tableSnapshot by standings.observe().collectAsStateWithLifecycle(initialValue = null)
+        val scorersSnapshot by scorers.observe().collectAsStateWithLifecycle(initialValue = null)
         val status by ctx.coordinator.status.collectAsStateWithLifecycle()
         val now = rememberMinuteTick()
         LaunchedEffect(Unit) {
             var trigger = Trigger.AUTO
             while (true) {
                 try {
-                    ctx.coordinator.refreshDue(setOf(matches.id, standings.id), trigger, daytime = false, throttleFailures = true)
+                    ctx.coordinator.refreshDue(setOf(matches.id, standings.id, scorers.id), trigger, daytime = false, throttleFailures = true)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (_: Exception) {
-                    // Errors are in the coordinator's status and shown on the cards. / 错误记录在协调器状态里，卡片上会显示。
+                    // Errors are in the coordinator's status and shown in the tab. / 错误记录在协调器状态里，标签页里会显示。
                 }
                 trigger = Trigger.LIVE_POLL
                 delay(POLL_MS)
             }
         }
         val s = settings ?: return
-        val team = s.team
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 12.dp).plusBars(top = true),
-            verticalArrangement = CardSpacing,
-        ) {
-            if (team.id <= 0) {
+        if (s.team.id <= 0) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 12.dp).plusBars(top = true),
+            ) {
                 item { InfoCard(title = stringResource(R.string.football_title), icon = R.drawable.ic_football) { Hint(stringResource(R.string.football_tab_setup)) } }
-                return@LazyColumn
             }
-            val list = matchSnapshot?.value?.takeIf { it.teamId == team.id }?.matches
-            val matchError = status[matches.id]?.lastError
-            item(key = "team") {
-                InfoCard(title = null) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Crest(team, crests, size = 44.dp)
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(team.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1)
-                            Hint(competitionLabel(s.competition, tableSnapshot?.value?.competition.orEmpty()))
-                        }
-                        matchSnapshot?.let { Hint(updatedAgo(it.fetchedAt, now)) }
-                    }
-                    if (matchError != null) ErrorLine(matchError)
+            return
+        }
+        val table = tableSnapshot?.takeIf { it.value.competitionCode == s.competition }
+        val top = scorersSnapshot?.takeIf { it.value.competitionCode == s.competition }
+        FootballTab(
+            data = FootballTabData(
+                teamId = s.team.id,
+                matches = matchSnapshot?.value?.takeIf { it.teamId == s.team.id }?.matches,
+                matchesError = status[matches.id]?.lastError,
+                standings = table?.value,
+                standingsFetchedAt = table?.fetchedAt,
+                standingsError = status[standings.id]?.lastError,
+                scorers = top?.value,
+                scorersFetchedAt = top?.fetchedAt,
+                scorersError = status[scorers.id]?.lastError,
+            ),
+            now = now,
+            crests = crests,
+        )
+    }
+
+    /**
+     * The tab icon is the followed team's crest; the football icon stands in until it loads or while no team is chosen.
+     * 标签图标是关注球队的队徽；没选球队或队徽还没加载出来时，用足球图标代替。
+     */
+    @Composable
+    private fun TabIcon(tint: Color) {
+        val settings by store.flow.collectAsStateWithLifecycle(initialValue = null)
+        val crestUrl = settings?.team?.crest.orEmpty()
+        val crest by produceState<ImageBitmap?>(null, crestUrl) {
+            value = if (crestUrl.isBlank()) {
+                null
+            } else {
+                try {
+                    crests.load(crestUrl)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // A missing crest only changes the icon. / 缺队徽只影响图标。
+                    null
                 }
             }
-            val featured = list?.let { FootballPolicy.homeMatch(it, now.toInstant()) }
-            if (featured != null) {
-                item(key = "featured") {
-                    InfoCard(title = competitionLabel(featured.competitionCode, featured.competition), icon = R.drawable.ic_football) {
-                        Scoreboard(featured, now, crests)
-                    }
-                }
-            }
-            item(key = "upcoming") {
-                InfoCard(title = stringResource(R.string.football_upcoming)) {
-                    when {
-                        list == null -> if (matchError == null) SkeletonLines()
-                        else -> {
-                            val upcoming = FootballPolicy.upcoming(list, now.toInstant()).filterNot { it.id == featured?.id }
-                            if (upcoming.isEmpty()) Hint(stringResource(R.string.football_no_matches))
-                            upcoming.forEachIndexed { i, m -> MatchRow(m, team.id, now, crests, divider = i > 0) }
-                        }
-                    }
-                }
-            }
-            item(key = "recent") {
-                InfoCard(title = stringResource(R.string.football_recent)) {
-                    when {
-                        list == null -> if (matchError == null) SkeletonLines()
-                        else -> {
-                            val recent = FootballPolicy.recent(list).filterNot { it.id == featured?.id }
-                            if (recent.isEmpty()) Hint(stringResource(R.string.football_no_results))
-                            recent.forEachIndexed { i, m -> MatchRow(m, team.id, now, crests, divider = i > 0) }
-                        }
-                    }
-                }
-            }
-            item(key = "table") {
-                val tableError = status[standings.id]?.lastError
-                InfoCard(
-                    title = stringResource(R.string.football_table),
-                    stale = tableSnapshot?.let { standings.isStale(it, now.toInstant()) } == true,
-                ) {
-                    val table = tableSnapshot?.value?.takeIf { it.competitionCode == s.competition }
-                    when {
-                        table != null -> TableRows(table, team.id, crests)
-                        tableError == null -> SkeletonLines(lines = 4)
-                    }
-                    if (tableError != null) ErrorLine(tableError)
-                    Attribution()
-                }
-            }
+        }
+        val image = crest
+        if (image != null) {
+            Image(image, contentDescription = null, modifier = Modifier.size(26.dp))
+        } else {
+            Icon(painterResource(R.drawable.ic_football), contentDescription = null, tint = tint)
         }
     }
 

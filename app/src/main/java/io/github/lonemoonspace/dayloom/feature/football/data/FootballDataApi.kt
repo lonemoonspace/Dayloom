@@ -7,6 +7,8 @@ import io.github.lonemoonspace.dayloom.core.network.executeOrAppError
 import io.github.lonemoonspace.dayloom.feature.football.domain.FootballPolicy
 import io.github.lonemoonspace.dayloom.feature.football.domain.Match
 import io.github.lonemoonspace.dayloom.feature.football.domain.MatchStatus
+import io.github.lonemoonspace.dayloom.feature.football.domain.Scorer
+import io.github.lonemoonspace.dayloom.feature.football.domain.Scorers
 import io.github.lonemoonspace.dayloom.feature.football.domain.Standings
 import io.github.lonemoonspace.dayloom.feature.football.domain.TableGroup
 import io.github.lonemoonspace.dayloom.feature.football.domain.TableRow
@@ -66,7 +68,24 @@ class FootballDataApi(
                 },
             )
         }
-        Standings(competitionCode = dto.competition.code.ifBlank { competition }, competition = dto.competition.name, groups = groups)
+        Standings(
+            competitionCode = dto.competition.code.ifBlank { competition },
+            competition = dto.competition.name,
+            groups = groups,
+            matchday = dto.season?.currentMatchday,
+        )
+    }
+
+    suspend fun scorers(key: String, competition: String): Scorers = withContext(io) {
+        val url = baseUrl.newBuilder().addPathSegment("competitions").addPathSegment(competition).addPathSegment("scorers")
+            .addQueryParameter("limit", SCORERS_LIMIT.toString()).build()
+        val dto = get(key, url, ScorersDto.serializer(), "scorers response")
+        Scorers(
+            competitionCode = dto.competition.code.ifBlank { competition },
+            competition = dto.competition.name,
+            matchday = dto.season?.currentMatchday,
+            scorers = dto.scorers.map { Scorer(it.player.name.orEmpty(), it.team.toRef(), it.playedMatches, it.goals ?: 0, it.penalties) },
+        )
     }
 
     private fun <T> get(key: String, url: HttpUrl, serializer: KSerializer<T>, what: String): T {
@@ -82,6 +101,9 @@ class FootballDataApi(
 
     companion object {
         const val SERVICE = "football-data.org"
+
+        /** A table's worth of scorers; ties at the bottom can push it past the twenty shown. / 一张榜的射手数；末尾并列时可能多于二十人。 */
+        const val SCORERS_LIMIT = 20
 
         internal fun parseMillis(iso: String?): Long? = try {
             iso?.let { OffsetDateTime.parse(it).toInstant().toEpochMilli() }
@@ -195,4 +217,30 @@ internal data class TableRowDto(
 internal data class StandingDto(val type: String? = null, val group: String? = null, val table: List<TableRowDto> = emptyList())
 
 @Serializable
-internal data class StandingsDto(val competition: CompetitionDto = CompetitionDto(), val standings: List<StandingDto> = emptyList())
+internal data class SeasonDto(val currentMatchday: Int? = null)
+
+@Serializable
+internal data class StandingsDto(
+    val competition: CompetitionDto = CompetitionDto(),
+    val season: SeasonDto? = null,
+    val standings: List<StandingDto> = emptyList(),
+)
+
+@Serializable
+internal data class PlayerDto(val name: String? = null)
+
+@Serializable
+internal data class ScorerDto(
+    val player: PlayerDto = PlayerDto(),
+    val team: TeamDto = TeamDto(),
+    val playedMatches: Int? = null,
+    val goals: Int? = null,
+    val penalties: Int? = null,
+)
+
+@Serializable
+internal data class ScorersDto(
+    val competition: CompetitionDto = CompetitionDto(),
+    val season: SeasonDto? = null,
+    val scorers: List<ScorerDto> = emptyList(),
+)

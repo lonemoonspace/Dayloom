@@ -76,7 +76,35 @@ data class TableGroup(val group: String = "", val rows: List<TableRow> = emptyLi
 
 /** The snapshot of `football.standings`. / `football.standings` 的快照。 */
 @Serializable
-data class Standings(val competitionCode: String = "", val competition: String = "", val groups: List<TableGroup> = emptyList())
+data class Standings(
+    val competitionCode: String = "",
+    val competition: String = "",
+    val groups: List<TableGroup> = emptyList(),
+    /** The season's current matchday, when the competition has one. / 本赛季当前轮次（赛事有轮次时）。 */
+    val matchday: Int? = null,
+)
+
+/** One line of the scorers list; missing counts stay null rather than zero. / 射手榜的一行；缺失的数字保持为空而不是 0。 */
+@Serializable
+data class Scorer(
+    val player: String = "",
+    val team: TeamRef = TeamRef(),
+    val playedMatches: Int? = null,
+    val goals: Int = 0,
+    val penalties: Int? = null,
+)
+
+/** The snapshot of `football.scorers`: the competition's top scorers. / `football.scorers` 的快照：赛事射手榜。 */
+@Serializable
+data class Scorers(
+    val competitionCode: String = "",
+    val competition: String = "",
+    val matchday: Int? = null,
+    val scorers: List<Scorer> = emptyList(),
+)
 
 /** How a finished match went for the followed team. / 已结束的比赛对关注球队而言的结果。 */
 enum class Outcome { WIN, DRAW, LOSS }
+
+/** Time left until kick-off. / 距开球还剩的时间。 */
+data class Countdown(val days: Int, val hours: Int, val minutes: Int)

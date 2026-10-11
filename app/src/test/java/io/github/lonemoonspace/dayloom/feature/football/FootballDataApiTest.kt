@@ -96,6 +96,31 @@ class FootballDataApiTest {
     }
 
     @Test
+    fun `standings carry the current matchday, and scorers keep missing counts empty`() = runTest {
+        server.enqueue(MockResponse().setBody("""{"competition":{"name":"League A","code":"PL"},"season":{"currentMatchday":8},"standings":[]}"""))
+        server.enqueue(
+            MockResponse().setBody(
+                """{"competition":{"name":"League A","code":"PL"},"season":{"currentMatchday":8},"scorers":[
+                  {"player":{"name":"Player A"},"team":{"id":1,"shortName":"Team A"},"playedMatches":7,"goals":12,"penalties":3},
+                  {"player":{"name":"Player B"},"team":{"id":2,"shortName":"Team B"},"goals":7}
+                ]}""",
+            ),
+        )
+
+        assertEquals(8, api().standings("k", "PL").matchday)
+        val scorers = api().scorers("k", "PL")
+
+        assertEquals(8, scorers.matchday)
+        assertEquals(listOf("Player A", "Player B"), scorers.scorers.map { it.player })
+        assertEquals(3, scorers.scorers[0].penalties)
+        // Absent counts stay unknown rather than zero. / 没给的数字保持未知，而不是 0。
+        assertNull(scorers.scorers[1].penalties)
+        assertNull(scorers.scorers[1].playedMatches)
+        server.takeRequest()
+        assertEquals("/v4/competitions/PL/scorers?limit=${FootballDataApi.SCORERS_LIMIT}", server.takeRequest().path)
+    }
+
+    @Test
     fun `errors keep the service's message`() = runTest {
         server.enqueue(MockResponse().setResponseCode(403).setBody("""{"message":"The resource you are looking for is restricted"}"""))
         val error = runCatching { api().teams("k", "XYZ") }.exceptionOrNull() as AppError.Http

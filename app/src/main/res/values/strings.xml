@@ -13,27 +13,47 @@
 
     <string name="common_today">Today</string>
     <string name="common_tomorrow">Tomorrow</string>
+    <string name="common_updated_now">Just now</string>
+    <plurals name="common_updated_minutes">
+        <item quantity="one">%1$d min ago</item>
+        <item quantity="other">%1$d min ago</item>
+    </plurals>
 
     <string name="place_home">Home</string>
     <string name="place_work">Work</string>
     <string name="places_none_saved">No saved places yet. Add them under Places in Settings.</string>
 
     <string name="weather_title">Weather</string>
-    <string name="weather_summary">Weather now and on your commute, from MET Norway</string>
-    <string name="weather_setup_place">Weather location</string>
-    <string name="weather_settings_place">Show the weather for</string>
-    <string name="weather_wind_precip">Wind %1$d m/s · Precipitation %2$s mm</string>
-    <string name="weather_leg_to_work">To work</string>
-    <string name="weather_leg_back_home">Back home</string>
-    <string name="weather_leg_on_day">%1$s %2$s</string>
-    <string name="weather_leg_no_data">No hourly forecast yet</string>
-    <string name="weather_umbrella">Umbrella</string>
-    <string name="weather_dry">Dry</string>
-    <string name="weather_rain_stops">Rain stops around %1$s</string>
-    <string name="weather_rain_starts">Rain starts around %1$s</string>
+    <string name="weather_summary">Today\'s weather at Home, with what to wear; tomorrow\'s in the evening. From MET Norway</string>
+    <string name="weather_setup_place">Set Home under Places</string>
+    <string name="weather_feels_like">Feels like %1$d°</string>
+    <string name="weather_range">%1$d° to %2$d°</string>
+    <string name="weather_wind_speed">Wind %1$d m/s</string>
+    <string name="weather_wind_gusts">Wind %1$d m/s, gusts %2$d</string>
+    <string name="weather_rain_spell">Rain %1$s–%2$s</string>
+    <string name="weather_rain_total">%1$s mm</string>
+    <string name="weather_rain_chance">%1$d%% chance</string>
+    <string name="weather_no_rain">No rain expected</string>
+    <string name="weather_clothing_hot">Short sleeves and breathable clothes</string>
+    <string name="weather_clothing_warm">T-shirt, maybe a thin layer</string>
+    <string name="weather_clothing_mild">Long sleeves or a light jacket</string>
+    <string name="weather_clothing_cool">A jacket or a jumper</string>
+    <string name="weather_clothing_cold">A warm coat and a scarf</string>
+    <string name="weather_clothing_freezing">Down jacket, hat and gloves</string>
+    <string name="weather_tip_thunder">Thunder possible</string>
+    <string name="weather_tip_heavy_rain">Heavy rain</string>
+    <string name="weather_tip_umbrella">Take an umbrella</string>
+    <string name="weather_tip_snow">Snow or sleet</string>
+    <string name="weather_tip_slippery">Icy roads</string>
+    <string name="weather_tip_strong_wind">Strong wind</string>
+    <string name="weather_tip_heat">Hot, drink water</string>
+    <string name="weather_tip_sunscreen">Use sunscreen</string>
+    <string name="weather_tip_layers">Dress in layers</string>
+    <string name="weather_tip_pleasant">Pleasant day</string>
     <string name="weather_attribution">Weather data: MET Norway (CC BY 4.0)</string>
-    <string name="weather_brief">%1$s, %2$d°</string>
-    <string name="weather_brief_umbrella">%1$s, %2$d° · rain on your commute, take an umbrella</string>
+    <string name="weather_brief_short">%1$s, %2$d°</string>
+    <string name="weather_brief">%1$s, %2$d° · %3$s</string>
+    <string name="weather_brief_umbrella">%1$s, %2$d° · %3$s · rain later, take an umbrella</string>
     <string name="weather_clear">Clear</string>
     <string name="weather_fair">Fair</string>
     <string name="weather_partly_cloudy">Partly cloudy</string>
@@ -66,9 +86,10 @@
     <string name="calendar_country_china">China</string>
     <string name="calendar_country_norway">Norway</string>
     <string name="calendar_solar_term_today">%1$s today</string>
-    <string name="calendar_lunar_leap_month">leap %1$s</string>
-    <string name="calendar_lunar_date">Lunar %1$s, %2$s</string>
-    <string name="calendar_lunar_year">%1$s-%2$s, year of the %3$s</string>
+    <string name="calendar_lunar_leap_month">L%1$s</string>
+    <string name="calendar_lunar_date">Lunar %1$s/%2$s</string>
+    <string name="calendar_lunar_year">Year of the %3$s (%1$s-%2$s)</string>
+    <string name="calendar_lunar_line">%2$s · %1$s</string>
     <string name="calendar_countdown_tomorrow">%1$s tomorrow</string>
     <plurals name="calendar_countdown_days">
         <item quantity="one">%1$s in %2$d day</item>
@@ -99,50 +120,50 @@
     <string name="holiday_christmas_day">Christmas Day</string>
     <string name="holiday_boxing_day">Boxing Day</string>
     <string-array name="calendar_lunar_months">
-        <item>month 1</item>
-        <item>month 2</item>
-        <item>month 3</item>
-        <item>month 4</item>
-        <item>month 5</item>
-        <item>month 6</item>
-        <item>month 7</item>
-        <item>month 8</item>
-        <item>month 9</item>
-        <item>month 10</item>
-        <item>month 11</item>
-        <item>month 12</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+        <item>6</item>
+        <item>7</item>
+        <item>8</item>
+        <item>9</item>
+        <item>10</item>
+        <item>11</item>
+        <item>12</item>
     </string-array>
     <string-array name="calendar_lunar_days">
-        <item>day 1</item>
-        <item>day 2</item>
-        <item>day 3</item>
-        <item>day 4</item>
-        <item>day 5</item>
-        <item>day 6</item>
-        <item>day 7</item>
-        <item>day 8</item>
-        <item>day 9</item>
-        <item>day 10</item>
-        <item>day 11</item>
-        <item>day 12</item>
-        <item>day 13</item>
-        <item>day 14</item>
-        <item>day 15</item>
-        <item>day 16</item>
-        <item>day 17</item>
-        <item>day 18</item>
-        <item>day 19</item>
-        <item>day 20</item>
-        <item>day 21</item>
-        <item>day 22</item>
-        <item>day 23</item>
-        <item>day 24</item>
-        <item>day 25</item>
-        <item>day 26</item>
-        <item>day 27</item>
-        <item>day 28</item>
-        <item>day 29</item>
-        <item>day 30</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+        <item>6</item>
+        <item>7</item>
+        <item>8</item>
+        <item>9</item>
+        <item>10</item>
+        <item>11</item>
+        <item>12</item>
+        <item>13</item>
+        <item>14</item>
+        <item>15</item>
+        <item>16</item>
+        <item>17</item>
+        <item>18</item>
+        <item>19</item>
+        <item>20</item>
+        <item>21</item>
+        <item>22</item>
+        <item>23</item>
+        <item>24</item>
+        <item>25</item>
+        <item>26</item>
+        <item>27</item>
+        <item>28</item>
+        <item>29</item>
+        <item>30</item>
     </string-array>
     <string-array name="calendar_heavenly_stems">
         <item>Jia</item>
@@ -257,13 +278,13 @@
 
     <string name="traffic_title">Traffic</string>
     <string name="traffic_summary">Driving time with live traffic (needs your own Google key)</string>
-    <string name="traffic_card_title">Drive · %1$s → %2$s</string>
+    <string name="traffic_card_title">%1$s → %2$s</string>
     <string name="traffic_setup_places">Start and destination for traffic</string>
     <string name="traffic_setup_key">Google Routes API key</string>
     <string name="traffic_from">From</string>
     <string name="traffic_to">To</string>
-    <string name="traffic_key">Google Routes API key</string>
-    <string name="traffic_key_note">Enable the Routes API for this key in Google Cloud. Requests beyond the free monthly quota are billed to your Google account. The key stays on this phone.</string>
+    <string name="traffic_key">Google Maps API key</string>
+    <string name="traffic_key_note">Enable the Routes API for this key in Google Cloud. It is the same key as for place search under Places. Requests beyond the free monthly quota are billed to your Google account. The key stays on this phone.</string>
     <string name="traffic_open_maps">Open the route in a maps app</string>
     <string name="traffic_free_flow">Without traffic %1$s</string>
     <string name="traffic_slower">%1$s slower than usual</string>
@@ -280,26 +301,31 @@
     <string name="traffic_brief_plain">Drive to %1$s: %2$s</string>
 
     <string name="transit_title">Public transport</string>
-    <string name="transit_summary">Commute trips and live departures in Norway, from Entur</string>
-    <string name="transit_commute_title">Commute</string>
+    <string name="transit_summary">Train and bus commutes and live departures in Norway, from Entur</string>
+    <string name="transit_train_title">Train</string>
+    <string name="transit_bus_title">Bus</string>
+    <string name="transit_setup_prompt">Choose the stops of your train or bus commute under Settings → Train / Bus.</string>
+    <string name="transit_train_note">Trains only, with changes between trains. Pick the two stations of your commute.</string>
+    <string name="transit_bus_note">Buses and coaches only, with changes between them. Pick the two stops of your commute.</string>
+    <string name="transit_brief_joined">%1$s; %2$s</string>
     <string name="transit_boards_title">Departures</string>
-    <string name="transit_setup_commute">Commute stops</string>
+    <string name="transit_setup_commute">Train or bus stops</string>
     <string name="transit_setup_boards">A favourite stop</string>
     <string name="transit_to_work">To work · %1$s → %2$s</string>
     <string name="transit_back_home">Home · %1$s → %2$s</string>
-    <string name="transit_direction">%1$s → %2$s</string>
     <string name="transit_no_options">No trips found right now.</string>
     <string name="transit_no_departures">No matching departures in the next hours.</string>
-    <string name="transit_direct">%1$s · direct</string>
+    <string name="transit_direct">Direct</string>
     <plurals name="transit_transfers">
-        <item quantity="one">%1$s · change at %2$s</item>
-        <item quantity="other">%1$s · changes at %2$s</item>
+        <item quantity="one">Change at %1$s</item>
+        <item quantity="other">Changes at %1$s</item>
     </plurals>
     <plurals name="transit_minutes">
         <item quantity="one">%1$d min</item>
         <item quantity="other">%1$d min</item>
     </plurals>
     <string name="transit_now">Now</string>
+    <string name="transit_replacement_bus">Replacement bus</string>
     <string name="transit_platform">Pl. %1$s</string>
     <string name="transit_on_time">On time</string>
     <plurals name="transit_late">
@@ -331,9 +357,9 @@
     <string name="transit_search">Search</string>
     <string name="transit_search_none">No stops found.</string>
     <string name="transit_channel">Commute disruptions</string>
-    <string name="transit_channel_description">When the next trip in your commute window is cancelled or heavily delayed</string>
+    <string name="transit_channel_description">When the next departure on your commute is cancelled or heavily delayed</string>
     <string name="transit_notify_switch">Disruption alerts</string>
-    <string name="transit_notify_switch_summary">When the next trip in your commute window is cancelled or at least 5 minutes late</string>
+    <string name="transit_notify_switch_summary">When the next departure, within 45 minutes, is cancelled or at least 5 minutes late; mornings to work, afternoons home, never 22:00–06:00</string>
     <string name="transit_notify_to_work">Disruption on your way to work</string>
     <string name="transit_notify_back_home">Disruption on your way home</string>
     <string name="transit_notify_cancelled">%1$s at %2$s is cancelled</string>
@@ -360,20 +386,14 @@
     <string name="places_not_set">Not set</string>
     <string name="places_add">Add a place</string>
     <string name="places_label">Name of this place</string>
-    <string name="places_search_hint">Search for a city or address</string>
+    <string name="places_search_hint">Address, place or coordinates</string>
     <string name="places_search">Search</string>
-    <string name="places_use_location">Use current location</string>
     <string name="places_no_results">No places found.</string>
-    <string name="places_locate_failed">Could not get your location. Is location turned on?</string>
-    <string name="places_attribution">Place search by Open-Meteo (CC BY 4.0). Your location is read once and never tracked.</string>
+    <string name="places_attribution">Search: Entur (Norwegian addresses and places, NLOD), elsewhere OpenStreetMap (© OpenStreetMap contributors, ODbL). Coordinates such as 59.9139, 10.7522 always work.</string>
     <string name="places_remove">Remove</string>
-    <string name="settings_routine">Daily routine</string>
-    <string name="routine_commute">I commute on working days</string>
-    <string name="routine_commute_summary">Weather and transport focus on these times</string>
-    <string name="routine_to_work">To work</string>
-    <string name="routine_back_home">Back home</string>
-    <string name="routine_window_invalid">Start and end cannot be the same time.</string>
-    <string name="routine_working_days">Working days</string>
+    <string name="places_attribution_google">Search results from Google Maps. Coordinates such as 59.9139, 10.7522 also work.</string>
+    <string name="places_google_key">Google Maps API key (optional)</string>
+    <string name="places_google_key_note">Not needed for search: addresses work without it. With a key that has the Places API (New) enabled, search uses Google instead. Traffic needs this key. Requests beyond the free monthly quota are billed to your Google account. The key stays on this phone.</string>
     <string name="settings_language">Language</string>
     <string name="settings_language_system">Follow system</string>
     <string name="settings_time_zone">Time zone</string>
@@ -390,9 +410,10 @@
     <string name="settings_notifications">Notifications</string>
     <string name="settings_notifications_note">Every notification is off until you turn it on. Module notifications are under each module below.</string>
     <string name="brief_title">Morning brief</string>
-    <string name="brief_switch_summary">On working days, one summary from your modules when the to-work window starts</string>
+    <string name="brief_time">Send at</string>
+    <string name="brief_switch_summary">Every day at the time below, one summary from your modules</string>
     <string name="brief_channel">Morning brief</string>
-    <string name="brief_channel_description">Once on working days, when your to-work window starts</string>
+    <string name="brief_channel_description">Once a day, at the time you choose</string>
     <string name="onboarding_step">Step %1$d of %2$d</string>
     <string name="onboarding_welcome_title">Welcome to Dayloom</string>
     <string name="onboarding_welcome_body">Your day at a glance: weather, your commute, things about to expire and more. Everything you enter stays on this phone.</string>
@@ -416,4 +437,143 @@
     <string name="error_secret_unreadable">%1$s can no longer be decrypted. Please enter it again in Settings.</string>
     <string name="error_bad_data">%1$s returned data that could not be read</string>
     <string name="error_unexpected">Unexpected error (%1$s)</string>
+
+    <string name="football_title">Football</string>
+    <string name="football_summary">Your team\'s fixtures, results and table from football-data.org, with your own free key</string>
+    <string name="football_setup_key">football-data.org key</string>
+    <string name="football_setup_team">A team to follow</string>
+    <string name="football_tab_setup">Save your football-data.org key and choose a team under Settings → Football.</string>
+    <string name="football_key">football-data.org API key</string>
+    <string name="football_key_note">Register for free at football-data.org; the free tier covers the twelve competitions below and ten requests a minute. The key stays on this phone.</string>
+    <string name="football_competition">Competition</string>
+    <string name="football_team">Team</string>
+    <string name="football_choose_team">Choose</string>
+    <string name="football_no_team">Not chosen</string>
+    <string name="football_pick_competition_first">Choose a competition first.</string>
+    <string name="football_teams_title">Teams in %1$s</string>
+    <string name="football_teams_need_key">Save your key first.</string>
+    <string name="football_teams_empty">No teams found.</string>
+    <string name="football_notify_kickoff_switch">Kick-off reminders</string>
+    <string name="football_notify_kickoff_switch_summary">Within an hour before your team plays</string>
+    <string name="football_notify_result_switch">Final scores</string>
+    <string name="football_notify_result_switch_summary">When your team\'s match has ended</string>
+    <string name="football_channel">Football</string>
+    <string name="football_channel_description">Kick-off reminders and final scores of your team</string>
+    <string name="football_notify_kickoff">Kick-off soon</string>
+    <string name="football_notify_kickoff_body">%1$s at %2$s · %3$s</string>
+    <string name="football_notify_win">Full time: a win</string>
+    <string name="football_notify_draw">Full time: a draw</string>
+    <string name="football_notify_loss">Full time: a defeat</string>
+    <string name="football_notify_result">Full time</string>
+    <string name="football_fixture">%1$s – %2$s</string>
+    <string name="football_result_line">%1$s %2$d–%3$d %4$s</string>
+    <string name="football_with_penalties">%1$s (pens %2$d–%3$d)</string>
+    <string name="football_penalties_short">pens %1$d–%2$d</string>
+    <string name="football_brief">%1$s at %2$s</string>
+    <string name="football_live">Live</string>
+    <string name="football_live_minute">%1$d\'</string>
+    <string name="football_live_minute_added">%1$d+%2$d\'</string>
+    <string name="football_half_time">Half time</string>
+    <string name="football_full_time">Full time</string>
+    <string name="football_postponed">Postponed</string>
+    <string name="football_suspended">Suspended</string>
+    <string name="football_cancelled">Cancelled</string>
+    <string name="football_upcoming">Fixtures</string>
+    <string name="football_recent">Results</string>
+    <string name="football_table">Table</string>
+    <string name="football_group">Group %1$s</string>
+    <string name="football_outcome_win">W</string>
+    <string name="football_outcome_draw">D</string>
+    <string name="football_outcome_loss">L</string>
+    <string name="football_home_abbr">H</string>
+    <string name="football_away_abbr">A</string>
+    <string name="football_table_played">P</string>
+    <string name="football_table_gd">GD</string>
+    <string name="football_table_points">Pts</string>
+    <string name="football_no_matches">No matches in the next five weeks.</string>
+    <string name="football_no_results">No matches in the last four weeks.</string>
+    <string name="football_attribution">Football data provided by the Football-Data.org API</string>
+    <string name="football_comp_pl">Premier League</string>
+    <string name="football_comp_pd">LaLiga</string>
+    <string name="football_comp_bl1">Bundesliga</string>
+    <string name="football_comp_sa">Serie A</string>
+    <string name="football_comp_fl1">Ligue 1</string>
+    <string name="football_comp_cl">Champions League</string>
+    <string name="football_comp_ded">Eredivisie</string>
+    <string name="football_comp_ppl">Primeira Liga</string>
+    <string name="football_comp_elc">Championship</string>
+    <string name="football_comp_bsa">Brasileirão</string>
+    <string name="football_comp_ec">European Championship</string>
+    <string name="football_comp_wc">World Cup</string>
+
+    <string name="news_title">News</string>
+    <string name="news_summary">Articles from your own Miniflux server, synced both ways, with optional AI summaries</string>
+    <string name="news_setup_server">Miniflux server address</string>
+    <string name="news_setup_token">Miniflux API token</string>
+    <string name="news_setup_llm">AI summary endpoint, model and key in Settings → News</string>
+    <string name="news_tab_setup">Enter your Miniflux server and API token under Settings → News.</string>
+    <string name="news_server_note">Your own Miniflux server, https only. Create an API token under Settings → API Keys in Miniflux. The token stays on this phone.</string>
+    <string name="news_server_url">Server address, e.g. https://reader.example.org</string>
+    <string name="news_token">Miniflux API token</string>
+    <string name="news_llm_section">AI summaries (optional)</string>
+    <string name="news_llm_note">Any OpenAI-compatible endpoint. Summaries are made only when you tap the button and may cost money with your provider. The article text is sent to that service.</string>
+    <string name="news_llm_url">Endpoint, e.g. https://api.example.org/v1</string>
+    <string name="news_llm_model">Model name</string>
+    <string name="news_llm_key">API key</string>
+    <string name="news_url_invalid">Not a usable address, e.g. https://reader.example.org</string>
+    <string name="news_url_http">Only https:// works: over http:// the token would cross the network in clear text, and Android blocks it.</string>
+    <string name="news_connect">Save and connect</string>
+    <plurals name="news_connected">
+        <item quantity="one">Connected · %1$d unread article</item>
+        <item quantity="other">Connected · %1$d unread articles</item>
+    </plurals>
+    <string name="news_all_read">All caught up.</string>
+    <string name="news_none">Nothing here yet.</string>
+    <string name="news_filter_unread">Unread</string>
+    <string name="news_filter_starred">Starred</string>
+    <string name="news_filter_all">All</string>
+    <string name="news_starred">Starred</string>
+    <string name="news_has_summary">AI summary</string>
+    <string name="news_back">Back to the list</string>
+    <string name="news_open_original">Open original</string>
+    <string name="news_star">Star</string>
+    <string name="news_unstar">Unstar</string>
+    <string name="news_mark_read">Mark read</string>
+    <string name="news_mark_unread">Mark unread</string>
+    <string name="news_summary_title">AI summary</string>
+    <string name="news_summarize">Summarize</string>
+    <string name="news_summarizing">Summarizing…</string>
+    <plurals name="news_unread_count">
+        <item quantity="one">%1$d unread</item>
+        <item quantity="other">%1$d unread</item>
+    </plurals>
+    <plurals name="news_reading_minutes">
+        <item quantity="one">%1$d min read</item>
+        <item quantity="other">%1$d min read</item>
+    </plurals>
+    <plurals name="news_ago_minutes">
+        <item quantity="one">%1$d min ago</item>
+        <item quantity="other">%1$d min ago</item>
+    </plurals>
+    <plurals name="news_ago_hours">
+        <item quantity="one">%1$d h ago</item>
+        <item quantity="other">%1$d h ago</item>
+    </plurals>
+    <plurals name="news_ago_days">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
+
+    <string name="about_data_sources">Data sources</string>
+    <string name="about_privacy">Privacy</string>
+    <string name="about_licenses">Open-source licenses</string>
+    <string name="about_close">Close</string>
+    <string name="about_source_weather">Weather: MET Norway (api.met.no), under CC BY 4.0.</string>
+    <string name="about_source_transit">Public transport: Entur, under the Norwegian Licence for Open Government Data (NLOD).</string>
+    <string name="about_source_places">Place search without a key: Entur Geocoder (Kartverket addresses, NLOD) and Nominatim, © OpenStreetMap contributors, under ODbL.</string>
+    <string name="about_source_google">Place search and traffic with your key: Google Maps Platform (Places API, Routes API), under Google\'s terms.</string>
+    <string name="about_source_football">Football: football-data.org, with your own key, under its terms.</string>
+    <string name="about_source_news">News: your own Miniflux server. AI summaries: the endpoint you configure.</string>
+    <string name="about_source_lunar">Lunar calendar and solar terms: computed on the phone with lunar-java (MIT).</string>
+    <string name="about_privacy_body">Dayloom has no server of its own and collects nothing: no analytics, no crash reports, no ads.\n\nYour settings, places and keys stay on this phone. There is no cloud backup; moving to a new phone copies your settings but not your keys, which are encrypted with this phone\'s Android Keystore.\n\nThe app only contacts the services of the modules you turn on, and sends each only what it needs: the coordinates of Home to MET Norway, your stops to Entur, what you type into place search to Google, or else to Entur and OpenStreetMap, your saved places to Google Routes, your team to football-data.org, and your token to your own Miniflux server. An article\'s text goes to your AI endpoint only when you tap Summarize.\n\nThe app asks for no location permission. It asks for the notification permission only when you turn on a notification.</string>
 </resources>

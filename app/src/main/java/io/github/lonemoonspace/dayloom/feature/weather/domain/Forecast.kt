@@ -27,9 +27,9 @@ data class Forecast(
 data class ForecastPoint(
     /** Start of the step, epoch millis. / 该步的起始时刻，epoch 毫秒。 */
     val time: Long = 0,
-    /** °C. */
+    /** °C. / 摄氏度。 */
     val temperature: Double? = null,
-    /** m/s. */
+    /** m/s. / 米每秒。 */
     val windSpeed: Double? = null,
     /** Symbol for the next hour; empty beyond the hourly range. / 未来一小时的天气符号；超出逐小时范围时为空。 */
     val symbol1h: String = "",
@@ -37,6 +37,16 @@ data class ForecastPoint(
     val precipitation1h: Double? = null,
     val symbol6h: String = "",
     val precipitation6h: Double? = null,
+    /** °C, MET's "feels like" (wind chill and humidity). / °C，MET 的体感温度（含风寒与湿度）。 */
+    val apparentTemperature: Double? = null,
+    /** m/s. / 米每秒。 */
+    val windGust: Double? = null,
+    /** UV index under a clear sky; clouds lower the real value. / 晴空紫外线指数；有云时实际值更低。 */
+    val uvIndex: Double? = null,
+    /** 0–100 %, next hour. / 0–100 %，未来一小时。 */
+    val precipProbability1h: Double? = null,
+    /** 0–100 %, next hour. / 0–100 %，未来一小时。 */
+    val thunderProbability1h: Double? = null,
 ) {
     /** The most detailed symbol available. / 可用的最细粒度符号。 */
     val symbol: String get() = symbol1h.ifEmpty { symbol6h }

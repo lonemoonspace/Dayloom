@@ -495,7 +495,7 @@ class RefreshCoordinatorTest {
 
     // ---- Due refreshes / 按节奏刷新 ----
 
-    private val hourly = RefreshCadence(interval = Duration.ofMinutes(60), busyInterval = Duration.ofMinutes(5), busyInWindows = true)
+    private val hourly = RefreshCadence(interval = Duration.ofMinutes(60), busyInterval = Duration.ofMinutes(5), busyByDay = true)
 
     private fun fetchedMinutesAgo(minutes: Long) =
         InMemorySnapshotStore(Snapshot("A#0", clock.current.minusMinutes(minutes).toInstant().toEpochMilli(), "A", 1))
@@ -508,11 +508,11 @@ class RefreshCoordinatorTest {
         val c = coordinator(fresh, old, never)
         val all = setOf(fresh.id, old.id, never.id)
 
-        val report = c.refreshDue(all, Trigger.BACKGROUND, inWindow = false, throttleFailures = false)
+        val report = c.refreshDue(all, Trigger.BACKGROUND, daytime = false, throttleFailures = false)
         assertEquals(setOf(old.id, never.id), report.results.keys)
         assertEquals(0, fresh.fetchCount)
 
-        c.refreshDue(all, Trigger.BACKGROUND, inWindow = true, throttleFailures = false)
+        c.refreshDue(all, Trigger.BACKGROUND, daytime = true, throttleFailures = false)
         assertEquals("20 minutes is past the 5-minute busy interval", 1, fresh.fetchCount)
     }
 
@@ -520,7 +520,7 @@ class RefreshCoordinatorTest {
     fun `a snapshot for other inputs counts as never fetched`() = runTest {
         val source = FakeSource("weather", clock, store = fetchedMinutesAgo(1), initialParam = "B", cadence = hourly)
         val c = coordinator(source)
-        c.refreshDue(setOf(source.id), Trigger.BACKGROUND, inWindow = false, throttleFailures = false)
+        c.refreshDue(setOf(source.id), Trigger.BACKGROUND, daytime = false, throttleFailures = false)
         assertEquals(listOf("B"), source.fetchedWith)
     }
 
@@ -530,16 +530,16 @@ class RefreshCoordinatorTest {
         val c = coordinator(source)
         val ids = setOf(source.id)
 
-        c.refreshDue(ids, Trigger.LIVE_POLL, inWindow = false, throttleFailures = true)
+        c.refreshDue(ids, Trigger.LIVE_POLL, daytime = false, throttleFailures = true)
         clock.current = clock.current.plusMinutes(1)
-        c.refreshDue(ids, Trigger.LIVE_POLL, inWindow = false, throttleFailures = true)
+        c.refreshDue(ids, Trigger.LIVE_POLL, daytime = false, throttleFailures = true)
         assertEquals("the failed attempt throttles polling", 1, source.fetchCount)
 
-        c.refreshDue(ids, Trigger.BACKGROUND, inWindow = false, throttleFailures = false)
+        c.refreshDue(ids, Trigger.BACKGROUND, daytime = false, throttleFailures = false)
         assertEquals("a worker retry refetches", 2, source.fetchCount)
 
         clock.current = clock.current.plusMinutes(60)
-        c.refreshDue(ids, Trigger.LIVE_POLL, inWindow = false, throttleFailures = true)
+        c.refreshDue(ids, Trigger.LIVE_POLL, daytime = false, throttleFailures = true)
         assertEquals(3, source.fetchCount)
     }
 

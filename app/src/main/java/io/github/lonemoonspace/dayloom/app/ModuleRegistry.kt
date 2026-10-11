@@ -2,6 +2,8 @@ package io.github.lonemoonspace.dayloom.app
 
 import io.github.lonemoonspace.dayloom.core.module.FeatureModule
 import io.github.lonemoonspace.dayloom.feature.calendar.CalendarModule
+import io.github.lonemoonspace.dayloom.feature.football.FootballModule
+import io.github.lonemoonspace.dayloom.feature.news.NewsModule
 import io.github.lonemoonspace.dayloom.feature.reminders.RemindersModule
 import io.github.lonemoonspace.dayloom.feature.traffic.TrafficModule
 import io.github.lonemoonspace.dayloom.feature.transit.TransitModule
@@ -20,5 +22,7 @@ object ModuleRegistry {
         TransitModule,
         TrafficModule,
         RemindersModule,
+        FootballModule,
+        NewsModule,
     ) + variantModules
 }

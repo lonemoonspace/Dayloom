@@ -1,7 +1,6 @@
 package io.github.lonemoonspace.dayloom.feature.weather
 
-import io.github.lonemoonspace.dayloom.core.routine.DailyWindow
-import io.github.lonemoonspace.dayloom.core.routine.Routine
+import io.github.lonemoonspace.dayloom.feature.weather.domain.ClothingLevel
 import io.github.lonemoonspace.dayloom.feature.weather.domain.Forecast
 import io.github.lonemoonspace.dayloom.feature.weather.domain.ForecastPoint
 import io.github.lonemoonspace.dayloom.feature.weather.domain.WeatherBrief
@@ -16,7 +15,6 @@ import org.junit.Test
 class WeatherBriefPolicyTest {
 
     private val zone = ZoneId.of("Europe/Oslo")
-    private val routine = Routine(toWork = DailyWindow(7 * 60, 9 * 60), backHome = DailyWindow(16 * 60, 18 * 60))
 
     /** Monday 2026-10-05, 07:10. / 2026-10-05 周一 07:10。 */
     private val now = ZonedDateTime.of(2026, 10, 5, 7, 10, 0, 0, zone)
@@ -35,18 +33,22 @@ class WeatherBriefPolicyTest {
     )
 
     @Test
-    fun `current reading, rounded`() {
-        assertEquals(WeatherBrief(WeatherCondition.PARTLY_CLOUDY, 8, umbrella = false), WeatherBriefPolicy.brief(forecast(), routine, now))
+    fun `current reading, rounded, with what to wear`() {
+        assertEquals(
+            WeatherBrief(WeatherCondition.PARTLY_CLOUDY, 8, umbrella = false, clothing = ClothingLevel.COOL),
+            WeatherBriefPolicy.brief(forecast(), now),
+        )
     }
 
     @Test
-    fun `rain on the way home already asks for an umbrella in the morning`() {
-        assertEquals(true, WeatherBriefPolicy.brief(forecast(rainAt = 17), routine, now)?.umbrella)
-        assertEquals("rain outside both windows does not", false, WeatherBriefPolicy.brief(forecast(rainAt = 12), routine, now)?.umbrella)
+    fun `rain later in the day already asks for an umbrella in the morning`() {
+        assertEquals(true, WeatherBriefPolicy.brief(forecast(rainAt = 17), now)?.umbrella)
+        assertEquals("rain that already fell does not", false, WeatherBriefPolicy.brief(forecast(rainAt = 5), now)?.umbrella)
+        assertEquals("rain after the day ends does not", false, WeatherBriefPolicy.brief(forecast(rainAt = 23), now)?.umbrella)
     }
 
     @Test
     fun `no reading, no line`() {
-        assertNull(WeatherBriefPolicy.brief(Forecast(), routine, now))
+        assertNull(WeatherBriefPolicy.brief(Forecast(), now))
     }
 }

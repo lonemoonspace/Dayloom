@@ -6,8 +6,6 @@ import io.github.lonemoonspace.dayloom.core.notify.RuleInput
 import io.github.lonemoonspace.dayloom.core.refresh.RefreshReport
 import io.github.lonemoonspace.dayloom.core.refresh.SourceId
 import io.github.lonemoonspace.dayloom.core.refresh.SourceResult
-import io.github.lonemoonspace.dayloom.core.routine.DailyWindow
-import io.github.lonemoonspace.dayloom.core.routine.Routine
 import io.github.lonemoonspace.dayloom.feature.transit.domain.BoardDeparture
 import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteMode
 import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteTrips
@@ -76,12 +74,21 @@ class TransitPolicyTest {
     }
 
     @Test
-    fun `the commute mode follows the daily windows`() {
-        val routine = Routine(toWork = DailyWindow(7 * 60, 9 * 60), backHome = DailyWindow(16 * 60, 18 * 60))
-        assertEquals(CommuteMode.OUTBOUND, TransitPolicy.commuteMode(routine, t(5, 7, 30)))
-        assertEquals(CommuteMode.INBOUND, TransitPolicy.commuteMode(routine, t(5, 17)))
-        assertEquals(CommuteMode.BOTH, TransitPolicy.commuteMode(routine, t(5, 12)))
-        assertEquals(CommuteMode.BOTH, TransitPolicy.commuteMode(routine, t(10, 7, 30)))
+    fun `the commute mode switches at noon`() {
+        assertEquals(CommuteMode.OUTBOUND, TransitPolicy.commuteMode(t(5, 7, 30)))
+        assertEquals(CommuteMode.OUTBOUND, TransitPolicy.commuteMode(t(5, 11, 59)))
+        assertEquals(CommuteMode.INBOUND, TransitPolicy.commuteMode(t(5, 12)))
+        assertEquals("weekends too", CommuteMode.INBOUND, TransitPolicy.commuteMode(t(10, 17)))
+    }
+
+    @Test
+    fun `alerts only in the daytime and for trips leaving within 45 minutes`() {
+        assertTrue(TransitPolicy.isAlertable(option(leg(dep = now.plusMinutes(45))), now))
+        assertFalse(TransitPolicy.isAlertable(option(leg(dep = now.plusMinutes(46))), now))
+        val late = t(5, 22, 5)
+        assertFalse(TransitPolicy.isAlertable(option(leg(dep = late.plusMinutes(5))), late))
+        val early = t(5, 5, 50)
+        assertFalse(TransitPolicy.isAlertable(option(leg(dep = early.plusMinutes(5))), early))
     }
 
     @Test
@@ -179,12 +186,13 @@ class TransitPolicyTest {
     }
 
     @Test
-    fun `the rule only acts on a fresh snapshot inside a window and sends structured text`() = runTest {
-        val id = SourceId("transit.commute")
+    fun `the rule only acts on a fresh snapshot of a trip leaving soon in the daytime and sends structured text`() = runTest {
+        val id = SourceId("transit.train")
         val fresh = RefreshReport(mapOf(id to SourceResult.Success(Instant.EPOCH)), Instant.EPOCH)
         val failed = RefreshReport(mapOf(id to SourceResult.Failed(io.github.lonemoonspace.dayloom.core.error.AppError.Offline())), Instant.EPOCH)
         var trips = CommuteTrips(CommuteMode.OUTBOUND, outbound = listOf(option(leg(line = "R1", delay = 12))))
         val rule = DisruptionRule(
+            name = "train_disruption",
             enabled = { true },
             refreshed = { it.succeeded(id) },
             trips = { trips },
@@ -206,9 +214,15 @@ class TransitPolicyTest {
         val worse = rule.evaluate(RuleInput(fresh, now), decision.newState)
         assertEquals(UiText.Res(R.string.transit_notify_cancelled, listOf("B2", "08:15")), worse.notifications.single().body)
 
-        trips = trips.copy(mode = CommuteMode.BOTH)
-        assertEquals(worse.newState, rule.evaluate(RuleInput(fresh, now), worse.newState).newState)
-        assertTrue(rule.evaluate(RuleInput(fresh, now), null).notifications.isEmpty())
+        // Further ahead than 45 minutes, or at night, nothing is said; once it comes close it is told once.
+        // 超过 45 分钟之后的班次或夜里都不提醒；临近时提醒一次。
+        trips = CommuteTrips(CommuteMode.OUTBOUND, outbound = listOf(option(leg(line = "R5", dep = now.plusMinutes(50), cancelled = true))))
+        val early = rule.evaluate(RuleInput(fresh, now), null)
+        assertTrue(early.notifications.isEmpty())
+        assertEquals(1, rule.evaluate(RuleInput(fresh, now.plusMinutes(10)), early.newState).notifications.size)
+        val night = t(5, 22, 30)
+        trips = CommuteTrips(CommuteMode.INBOUND, inbound = listOf(option(leg(line = "R5", dep = night.plusMinutes(10), cancelled = true))))
+        assertTrue(rule.evaluate(RuleInput(fresh, night), null).notifications.isEmpty())
     }
 
     // Morning brief / 早间简报
@@ -227,5 +241,14 @@ class TransitPolicyTest {
         assertEquals(UiText.Res(R.string.transit_brief, listOf("R1", "07:42", lateText)), TransitBrief.line(late, now))
 
         assertNull("nothing left today", TransitBrief.line(CommuteTrips(CommuteMode.OUTBOUND), now))
+
+        // Train and bus share the module's one line. / 火车与公交合用本模块的一行。
+        val bus = CommuteTrips(CommuteMode.OUTBOUND, outbound = listOf(option(leg(line = "31", dep = t(5, 7, 50)))))
+        assertEquals(
+            UiText.Res(R.string.transit_brief_joined, listOf(TransitBrief.line(onTime, now)!!, TransitBrief.line(bus, now)!!)),
+            TransitBrief.lines(listOf(onTime, bus), now),
+        )
+        assertEquals(TransitBrief.line(bus, now), TransitBrief.lines(listOf(CommuteTrips(CommuteMode.OUTBOUND), bus), now))
+        assertNull(TransitBrief.lines(emptyList(), now))
     }
 }

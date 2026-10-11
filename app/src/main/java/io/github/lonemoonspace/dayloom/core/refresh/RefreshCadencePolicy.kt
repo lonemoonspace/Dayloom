@@ -4,15 +4,15 @@ import java.time.Duration
 import java.time.Instant
 
 /**
- * How often a source should be refreshed. [busyInterval] applies inside the user's daily windows (commute times) when
- * [busyInWindows] is true; [interval] applies otherwise. [background] = refresh it from the background worker at all.
- * 来源该多久刷新一次。[busyInWindows] 为 true 时，在用户的日常时间窗（通勤时段）内用 [busyInterval]，其余时间用 [interval]。
- * [background] = 后台任务是否刷新它。
+ * How often a source should be refreshed. [busyInterval] applies in the daytime (06:00–22:00, `RoutinePolicy.isDaytime`)
+ * when [busyByDay] is true; [interval] applies otherwise. [background] = refresh it from the background worker at all.
+ * 来源该多久刷新一次。[busyByDay] 为 true 时，白天（06:00–22:00，`RoutinePolicy.isDaytime`）用 [busyInterval]，其余时间
+ * 用 [interval]。[background] = 后台任务是否刷新它。
  */
 data class RefreshCadence(
     val interval: Duration,
     val busyInterval: Duration = interval,
-    val busyInWindows: Boolean = false,
+    val busyByDay: Boolean = false,
     val background: Boolean = true,
 ) {
     companion object {
@@ -29,12 +29,12 @@ data class RefreshCadence(
  */
 object RefreshCadencePolicy {
 
-    fun isDue(cadence: RefreshCadence, inWindow: Boolean, lastFetchedAt: Instant?, now: Instant): Boolean {
+    fun isDue(cadence: RefreshCadence, daytime: Boolean, lastFetchedAt: Instant?, now: Instant): Boolean {
         if (lastFetchedAt == null) return true
         // A timestamp in the future (clock moved back, corrupt storage) must not block refreshing forever.
         // 未来的时间戳（时钟回拨、存储损坏）不能让刷新永远卡住。
         if (lastFetchedAt.isAfter(now)) return true
-        val interval = if (inWindow && cadence.busyInWindows) cadence.busyInterval else cadence.interval
+        val interval = if (daytime && cadence.busyByDay) cadence.busyInterval else cadence.interval
         // Small tolerance so a worker firing a few seconds early does not skip a whole period.
         // 留一点余量，后台任务早几秒触发时不至于白白跳过一整个周期。
         return Duration.between(lastFetchedAt, now) >= interval.minus(TOLERANCE)

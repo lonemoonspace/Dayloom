@@ -3,14 +3,18 @@ package io.github.lonemoonspace.dayloom.app
 import android.content.Context
 import android.util.Log
 import androidx.datastore.dataStoreFile
+import androidx.room.Room
+import androidx.room.RoomDatabase
 import io.github.lonemoonspace.dayloom.BuildConfig
 import io.github.lonemoonspace.dayloom.app.work.BackgroundRound
 import io.github.lonemoonspace.dayloom.core.i18n.AppLanguage
 import io.github.lonemoonspace.dayloom.core.i18n.SystemAppLanguage
-import io.github.lonemoonspace.dayloom.core.location.AndroidDeviceLocator
-import io.github.lonemoonspace.dayloom.core.location.DeviceLocator
-import io.github.lonemoonspace.dayloom.core.location.OpenMeteoGeocoder
+import io.github.lonemoonspace.dayloom.core.location.GooglePlacesSearch
+import io.github.lonemoonspace.dayloom.core.location.EnturGeocoder
+import io.github.lonemoonspace.dayloom.core.location.FallbackSearch
+import io.github.lonemoonspace.dayloom.core.location.NominatimSearch
 import io.github.lonemoonspace.dayloom.core.location.PlaceBook
+import io.github.lonemoonspace.dayloom.core.location.PlaceFinder
 import io.github.lonemoonspace.dayloom.core.location.PlaceSearch
 import io.github.lonemoonspace.dayloom.core.module.FeatureModule
 import io.github.lonemoonspace.dayloom.core.network.ConnectivityMonitor
@@ -20,10 +24,10 @@ import io.github.lonemoonspace.dayloom.core.notify.NotificationSender
 import io.github.lonemoonspace.dayloom.core.notify.PrefsNotificationStateStore
 import io.github.lonemoonspace.dayloom.core.refresh.RefreshCoordinator
 import io.github.lonemoonspace.dayloom.core.refresh.SourceId
-import io.github.lonemoonspace.dayloom.core.routine.Routine
 import io.github.lonemoonspace.dayloom.core.secret.DataStoreSecretStore
 import io.github.lonemoonspace.dayloom.core.secret.SecretBox
 import io.github.lonemoonspace.dayloom.core.secret.SecretStore
+import io.github.lonemoonspace.dayloom.core.secret.SharedSecrets
 import io.github.lonemoonspace.dayloom.core.storage.AppSettings
 import io.github.lonemoonspace.dayloom.core.storage.AppStores
 import io.github.lonemoonspace.dayloom.core.storage.DataStoreSnapshotStore
@@ -40,10 +44,10 @@ import io.github.lonemoonspace.dayloom.core.time.ZonePolicy
 import io.github.lonemoonspace.dayloom.core.time.currentDeviceZone
 import io.github.lonemoonspace.dayloom.core.time.deviceZoneFlow
 import java.time.ZoneId
+import kotlin.reflect.KClass
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -79,8 +83,6 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
 
     val places = PlaceBook(sharedData)
 
-    val routine: Flow<Routine> = sharedData.flow.map { it.routine }.distinctUntilChanged()
-
     val zone: StateFlow<ZoneId> = combine(
         appSettings.flow.map { it.timeZoneOverride }.distinctUntilChanged(),
         deviceZoneFlow(appContext),
@@ -95,11 +97,13 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
 
     val connectivity = ConnectivityMonitor(appContext)
 
-    val placeSearch: PlaceSearch = OpenMeteoGeocoder(http)
-
-    val deviceLocator: DeviceLocator = AndroidDeviceLocator(appContext)
-
     val secrets: SecretStore = DataStoreSecretStore(appContext.secretsDataStore, SecretBox)
+
+    val placeSearch: PlaceSearch = PlaceFinder(
+        google = GooglePlacesSearch(http),
+        fallback = FallbackSearch(EnturGeocoder(http), NominatimSearch(http)),
+        googleKey = { secrets.usable(SharedSecrets.GOOGLE_MAPS) },
+    )
 
     private val moduleSettings = ModuleSettingsStore(appContext.moduleSettingsDataStore) { moduleId, e ->
         Log.w(TAG, "settings of module $moduleId unreadable, using defaults", e)
@@ -132,6 +136,19 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
         }
     }
 
+    private var databaseOwner: String? = null
+
+    private val databaseFactory = object : DefaultModuleContext.DatabaseFactory {
+        override fun <T : RoomDatabase> create(moduleId: String, type: KClass<T>): T {
+            synchronized(this) {
+                val owner = databaseOwner
+                check(owner == null || owner == moduleId) { "$DATABASE_FILE is owned by $owner, not $moduleId" }
+                databaseOwner = moduleId
+            }
+            return Room.databaseBuilder(appContext, type.java, DATABASE_FILE).build()
+        }
+    }
+
     val host = ModuleHost(
         modules = modules,
         settings = appSettings,
@@ -144,10 +161,10 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
                 coordinator = coordinator,
                 appScope = appScope,
                 places = places,
-                routine = routine,
                 moduleSettings = moduleSettings,
                 secrets = secrets,
                 snapshotFactory = snapshotFactory,
+                databaseFactory = databaseFactory,
             )
         },
         coordinator = coordinator,
@@ -156,15 +173,18 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
 
     val backgroundRound = BackgroundRound(
         active = host.active,
-        routine = routine,
         clock = clock,
         coordinator = coordinator,
         engine = notificationEngine,
         morningBrief = { appSettings.get().morningBrief },
+        briefMinute = { appSettings.get().morningBriefMinute },
         onBriefError = { Log.w(TAG, "a morning brief line failed", it) },
     )
 
     private companion object {
         const val TAG = "AppGraph"
+
+        /** Frozen from v1.0.0 (design §6.1). / 从 v1.0.0 起冻结（设计文档 §6.1）。 */
+        const val DATABASE_FILE = "dayloom.db"
     }
 }

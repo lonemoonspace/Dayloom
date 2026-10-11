@@ -50,7 +50,7 @@ class TrafficSource(
     override val cadence = RefreshCadence(
         interval = Duration.ofMinutes(60),
         busyInterval = Duration.ofMinutes(15),
-        busyInWindows = true,
+        busyByDay = true,
     )
 
     override val inputs: Flow<SourceInput<TrafficParams>> = combine(from, to, direction, secret, ::inputFor)

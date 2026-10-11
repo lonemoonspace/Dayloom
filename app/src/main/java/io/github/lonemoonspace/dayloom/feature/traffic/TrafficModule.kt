@@ -67,15 +67,14 @@ data class TrafficSettings(
 @OptIn(ExperimentalCoroutinesApi::class)
 private class TrafficInstance(private val ctx: ModuleContext) : ModuleInstance {
     private val store = ctx.settings(TrafficSettings.serializer(), TrafficSettings())
-    private val key = ctx.secret("google_maps")
+    private val key = ctx.googleMapsKey
 
     private val from: Flow<Place?> = store.flow.map { it.fromPlaceId }.distinctUntilChanged().flatMapLatest(ctx.places::observe)
     private val to: Flow<Place?> = store.flow.map { it.toPlaceId }.distinctUntilChanged().flatMapLatest(ctx.places::observe)
 
     // Re-evaluated every minute but only emits when the direction flips, which then triggers a refresh.
     // 每分钟重新判断，但只在方向变化时发出，随后触发一次刷新。
-    private val direction: Flow<Direction> = combine(ctx.routine, ctx.clock.minuteTicks(), TrafficPolicy::direction)
-        .distinctUntilChanged()
+    private val direction: Flow<Direction> = ctx.clock.minuteTicks().map(TrafficPolicy::direction).distinctUntilChanged()
 
     private val source = TrafficSource(
         id = ctx.sourceId("route"),

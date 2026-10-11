@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bus commute card: a bus front with mirrors and wheels, tinted by the Icon. / 公交通勤卡片：带后视镜与车轮的公交车正面，由 Icon 着色。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M7,3h10a2.5,2.5 0,0 1,2.5 2.5v12h-15v-12a2.5,2.5 0,0 1,2.5 -2.5zM4.5,11h15M2.5,7v2M21.5,7v2M7,17.5v3M17,17.5v3" />
+    <path android:fillColor="#FF000000" android:pathData="M8,14.25m-1.2,0a1.2,1.2 0,1 1,2.4 0a1.2,1.2 0,1 1,-2.4 0M16,14.25m-1.2,0a1.2,1.2 0,1 1,2.4 0a1.2,1.2 0,1 1,-2.4 0" />
+</vector>

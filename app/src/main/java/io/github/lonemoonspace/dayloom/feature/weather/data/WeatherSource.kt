@@ -4,7 +4,6 @@ import io.github.lonemoonspace.dayloom.R
 import io.github.lonemoonspace.dayloom.core.error.AppError
 import io.github.lonemoonspace.dayloom.core.i18n.uiText
 import io.github.lonemoonspace.dayloom.core.location.Place
-import io.github.lonemoonspace.dayloom.core.location.Places
 import io.github.lonemoonspace.dayloom.core.location.PlacesPolicy
 import io.github.lonemoonspace.dayloom.core.refresh.CachedSource
 import io.github.lonemoonspace.dayloom.core.refresh.RefreshCadence
@@ -18,41 +17,34 @@ import io.github.lonemoonspace.dayloom.feature.weather.domain.WeatherPointPicker
 import java.time.Duration
 import java.time.Instant
 import java.time.ZonedDateTime
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 
 data class WeatherParams(val lat: Double, val lon: Double)
 
 /**
- * `weather.forecast`: the MET forecast for the place chosen in the weather settings (Home by default).
- * `weather.forecast`：天气设置里所选地点（默认是家）的 MET 预报。
+ * `weather.forecast`: the MET forecast for Home.
+ * `weather.forecast`：家所在地的 MET 预报。
  */
-@OptIn(ExperimentalCoroutinesApi::class)
 class WeatherSource(
     id: SourceId,
     store: SnapshotStore<Forecast>,
     clock: AppClock,
-    placeId: Flow<String>,
-    places: Places,
+    place: Flow<Place?>,
     private val api: MetApi,
 ) : CachedSource<WeatherParams, Forecast>(id, store, clock) {
 
-    override val schemaVersion = 1
+    override val schemaVersion = 2
 
     override val maxAge: Duration = Duration.ofHours(6)
 
     override val cadence = RefreshCadence(
         interval = Duration.ofMinutes(60),
         busyInterval = Duration.ofMinutes(30),
-        busyInWindows = true,
+        busyByDay = true,
     )
 
-    override val inputs: Flow<SourceInput<WeatherParams>> = placeId.distinctUntilChanged()
-        .flatMapLatest(places::observe)
-        .map(::inputFor)
+    override val inputs: Flow<SourceInput<WeatherParams>> = place.map(::inputFor)
 
     override suspend fun fetch(params: WeatherParams, now: ZonedDateTime, previous: Snapshot<Forecast>?): Forecast {
         val forecast = when (val result = api.fetch(params.lat, params.lon, previous?.value?.lastModified)) {

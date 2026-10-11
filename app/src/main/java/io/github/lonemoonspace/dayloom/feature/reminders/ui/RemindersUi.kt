@@ -61,27 +61,33 @@ import kotlinx.coroutines.flow.Flow
 internal fun RemindersCard(settings: Flow<RemindersSettings>) {
     val saved by settings.collectAsStateWithLifecycle(initialValue = null)
     val now = rememberMinuteTick().toLocalDateTime()
-    InfoCard(title = stringResource(R.string.reminders_title)) {
+    InfoCard(title = stringResource(R.string.reminders_title), icon = R.drawable.ic_reminders) {
         val statuses = ReminderPolicy.statuses(saved?.items.orEmpty(), now)
         if (saved != null && statuses.isEmpty()) {
             Hint(stringResource(R.string.reminders_empty))
         }
+        // One row per item: name, its date, the remaining time. / 每个条目一行：名称、日期、剩余时间。
         statuses.forEach { status ->
-            Column(Modifier.padding(vertical = 3.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        status.item.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    val (color, icon) = chip(status.state)
-                    StatusChip(remainingText(status), color, icon)
-                }
-                Hint(stringResource(R.string.reminders_valid_until, untilText(status.until)))
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 3.dp)) {
+                Text(
+                    status.item.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    untilText(status.until),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(8.dp))
+                val (color, icon) = chip(status.state)
+                StatusChip(remainingText(status), color, icon)
             }
         }
     }

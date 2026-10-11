@@ -17,36 +17,36 @@ class RefreshPoliciesTest {
     private val cadence = RefreshCadence(
         interval = Duration.ofMinutes(60),
         busyInterval = Duration.ofMinutes(15),
-        busyInWindows = true,
+        busyByDay = true,
     )
 
     @Test
     fun `never fetched is always due`() {
-        assertTrue(RefreshCadencePolicy.isDue(cadence, inWindow = false, lastFetchedAt = null, now = now))
+        assertTrue(RefreshCadencePolicy.isDue(cadence, daytime = false, lastFetchedAt = null, now = now))
     }
 
     @Test
     fun `outside windows the normal interval applies, inside the busy one`() {
         val twentyMinutesAgo = now.minus(Duration.ofMinutes(20))
-        assertFalse(RefreshCadencePolicy.isDue(cadence, inWindow = false, lastFetchedAt = twentyMinutesAgo, now = now))
-        assertTrue(RefreshCadencePolicy.isDue(cadence, inWindow = true, lastFetchedAt = twentyMinutesAgo, now = now))
+        assertFalse(RefreshCadencePolicy.isDue(cadence, daytime = false, lastFetchedAt = twentyMinutesAgo, now = now))
+        assertTrue(RefreshCadencePolicy.isDue(cadence, daytime = true, lastFetchedAt = twentyMinutesAgo, now = now))
     }
 
     @Test
     fun `the busy interval is ignored for sources that do not ask for it`() {
-        val plain = cadence.copy(busyInWindows = false)
-        assertFalse(RefreshCadencePolicy.isDue(plain, inWindow = true, lastFetchedAt = now.minus(Duration.ofMinutes(20)), now = now))
+        val plain = cadence.copy(busyByDay = false)
+        assertFalse(RefreshCadencePolicy.isDue(plain, daytime = true, lastFetchedAt = now.minus(Duration.ofMinutes(20)), now = now))
     }
 
     @Test
     fun `a worker firing a few seconds early does not skip a period`() {
         val almost = now.minus(Duration.ofMinutes(15)).plusSeconds(30)
-        assertTrue(RefreshCadencePolicy.isDue(cadence, inWindow = true, lastFetchedAt = almost, now = now))
+        assertTrue(RefreshCadencePolicy.isDue(cadence, daytime = true, lastFetchedAt = almost, now = now))
     }
 
     @Test
     fun `a timestamp in the future never blocks refreshing`() {
-        assertTrue(RefreshCadencePolicy.isDue(cadence, inWindow = false, lastFetchedAt = now.plusSeconds(3_600), now = now))
+        assertTrue(RefreshCadencePolicy.isDue(cadence, daytime = false, lastFetchedAt = now.plusSeconds(3_600), now = now))
     }
 
     @Test

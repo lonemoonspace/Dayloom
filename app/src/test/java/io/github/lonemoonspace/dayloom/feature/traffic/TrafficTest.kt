@@ -9,8 +9,6 @@ import io.github.lonemoonspace.dayloom.core.refresh.SourceId
 import io.github.lonemoonspace.dayloom.core.refresh.SourceInput
 import io.github.lonemoonspace.dayloom.core.refresh.SourceResult
 import io.github.lonemoonspace.dayloom.core.refresh.Trigger
-import io.github.lonemoonspace.dayloom.core.routine.DailyWindow
-import io.github.lonemoonspace.dayloom.core.routine.Routine
 import io.github.lonemoonspace.dayloom.core.secret.SecretState
 import io.github.lonemoonspace.dayloom.core.storage.InMemorySnapshotStore
 import io.github.lonemoonspace.dayloom.core.time.FixedClock
@@ -68,19 +66,13 @@ class TrafficTest {
 
     // Direction / 方向
 
-    private val routine = Routine(toWork = DailyWindow(7 * 60, 9 * 60), backHome = DailyWindow(15 * 60, 17 * 60))
-
     @Test
-    fun `direction follows the window under way, else the next one`() {
-        assertEquals(Direction.TO_WORK, TrafficPolicy.direction(routine, t(5, 6)))
-        assertEquals(Direction.TO_WORK, TrafficPolicy.direction(routine, t(5, 8)))
-        // After the morning window the next one is the way home. / 早上的时间窗过后，下一个是回家。
-        assertEquals(Direction.BACK_HOME, TrafficPolicy.direction(routine, t(5, 12)))
-        assertEquals(Direction.BACK_HOME, TrafficPolicy.direction(routine, t(5, 16)))
-        assertEquals(Direction.TO_WORK, TrafficPolicy.direction(routine, t(5, 18)))
-        // Friday evening → Monday morning. / 周五晚上 → 周一早上。
-        assertEquals(Direction.TO_WORK, TrafficPolicy.direction(routine, t(9, 20)))
-        assertEquals(Direction.TO_WORK, TrafficPolicy.direction(routine.copy(enabled = false), t(5, 16)))
+    fun `direction switches at noon, weekends too`() {
+        assertEquals(Direction.TO_WORK, TrafficPolicy.direction(t(5, 6)))
+        assertEquals(Direction.TO_WORK, TrafficPolicy.direction(t(5, 11)))
+        assertEquals(Direction.BACK_HOME, TrafficPolicy.direction(t(5, 12)))
+        assertEquals(Direction.BACK_HOME, TrafficPolicy.direction(t(5, 23)))
+        assertEquals(Direction.BACK_HOME, TrafficPolicy.direction(t(10, 16)))
     }
 
     // Parsing and levels / 解析与等级

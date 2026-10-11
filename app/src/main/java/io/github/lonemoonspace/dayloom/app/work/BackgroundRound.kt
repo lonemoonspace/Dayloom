@@ -10,7 +10,6 @@ import io.github.lonemoonspace.dayloom.core.notify.ScopedRule
 import io.github.lonemoonspace.dayloom.core.refresh.BackgroundRefreshPolicy
 import io.github.lonemoonspace.dayloom.core.refresh.RefreshCoordinator
 import io.github.lonemoonspace.dayloom.core.refresh.Trigger
-import io.github.lonemoonspace.dayloom.core.routine.Routine
 import io.github.lonemoonspace.dayloom.core.routine.RoutinePolicy
 import io.github.lonemoonspace.dayloom.core.time.AppClock
 import kotlinx.coroutines.flow.Flow
@@ -26,28 +25,26 @@ import kotlinx.coroutines.flow.filterNotNull
  */
 class BackgroundRound(
     private val active: Flow<List<ActiveModule>?>,
-    private val routine: Flow<Routine>,
     private val clock: AppClock,
     private val coordinator: RefreshCoordinator,
     private val engine: NotificationEngine,
     private val morningBrief: suspend () -> Boolean,
+    private val briefMinute: suspend () -> Int,
     private val onBriefError: (Exception) -> Unit = {},
 ) {
     /** Returns whether WorkManager should retry soon. / 返回是否应让 WorkManager 尽快重试。 */
     suspend fun run(): Boolean {
         val modules = active.filterNotNull().first()
-        val currentRoutine = routine.first()
         val ids = modules.flatMap { it.instance.sources }.filter { it.cadence.background }.mapTo(mutableSetOf()) { it.id }
-        val inWindow = RoutinePolicy.active(currentRoutine, clock.now()) != null
-        val report = coordinator.refreshDue(ids, Trigger.BACKGROUND, inWindow, throttleFailures = false)
-        engine.run(rules(modules, currentRoutine), RuleInput(report, clock.now()))
+        val report = coordinator.refreshDue(ids, Trigger.BACKGROUND, RoutinePolicy.isDaytime(clock.now()), throttleFailures = false)
+        engine.run(rules(modules), RuleInput(report, clock.now()))
         return BackgroundRefreshPolicy.shouldRetry(report.results.values)
     }
 
-    private fun rules(modules: List<ActiveModule>, currentRoutine: Routine): List<ScopedRule> {
+    private fun rules(modules: List<ActiveModule>): List<ScopedRule> {
         val brief = MorningBriefRule(
             enabled = morningBrief,
-            routine = { currentRoutine },
+            briefMinute = briefMinute,
             contributors = { modules.mapNotNull { it.instance.brief } },
             onError = onBriefError,
         )

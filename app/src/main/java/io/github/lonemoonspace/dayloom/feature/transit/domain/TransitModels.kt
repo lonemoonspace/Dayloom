@@ -12,6 +12,25 @@ data class TransitStop(val id: String = "", val name: String = "", val locality:
 }
 
 /**
+ * Which vehicles a commute uses. Train and bus commutes are kept apart, each with its own stops, card and settings, because
+ * people plan them differently (a fixed train vs. whichever bus comes).
+ * 一段通勤坐什么车。火车与公交分开，各有自己的站点、卡片与设置，因为两者的安排方式不同（固定的火车班次 vs. 哪班公交先来坐哪班）。
+ */
+enum class CommuteKind { TRAIN, BUS }
+
+/** One commute route: two stops and how many options to show. / 一条通勤路线：两个站点与显示几个方案。 */
+@Serializable
+data class CommuteRoute(
+    val origin: TransitStop = TransitStop(),
+    val destination: TransitStop = TransitStop(),
+    val options: Int = TransitPolicy.DEFAULT_OPTIONS,
+    /** Opt-in, off by default like every notification (design §7.4). / 选择加入，与所有通知一样默认关闭（设计文档 §7.4）。 */
+    val notify: Boolean = false,
+) {
+    val isSet: Boolean get() = origin.isSet && destination.isSet
+}
+
+/**
  * One ride on one vehicle; walking between stops is not a leg. Times are epoch millis; aimed = timetable,
  * expected = real-time estimate (equal to aimed without real-time data).
  * 乘坐一辆车的一段；站间步行不算一段。时刻为 epoch 毫秒；aimed = 时刻表，expected = 实时预计（没有实时数据时等于 aimed）。
@@ -33,6 +52,10 @@ data class TransitLeg(
     /** False means no real-time data: the times are only the timetable. / false 表示没有实时数据：时刻只是时刻表。 */
     val realtime: Boolean = false,
     val cancelled: Boolean = false,
+    /** Platform or stop position the leg leaves from, e.g. `4` or `B`; empty when unknown. / 这一段出发的站台或候车位，如 `4`、`B`；未知时为空。 */
+    val platform: String = "",
+    /** A bus running in place of the train, e.g. during track work. / 代替火车运行的巴士，例如线路施工期间。 */
+    val replacementBus: Boolean = false,
 )
 
 /** One way to make the trip: its legs in order; transfers happen between consecutive legs. / 一种出行方案：按顺序的各段；换乘发生在相邻两段之间。 */
@@ -45,20 +68,17 @@ data class TripOption(val legs: List<TransitLeg> = emptyList()) {
 
 /** Which way the commute card looks. / 通勤卡片看哪个方向。 */
 enum class CommuteMode {
-    /** Inside the to-work window: several options origin → destination. / 上班时段：起点 → 终点的多个方案。 */
+    /** Before noon: options origin → destination. / 中午之前：起点 → 终点的方案。 */
     OUTBOUND,
 
-    /** Inside the back-home window: several options destination → origin. / 回家时段：终点 → 起点的多个方案。 */
+    /** From noon: options destination → origin. / 中午起：终点 → 起点的方案。 */
     INBOUND,
-
-    /** Outside the windows: the next option in each direction. / 时段之外：两个方向各一个最近的方案。 */
-    BOTH,
 }
 
-/** The snapshot of `transit.commute`. / `transit.commute` 的快照。 */
+/** The snapshot of `transit.train` and `transit.bus`. / `transit.train` 与 `transit.bus` 的快照。 */
 @Serializable
 data class CommuteTrips(
-    val mode: CommuteMode = CommuteMode.BOTH,
+    val mode: CommuteMode = CommuteMode.OUTBOUND,
     val outbound: List<TripOption> = emptyList(),
     val inbound: List<TripOption> = emptyList(),
 )
@@ -87,6 +107,8 @@ data class BoardDeparture(
     val expected: Long = 0,
     val realtime: Boolean = false,
     val cancelled: Boolean = false,
+    /** A bus running in place of the train; its line code is still the train's. / 代替火车运行的巴士；线路号仍是火车的。 */
+    val replacementBus: Boolean = false,
 )
 
 @Serializable

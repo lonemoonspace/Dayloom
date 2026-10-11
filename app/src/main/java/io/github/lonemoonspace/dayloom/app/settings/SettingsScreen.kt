@@ -1,7 +1,15 @@
 package io.github.lonemoonspace.dayloom.app.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.runtime.remember
+import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,6 +33,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import java.time.LocalTime
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
@@ -38,6 +47,7 @@ import io.github.lonemoonspace.dayloom.core.notify.CoreNotifications
 import io.github.lonemoonspace.dayloom.core.ui.InfoCard
 import io.github.lonemoonspace.dayloom.core.ui.NotifySwitch
 import io.github.lonemoonspace.dayloom.core.ui.SwitchRow
+import io.github.lonemoonspace.dayloom.core.ui.rememberTimeFormatter
 import io.github.lonemoonspace.dayloom.core.ui.plusBars
 
 @Composable
@@ -47,7 +57,8 @@ fun SettingsScreen(
     onTimeZone: (String) -> Boolean,
     onModuleEnabled: (String, Boolean) -> Unit,
     onMorningBrief: (Boolean) -> Unit,
-    /** The shared places and daily-routine cards. / 共用的地点与日常作息卡片。 */
+    onMorningBriefTime: (Int) -> Unit,
+    /** The shared places card. / 共用的地点卡片。 */
     sharedData: @Composable () -> Unit = {},
 ) {
     LazyColumn(
@@ -58,11 +69,11 @@ fun SettingsScreen(
         item(key = "language") { LanguageCard(state.language, onLanguage) }
         item(key = "timezone") { TimeZoneCard(state.timeZoneOverride, state.effectiveZone, onTimeZone) }
         item(key = "shared") { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { sharedData() } }
-        item(key = "notifications") { NotificationsCard(state.morningBrief, onMorningBrief) }
+        item(key = "notifications") { NotificationsCard(state.morningBrief, state.morningBriefMinute, onMorningBrief, onMorningBriefTime) }
         item(key = "modules") { ModulesCard(state.modules, onModuleEnabled) }
-        items(state.sections, key = { "section:${it.module.id}" }) { active ->
-            InfoCard(title = stringResource(active.module.title)) {
-                active.instance.settings?.content?.invoke()
+        items(state.sections, key = { "section:${it.active.module.id}:${it.index}" }) { entry ->
+            InfoCard(title = stringResource(entry.section.title ?: entry.active.module.title)) {
+                entry.section.content()
             }
         }
         item(key = "about") { AboutCard() }
@@ -141,7 +152,8 @@ private fun TimeZoneCard(override: String, effective: String, onSave: (String) -
 }
 
 @Composable
-private fun NotificationsCard(morningBrief: Boolean, onMorningBrief: (Boolean) -> Unit) {
+private fun NotificationsCard(morningBrief: Boolean, briefMinute: Int, onMorningBrief: (Boolean) -> Unit, onBriefTime: (Int) -> Unit) {
+    var picking by rememberSaveable { mutableStateOf(false) }
     InfoCard(title = stringResource(R.string.settings_notifications)) {
         NotifySwitch(
             label = stringResource(R.string.brief_title),
@@ -150,10 +162,26 @@ private fun NotificationsCard(morningBrief: Boolean, onMorningBrief: (Boolean) -
             channelId = CoreNotifications.BRIEF_CHANNEL_ID,
             onCheckedChange = onMorningBrief,
         )
+        if (morningBrief) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.brief_time), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                TimeButton(LocalTime.MIDNIGHT.plusMinutes(briefMinute.toLong()).format(rememberTimeFormatter())) { picking = true }
+            }
+        }
         Text(
             text = stringResource(R.string.settings_notifications_note),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    if (picking) {
+        TimeDialog(
+            initialMinute = briefMinute,
+            onDismiss = { picking = false },
+            onConfirm = { minute ->
+                picking = false
+                onBriefTime(minute)
+            },
         )
     }
 }
@@ -183,9 +211,16 @@ internal fun ModulesCard(modules: List<ModuleToggle>, onToggle: (String, Boolean
     }
 }
 
+/**
+ * Version, license and source code, plus three dialogs: where the data comes from, what the app keeps and sends, and the
+ * open-source licenses (MIT requires shipping lunar-java's notice with the app).
+ * 版本、许可证与源代码，外加三个对话框：数据从哪里来、App 保存与发送什么、开源许可（MIT 要求随 App 附上 lunar-java 的声明）。
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AboutCard() {
     val uriHandler = LocalUriHandler.current
+    var showing by rememberSaveable { mutableStateOf<AboutPage?>(null) }
     InfoCard(title = stringResource(R.string.settings_about)) {
         Text(stringResource(R.string.settings_version, BuildConfig.VERSION_NAME), style = MaterialTheme.typography.bodyMedium)
         Text(
@@ -193,8 +228,54 @@ private fun AboutCard() {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        TextButton(onClick = { uriHandler.openUri(SharedHttpClient.REPO_URL) }) {
-            Text(stringResource(R.string.settings_source_code))
+        // One line when it fits (Chinese), wrapping only when it does not. / 放得下就排一行（中文），放不下才换行。
+        FlowRow(Modifier.fillMaxWidth()) {
+            TextButton(onClick = { showing = AboutPage.SOURCES }) { Text(stringResource(R.string.about_data_sources)) }
+            TextButton(onClick = { showing = AboutPage.PRIVACY }) { Text(stringResource(R.string.about_privacy)) }
+            TextButton(onClick = { showing = AboutPage.LICENSES }) { Text(stringResource(R.string.about_licenses)) }
+            TextButton(onClick = { uriHandler.openUri(SharedHttpClient.REPO_URL) }) { Text(stringResource(R.string.settings_source_code)) }
         }
     }
+    showing?.let { page -> AboutDialog(page) { showing = null } }
+}
+
+private enum class AboutPage { SOURCES, PRIVACY, LICENSES }
+
+@Composable
+private fun AboutDialog(page: AboutPage, onDismiss: () -> Unit) {
+    val resources = LocalResources.current
+    val body = when (page) {
+        AboutPage.SOURCES -> listOf(
+            R.string.about_source_weather,
+            R.string.about_source_transit,
+            R.string.about_source_places,
+            R.string.about_source_google,
+            R.string.about_source_football,
+            R.string.about_source_news,
+            R.string.about_source_lunar,
+        ).map { stringResource(it) }.joinToString("\n\n")
+        AboutPage.PRIVACY -> stringResource(R.string.about_privacy_body)
+        // Kept as a raw file: license texts are legal text and stay in English. / 放在 raw 文件里：许可证是法律文本，保持英文原文。
+        AboutPage.LICENSES -> remember(resources) { resources.openRawResource(R.raw.third_party_licenses).bufferedReader().use { it.readText() } }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                stringResource(
+                    when (page) {
+                        AboutPage.SOURCES -> R.string.about_data_sources
+                        AboutPage.PRIVACY -> R.string.about_privacy
+                        AboutPage.LICENSES -> R.string.about_licenses
+                    },
+                ),
+            )
+        },
+        text = {
+            Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
+                Text(body, style = if (page == AboutPage.LICENSES) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium)
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.about_close)) } },
+    )
 }

@@ -96,7 +96,7 @@ internal fun WeatherCard(
     val forecast = snapshot?.value
     val current = forecast?.let { f -> WeatherPointPicker.pick(f.points, now) { Instant.ofEpochMilli(it.time).atZone(now.zone) } }
     if (snapshot == null || forecast == null || current == null) {
-        InfoCard(title = stringResource(R.string.weather_title), icon = R.drawable.ic_wx_partly_day) {
+        InfoCard(title = stringResource(R.string.weather_title), icon = R.drawable.ic_weather) {
             if (error == null) SkeletonLines() else Text(error.userMessage().asString(), color = MaterialTheme.statusColors.red, style = MaterialTheme.typography.bodySmall)
         }
         return

@@ -15,8 +15,10 @@ import androidx.compose.ui.res.painterResource
 /**
  * Draws one of the app's woven line icons: black strokes take [tint], green strokes take [accent].
  * The gaps where lines cross are cut into the paths, so a plain single-colour `Icon(tint = …)` still draws them correctly.
+ * The accent defaults to tertiary: with wallpaper colours, secondary is a muted primary and barely stands apart from the ink.
  * 绘制 App 的编织线条图标：黑色线条用 [tint]，绿色线条用 [accent]。
  * 线条交叉处的缝切在路径里，所以普通单色 `Icon(tint = …)` 也能正确显示。
+ * 强调色默认用 tertiary：壁纸配色里 secondary 只是降低饱和度的 primary，和墨色几乎分不开。
  */
 @Composable
 fun DuotoneIcon(
@@ -24,7 +26,7 @@ fun DuotoneIcon(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     tint: Color = LocalContentColor.current,
-    accent: Color = MaterialTheme.colorScheme.secondary,
+    accent: Color = MaterialTheme.colorScheme.tertiary,
 ) {
     val filter = remember(tint, accent) { ColorFilter.colorMatrix(ColorMatrix(duotoneMatrix(tint, accent))) }
     Image(painter = painterResource(id), contentDescription = contentDescription, modifier = modifier, colorFilter = filter)

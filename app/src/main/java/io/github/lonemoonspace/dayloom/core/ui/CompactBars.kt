@@ -126,7 +126,7 @@ private fun NavTabItem(tab: NavTab, modifier: Modifier) {
     val primary = MaterialTheme.colorScheme.primary
     val tint = if (tab.selected) primary else MaterialTheme.colorScheme.onSurfaceVariant
     // Only the selected tab shows the accent thread, so the selection reads at a glance. / 只有选中的标签显示强调色的那根线，选中状态一眼可辨。
-    val accent = if (tab.selected) MaterialTheme.colorScheme.secondary else tint
+    val accent = if (tab.selected) MaterialTheme.colorScheme.tertiary else tint
     Box(
         modifier = modifier
             .fillMaxHeight()

@@ -13,14 +13,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -31,9 +29,9 @@ import io.github.lonemoonspace.dayloom.core.ui.theme.appSurfaces
 /**
  * The compact card used everywhere: card colour, 12/10dp padding and one title row — an optional module [icon], the
  * [title], a muted [subtitle] (route, place) that gives way first on a narrow screen, then a "Cached" chip when [stale] and
- * a faint [meta] text ("1 min ago") at the end.
+ * a faint [meta] text ("1 min ago") at the end. [icon] must be one of the generated woven icons: it is drawn by [DuotoneIcon].
  * 全 App 共用的紧凑卡片：卡片底色、12/10dp 内边距与一行标题——可选的模块 [icon]、[title]、窄屏时先让位的浅色 [subtitle]
- * （路线、地点），[stale] 时的「缓存」小标签，末尾是淡色的 [meta] 文字（「1 分钟前」）。
+ * （路线、地点），[stale] 时的「缓存」小标签，末尾是淡色的 [meta] 文字（「1 分钟前」）。[icon] 必须是生成的编织图标：由 [DuotoneIcon] 绘制。
  */
 @Composable
 fun InfoCard(
@@ -64,7 +62,7 @@ fun InfoCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (icon != null) {
                         // The title says what the card is; the icon is not read out. / 标题已说明卡片内容，图标不朗读。
-                        Icon(painterResource(icon), contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                        DuotoneIcon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                     }
                     Text(

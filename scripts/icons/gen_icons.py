@@ -51,6 +51,25 @@ def transit():
     return [body, *legs, band], [(INK, dot(9.5, 15, 1.1)), (INK, dot(14.5, 15, 1.1))]
 
 
+def train():
+    body = strand(roundrect(6.5, 2.5, 17.5, 15, 3), INK, True, "body")
+    sign = strand(poly((10, 6.25), (14, 6.25)), INK, name="sign")
+    rails = [strand(poly((9.5, 16.5), (5.5, 21.5)), INK, name="rail"), strand(poly((14.5, 16.5), (18.5, 21.5)), INK, name="rail")]
+    sleeper = strand(poly((2.5, 19.5), (21.5, 19.5)), ACC, name="sleeper")
+    cut(sleeper, rails[0], (7.1, 19.5), 2)
+    cut(sleeper, rails[1], (16.9, 19.5), 2)
+    return [body, sign, *rails, sleeper], [(INK, dot(9.5, 11.25, 1.1)), (INK, dot(14.5, 11.25, 1.1))]
+
+
+def bus():
+    body = strand(roundrect(5, 3, 19, 17.5, 2.5), INK, True, "body")
+    wheels = [strand(poly((x, 17.5), (x, 20.5)), INK, name="wheel") for x in (8.5, 15.5)]
+    mirrors = strand(poly((2, 12.5), (2, 9.5), (22, 9.5), (22, 12.5)), ACC, name="mirrors")
+    cut(mirrors, body, (5, 9.5), 2.5)
+    cut(body, mirrors, (19, 9.5), 2.5)
+    return [body, *wheels, mirrors], [(INK, dot(8.5, 14, 1.1)), (INK, dot(15.5, 14, 1.1))]
+
+
 def traffic():
     left = strand(poly((4.5, 21), (9, 3)), INK, name="left edge")
     right = strand(poly((19.5, 21), (15, 3)), INK, name="right edge")
@@ -180,6 +199,8 @@ def back():
 TWO_TONE = {
     "ic_weather": (weather, "Weather module: a sun ring linked with a cloud.", "天气模块：太阳环与云套在一起。"),
     "ic_transit": (transit, "Public transport module: a train front threaded by one line.", "公共交通模块：一根线穿过车头。"),
+    "ic_train": (train, "Train commute card: a train over a track whose sleeper runs under both rails.", "火车通勤卡片：轨道上的列车，枕木从两根铁轨下面穿过。"),
+    "ic_bus": (bus, "Bus commute card and replacement buses: a bus front threaded by its mirror bar.", "公交通勤卡片与替代巴士：后视镜横杆穿过车头的公交车。"),
     "ic_traffic": (traffic, "Traffic module: a road with a thread woven under, over and under it.", "路况模块：一根线在道路上一挑一压一挑。"),
     "ic_reminders": (reminders, "Expiry reminders module: the two triangles of an hourglass, tip to tip.", "到期提醒模块：沙漏的两个三角尖对尖。"),
     "ic_calendar": (calendar, "Calendar module: hooks over the page edge and a bookmark ribbon through it.", "日历模块：挂钩压住上沿，书签带穿过页面。"),
@@ -205,18 +226,22 @@ def star(cx, cy, outer, inner):
 
 DISC = "M3,12 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z"
 STAR = star(12, 12.8, 8.2, 3.6)
+TRIANGLE = "M10.27,5.2 a2,2 0 0,1 3.46,0 l6.93,12 a2,2 0 0,1 -1.73,3 H4.07 a2,2 0 0,1 -1.73,-3 Z"
+CANOPY = "M3.5,12 A8.5,8.5 0 0,1 20.5,12 Z"
 STATUS = {
     "ic_status_ok": ("OK: check mark on a tinted disc.", "正常：淡色圆底上的对勾。",
                      [("soft", DISC)], [("M8,12.4 L10.7,15.1 L16,9.6", "round")]),
     "ic_status_late": ("Late: clock hands on a tinted disc.", "晚点：淡色圆底上的时钟指针。",
                        [("soft", DISC)], [("M12,7 V12 L15.2,14", "round")]),
-    "ic_status_warn": ("Warning: exclamation mark on a tinted triangle.", "警示：淡色三角上的感叹号。",
-                       [("soft", "M10.3,4.5 a2,2 0 0,1 3.4,0 l7.4,12.8 a2,2 0 0,1 -1.7,3 H4.6 a2,2 0 0,1 -1.7,-3 Z"),
-                        ("ink", dot(12, 16.9, 1.2))], [("M12,9.4 V13.4", "round")]),
+    # Where the tinted shape is the symbol itself it is outlined too: on a tinted pill, such as the weather card's, a soft
+    # shape alone fades away.
+    # 淡色形状本身就是符号时再加描边：放在有底色的胶囊上（比如天气卡片），只有淡色形状会看不清。
+    "ic_status_warn": ("Warning: exclamation mark in an outlined, tinted triangle.", "警示：描边淡色三角里的感叹号。",
+                       [("soft", TRIANGLE), ("ink", dot(12, 16.6, 1.2))], [(TRIANGLE, "round"), ("M12,10 V13.2", "round")]),
     "ic_status_cancel": ("Cancelled: cross on a tinted disc.", "已取消：淡色圆底上的叉。",
                          [("soft", DISC)], [("M9.2,9.2 L14.8,14.8 M14.8,9.2 L9.2,14.8", "round")]),
-    "ic_status_umbrella": ("Umbrella: tinted canopy and a hooked handle.", "带伞：淡色伞面与弯钩伞柄。",
-                           [("soft", "M3.5,12 A8.5,8.5 0 0,1 20.5,12 Z")], [("M12,12 V18 A2,2 0 0,1 8,18", "round")]),
+    "ic_status_umbrella": ("Umbrella: outlined, tinted canopy and a hooked handle.", "带伞：描边的淡色伞面与弯钩伞柄。",
+                           [("soft", CANOPY)], [(CANOPY, "round"), ("M12,12 V18 A2,2 0 0,1 8,18", "round")]),
     "ic_status_unknown": ("No real-time data: question mark on a faint disc.", "没有实时数据：浅色圆底上的问号。",
                           [("faint", DISC), ("ink", dot(12, 16.6, 1.2))],
                           [("M9.8,9.6 a2.3,2.3 0 1,1 3.2,2.1 c-0.6,0.3 -1,0.8 -1,1.5 v0.3", "round")]),

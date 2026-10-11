@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -37,7 +38,14 @@ import java.time.LocalTime
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.lonemoonspace.dayloom.BuildConfig
 import io.github.lonemoonspace.dayloom.R
@@ -70,12 +78,7 @@ fun SettingsScreen(
         item(key = "timezone") { TimeZoneCard(state.timeZoneOverride, state.effectiveZone, onTimeZone) }
         item(key = "shared") { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { sharedData() } }
         item(key = "notifications") { NotificationsCard(state.morningBrief, state.morningBriefMinute, onMorningBrief, onMorningBriefTime) }
-        item(key = "modules") { ModulesCard(state.modules, onModuleEnabled) }
-        items(state.sections, key = { "section:${it.active.module.id}:${it.index}" }) { entry ->
-            InfoCard(title = stringResource(entry.section.title ?: entry.active.module.title)) {
-                entry.section.content()
-            }
-        }
+        items(state.modules, key = { "module:${it.module.id}" }) { toggle -> ModuleSettingsCard(toggle, onModuleEnabled) }
         item(key = "about") { AboutCard() }
     }
 }
@@ -210,6 +213,62 @@ internal fun ModulesCard(modules: List<ModuleToggle>, onToggle: (String, Boolean
         }
     }
 }
+
+/**
+ * One card per module: its switch in the title row, then its settings. While the module is off the settings stay visible but
+ * dimmed and ignore touches, so the user sees what turning it on would offer.
+ * 每个模块一张卡片：标题行里是开关，下面是它的设置。模块关闭时设置仍然可见，但变灰且不响应触摸，用户能看到开启后有哪些设置。
+ */
+@Composable
+private fun ModuleSettingsCard(toggle: ModuleToggle, onToggle: (String, Boolean) -> Unit) {
+    val title = stringResource(toggle.module.title)
+    InfoCard(
+        title = title,
+        icon = toggle.module.icon,
+        titleAction = {
+            Switch(
+                checked = toggle.enabled,
+                onCheckedChange = { onToggle(toggle.module.id, it) },
+                modifier = Modifier.semantics { contentDescription = title },
+            )
+        },
+    ) {
+        Text(
+            text = stringResource(toggle.module.summary),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (toggle.sections.isEmpty()) return@InfoCard
+        Column(
+            modifier = Modifier
+                .padding(top = 6.dp)
+                .then(if (toggle.enabled) Modifier else Modifier.lockedSettings()),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            toggle.sections.forEachIndexed { index, section ->
+                if (index > 0) HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                // A section repeats the module's name only when it adds something (train, bus, favourite stops).
+                // 只有标题带来新信息时（火车、公交、收藏站点）才显示分区标题。
+                section.title?.let { Text(stringResource(it), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
+                section.content()
+            }
+        }
+    }
+}
+
+/**
+ * Dims the settings of a module that is off and swallows touches before any control sees them; screen readers skip the
+ * controls and hear that they are unavailable.
+ * 让关闭模块的设置变灰，并在任何控件收到之前吞掉触摸；读屏软件跳过这些控件，并读出它们不可用。
+ */
+private fun Modifier.lockedSettings(): Modifier = this
+    .alpha(0.38f)
+    .pointerInput(Unit) {
+        awaitPointerEventScope {
+            while (true) awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+        }
+    }
+    .clearAndSetSemantics { disabled() }
 
 /**
  * Version, license and source code, plus three dialogs: where the data comes from, what the app keeps and sends, and the

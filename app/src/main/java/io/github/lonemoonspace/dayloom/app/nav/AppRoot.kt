@@ -23,6 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -43,6 +44,7 @@ import androidx.navigation.compose.rememberNavController
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import io.github.lonemoonspace.dayloom.R
+import io.github.lonemoonspace.dayloom.app.ActiveModule
 import io.github.lonemoonspace.dayloom.app.AppGraph
 import io.github.lonemoonspace.dayloom.app.home.HomeScreen
 import io.github.lonemoonspace.dayloom.app.home.HomeViewModel
@@ -51,13 +53,18 @@ import io.github.lonemoonspace.dayloom.app.settings.PlacesCard
 import io.github.lonemoonspace.dayloom.app.settings.SettingsScreen
 import io.github.lonemoonspace.dayloom.app.settings.SettingsViewModel
 import io.github.lonemoonspace.dayloom.app.settings.SharedDataViewModel
+import io.github.lonemoonspace.dayloom.core.refresh.RefreshCoordinator
+import io.github.lonemoonspace.dayloom.core.refresh.Trigger
 import io.github.lonemoonspace.dayloom.core.ui.CompactNavBar
 import io.github.lonemoonspace.dayloom.core.ui.CompactTopBar
 import io.github.lonemoonspace.dayloom.core.ui.LocalAppClock
 import io.github.lonemoonspace.dayloom.core.ui.LocalBarInsets
 import io.github.lonemoonspace.dayloom.core.ui.LocalHazeState
 import io.github.lonemoonspace.dayloom.core.ui.NavTab
+import io.github.lonemoonspace.dayloom.core.ui.PullRefresh
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * Each module tab has a route of its own rather than one `module/{moduleId}` pattern: tab switches save and restore state
@@ -111,7 +118,7 @@ private fun settingsViewModel(graph: AppGraph): SettingsViewModel = viewModel(
             SettingsViewModel(
                 modules = graph.host.modules,
                 settings = graph.appSettings,
-                active = graph.host.active,
+                sectionsOf = { graph.host.instanceOf(it).settingsSections },
                 zone = graph.zone,
                 language = graph.language,
             )
@@ -242,12 +249,15 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?) {
                                 homeVm.startPolling()
                                 onStopOrDispose { homeVm.stopPolling() }
                             }
-                            HomeScreen(
-                                state = homeState,
-                                editing = editing && homeState.cards.isNotEmpty(),
-                                onSaveOrder = homeVm::saveOrder,
-                                onOpenSettings = { navController.navigateToTab(Routes.SETTINGS) },
-                            )
+                            val reordering = editing && homeState.cards.isNotEmpty()
+                            PullRefresh(refreshing = homeState.refreshing, onRefresh = { homeVm.refresh() }, enabled = !reordering) {
+                                HomeScreen(
+                                    state = homeState,
+                                    editing = reordering,
+                                    onSaveOrder = homeVm::saveOrder,
+                                    onOpenSettings = { navController.navigateToTab(Routes.SETTINGS) },
+                                )
+                            }
                         }
                         composable(Routes.SETTINGS) {
                             val vm = settingsViewModel(graph)
@@ -269,7 +279,9 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?) {
                         moduleIds.forEach { id ->
                             composable(Routes.module(id)) {
                                 // The module may have been disabled meanwhile; then there is nothing to show. / 模块可能已被关闭，此时没有内容可显示。
-                                tabModules.firstOrNull { it.module.id == id }?.instance?.tab?.content?.invoke()
+                                val active = tabModules.firstOrNull { it.module.id == id } ?: return@composable
+                                val content = active.instance.tab?.content ?: return@composable
+                                ModuleRefresh(graph.coordinator, active) { content() }
                             }
                         }
                     }
@@ -277,6 +289,32 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?) {
             }
         }
     }
+}
+
+/**
+ * Pull-to-refresh for a module's tab: refreshes that module's sources, showing the indicator while any of them is busy.
+ * 模块标签页的下拉刷新：刷新这个模块的来源，其中任何一个在刷新时显示指示器。
+ */
+@Composable
+private fun ModuleRefresh(coordinator: RefreshCoordinator, active: ActiveModule, content: @Composable () -> Unit) {
+    val ids = remember(active) { active.instance.sources.mapTo(mutableSetOf()) { it.id } }
+    val status by coordinator.status.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    PullRefresh(
+        refreshing = ids.any { status[it]?.refreshing == true },
+        onRefresh = {
+            scope.launch {
+                try {
+                    coordinator.refresh(ids, Trigger.USER)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // Per-source errors are in coordinator.status. / 各来源的错误在 coordinator.status 里。
+                }
+            }
+        },
+        content = content,
+    )
 }
 
 /** Switches tabs keeping each tab's own back stack and state. / 切换标签页，并保留每个标签页自己的返回栈与状态。 */

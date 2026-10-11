@@ -79,6 +79,9 @@ looks it up literally.
 - Public transport: in the evening the train card could say there were no options when the next train was more than an hour
   or two away; Entur searched only its own short window. An empty answer for that reason is now asked again with a six-hour
   window.
+- Settings: every module has one card with its on/off switch in the title row and its settings below; while a module is off
+  its settings stay visible but greyed out and locked. The separate module list is gone (the onboarding keeps it).
+- Pull to refresh on the home screen and every module tab.
 
 - 项目骨架（M0）：带注册表、宿主与命名空间存储的模块系统；从 PersonalAssistant 移植并泛化的刷新协调器与通知引擎；
   卡片可拖动排序的首页；语言、时区与模块开关设置；中英文资源；架构测试与字符串一致性测试；CI 与发版 workflow。
@@ -133,3 +136,6 @@ looks it up literally.
 - 日历页头：节日倒计时放到时钟旁节气的上面，用同样的胶囊和字号。
 - 公共交通：晚上下一班火车在一两个小时以后时，火车卡片会显示查不到方案，因为 Entur 只在它自己选的短时间窗里找。现在因此查空时
   会用六小时的时间窗再查一次。
+- 设置：每个模块一张卡片，标题行里是开关，下面是它的设置；模块关闭时设置仍然可见，但变灰且不能修改。单独的模块列表去掉了
+  （首次启动引导里保留）。
+- 首页和各模块标签页都可以下拉刷新。

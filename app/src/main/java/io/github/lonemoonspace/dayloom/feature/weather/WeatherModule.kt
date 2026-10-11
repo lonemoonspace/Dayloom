@@ -43,7 +43,7 @@ object WeatherModule : FeatureModule {
     override val id = "weather"
     override val title = R.string.weather_title
     override val summary = R.string.weather_summary
-    override val icon = R.drawable.ic_wx_partly_day
+    override val icon = R.drawable.ic_weather
     override val defaultEnabled = true
     override val notificationIds = 1_000..1_999
 

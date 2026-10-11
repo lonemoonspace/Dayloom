@@ -174,7 +174,6 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.material.icons.core)
     // Blur behind the glass top and bottom bars. / 玻璃顶栏与底栏背后的模糊。
     implementation(libs.haze)
     // Drag-to-reorder for home cards. / 首页卡片的拖动排序。

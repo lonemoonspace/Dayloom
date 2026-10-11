@@ -6,14 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -26,7 +19,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleStartEffect
@@ -55,6 +47,7 @@ import io.github.lonemoonspace.dayloom.app.settings.SettingsViewModel
 import io.github.lonemoonspace.dayloom.app.settings.SharedDataViewModel
 import io.github.lonemoonspace.dayloom.core.ui.CompactNavBar
 import io.github.lonemoonspace.dayloom.core.ui.CompactTopBar
+import io.github.lonemoonspace.dayloom.core.ui.DuotoneIcon
 import io.github.lonemoonspace.dayloom.core.ui.LocalAppClock
 import io.github.lonemoonspace.dayloom.core.ui.LocalBarInsets
 import io.github.lonemoonspace.dayloom.core.ui.LocalHazeState
@@ -179,8 +172,8 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?) {
                     Routes.HOME -> CompactTopBar(title = stringResource(R.string.app_name)) {
                         if (homeState.cards.isNotEmpty()) {
                             IconButton(onClick = { editing = !editing }) {
-                                Icon(
-                                    imageVector = if (editing) Icons.Default.Check else Icons.Default.Edit,
+                                DuotoneIcon(
+                                    id = if (editing) R.drawable.ic_done else R.drawable.ic_edit,
                                     contentDescription = stringResource(if (editing) R.string.home_done else R.string.home_edit_order),
                                 )
                             }
@@ -189,7 +182,7 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?) {
                             CircularProgressIndicator(Modifier.padding(12.dp).size(22.dp), strokeWidth = 2.dp)
                         } else {
                             IconButton(onClick = { homeVm.refresh() }) {
-                                Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.home_refresh))
+                                DuotoneIcon(R.drawable.ic_refresh, contentDescription = stringResource(R.string.home_refresh))
                             }
                         }
                     }
@@ -204,18 +197,18 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?) {
                 val home = stringResource(R.string.nav_home)
                 val settings = stringResource(R.string.nav_settings)
                 val tabs = buildList {
-                    add(NavTab(route == Routes.HOME, home, { navController.navigateToTab(Routes.HOME) }) { tint ->
-                        Icon(Icons.Default.Home, contentDescription = null, tint = tint)
+                    add(NavTab(route == Routes.HOME, home, { navController.navigateToTab(Routes.HOME) }) { tint, accent ->
+                        DuotoneIcon(R.drawable.ic_home, contentDescription = null, tint = tint, accent = accent)
                     })
                     tabModules.forEach { m ->
                         val tab = m.instance.tab ?: return@forEach
                         val label = stringResource(tab.label)
-                        add(NavTab(currentModuleId == m.module.id, label, { navController.navigateToTab(Routes.module(m.module.id)) }) { tint ->
-                            Icon(painterResource(tab.icon), contentDescription = null, tint = tint)
+                        add(NavTab(currentModuleId == m.module.id, label, { navController.navigateToTab(Routes.module(m.module.id)) }) { tint, accent ->
+                            DuotoneIcon(tab.icon, contentDescription = null, tint = tint, accent = accent)
                         })
                     }
-                    add(NavTab(route == Routes.SETTINGS, settings, { navController.navigateToTab(Routes.SETTINGS) }) { tint ->
-                        Icon(Icons.Default.Settings, contentDescription = null, tint = tint)
+                    add(NavTab(route == Routes.SETTINGS, settings, { navController.navigateToTab(Routes.SETTINGS) }) { tint, accent ->
+                        DuotoneIcon(R.drawable.ic_settings, contentDescription = null, tint = tint, accent = accent)
                     })
                 }
                 CompactNavBar(tabs)

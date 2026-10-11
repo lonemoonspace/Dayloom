@@ -26,3 +26,6 @@ Thumbs.db
 # JVM crash dumps / JVM 崩溃转储
 hs_err_pid*.log
 replay_pid*.log
+
+# Python bytecode from scripts / scripts 运行产生的 Python 字节码
+__pycache__/

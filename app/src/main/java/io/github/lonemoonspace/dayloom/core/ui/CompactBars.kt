@@ -86,7 +86,8 @@ class NavTab(
     /** Accessible name; the tabs show icons only. / 无障碍名称；标签只显示图标。 */
     val label: String,
     val onClick: () -> Unit,
-    val icon: @Composable (tint: Color) -> Unit,
+    /** Draws the icon in the given colours; the accent equals the tint unless the tab is selected. / 用给定颜色画图标；未选中时强调色与 tint 相同。 */
+    val icon: @Composable (tint: Color, accent: Color) -> Unit,
 )
 
 private val PillShape = RoundedCornerShape(50)
@@ -124,6 +125,8 @@ fun CompactNavBar(tabs: List<NavTab>) {
 private fun NavTabItem(tab: NavTab, modifier: Modifier) {
     val primary = MaterialTheme.colorScheme.primary
     val tint = if (tab.selected) primary else MaterialTheme.colorScheme.onSurfaceVariant
+    // Only the selected tab shows the accent thread, so the selection reads at a glance. / 只有选中的标签显示强调色的那根线，选中状态一眼可辨。
+    val accent = if (tab.selected) MaterialTheme.colorScheme.secondary else tint
     Box(
         modifier = modifier
             .fillMaxHeight()
@@ -143,7 +146,7 @@ private fun NavTabItem(tab: NavTab, modifier: Modifier) {
                 .background(if (tab.selected) primary.copy(alpha = 0.18f) else Color.Transparent, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            tab.icon(tint)
+            tab.icon(tint, accent)
         }
     }
 }

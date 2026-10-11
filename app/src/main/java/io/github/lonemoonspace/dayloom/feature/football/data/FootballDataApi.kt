@@ -84,7 +84,9 @@ class FootballDataApi(
             competitionCode = dto.competition.code.ifBlank { competition },
             competition = dto.competition.name,
             matchday = dto.season?.currentMatchday,
-            scorers = dto.scorers.map { Scorer(it.player.name.orEmpty(), it.team.toRef(), it.playedMatches, it.goals ?: 0, it.penalties) },
+            // Ranks are derived from the order, so it is not left to the API. / 名次由顺序推出，所以不依赖接口的排序。
+            scorers = dto.scorers.map { Scorer(it.player.name.orEmpty(), it.team.toRef(), it.playedMatches, it.goals ?: 0, it.penalties) }
+                .sortedByDescending { it.goals },
         )
     }
 

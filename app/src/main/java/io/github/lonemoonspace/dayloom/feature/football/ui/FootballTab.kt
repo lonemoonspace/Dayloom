@@ -47,6 +47,7 @@ import io.github.lonemoonspace.dayloom.core.error.AppError
 import io.github.lonemoonspace.dayloom.core.ui.InfoCard
 import io.github.lonemoonspace.dayloom.core.ui.LocalBarInsets
 import io.github.lonemoonspace.dayloom.core.ui.SkeletonLines
+import io.github.lonemoonspace.dayloom.core.ui.StatusChip
 import io.github.lonemoonspace.dayloom.core.ui.plusBars
 import io.github.lonemoonspace.dayloom.core.ui.rememberTimeFormatter
 import io.github.lonemoonspace.dayloom.core.ui.theme.appSurfaces
@@ -65,12 +66,15 @@ internal class FootballTabData(
     val teamId: Int,
     val matches: List<Match>?,
     val matchesError: AppError?,
+    val matchesStale: Boolean,
     val standings: Standings?,
     val standingsFetchedAt: Long?,
     val standingsError: AppError?,
+    val standingsStale: Boolean,
     val scorers: Scorers?,
     val scorersFetchedAt: Long?,
     val scorersError: AppError?,
+    val scorersStale: Boolean,
 )
 
 private enum class FootballSection(val label: Int) {
@@ -118,6 +122,7 @@ internal fun FootballTab(data: FootballTabData, now: ZonedDateTime, crests: Cres
 
 private fun LazyListScope.fixtures(data: FootballTabData, now: ZonedDateTime, crests: CrestLoader) {
     data.matchesError?.let { error -> item(key = "error") { ErrorLine(error) } }
+    if (data.matchesStale) item(key = "stale") { StaleChip() }
     val list = data.matches
     if (list == null) {
         if (data.matchesError == null) item(key = "loading") { InfoCard(title = null) { SkeletonLines() } }
@@ -151,7 +156,7 @@ private fun LazyListScope.table(data: FootballTabData, now: ZonedDateTime, crest
         return
     }
     item(key = "header") {
-        LeagueHeader(competitionLabel(standings.competitionCode, standings.competition), standings.matchday, data.standingsFetchedAt, now)
+        LeagueHeader(competitionLabel(standings.competitionCode, standings.competition), standings.matchday, data.standingsFetchedAt, data.standingsStale, now)
     }
     if (group.group.isNotBlank()) {
         item(key = "group") {
@@ -203,7 +208,7 @@ private fun LazyListScope.scorers(data: FootballTabData, now: ZonedDateTime, cre
         return
     }
     item(key = "header") {
-        LeagueHeader(competitionLabel(scorers.competitionCode, scorers.competition), scorers.matchday, data.scorersFetchedAt, now)
+        LeagueHeader(competitionLabel(scorers.competitionCode, scorers.competition), scorers.matchday, data.scorersFetchedAt, data.scorersStale, now)
     }
     item(key = "columns") {
         TableLine(highlight = false) {
@@ -259,18 +264,30 @@ private fun SectionTitle(text: String) {
 
 /** "LaLiga · Matchday 8 · Updated 21:19". / 「西甲 · 第 8 轮 · 更新于 21:19」。 */
 @Composable
-private fun LeagueHeader(competition: String, matchday: Int?, fetchedAt: Long?, now: ZonedDateTime) {
+private fun LeagueHeader(competition: String, matchday: Int?, fetchedAt: Long?, stale: Boolean, now: ZonedDateTime) {
     val parts = listOfNotNull(
         competition.takeIf { it.isNotBlank() },
         matchday?.let { stringResource(R.string.football_matchday, it) },
         fetchedAt?.let { stringResource(R.string.football_updated_at, Instant.ofEpochMilli(it).atZone(now.zone).format(rememberTimeFormatter())) },
     )
-    Text(
-        parts.joinToString(" · "),
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 4.dp),
-    )
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 4.dp)) {
+        Text(
+            parts.joinToString(" · "),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        if (stale) {
+            Spacer(Modifier.width(8.dp))
+            StaleChip()
+        }
+    }
+}
+
+/** Marks data older than its source allows, as cards do elsewhere. / 与其他卡片一样，标出超过来源时效的数据。 */
+@Composable
+private fun StaleChip() {
+    StatusChip(stringResource(R.string.common_cached), MaterialTheme.statusColors.gray)
 }
 
 /** One table line; the followed team's is filled. / 表格的一行；关注球队那一行加底色。 */

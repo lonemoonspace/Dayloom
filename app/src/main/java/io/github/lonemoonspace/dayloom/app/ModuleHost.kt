@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /**
  * An enabled module and its instance. / 已开启的模块及其实例。
@@ -52,6 +53,12 @@ class ModuleHost(
         .distinctUntilChanged()
         .map { ids -> modules.filter { it.id in ids }.map { ActiveModule(it, instanceOf(it)) } }
         .stateIn(scope, SharingStarted.Eagerly, null)
+
+    init {
+        // Only enabled modules react to input changes; others may be created just to show their settings.
+        // 只有已开启的模块会响应输入变化；其他模块可能只是为了显示设置才被创建。
+        scope.launch { active.collect { coordinator.watchOnly(it?.let(::sourceIds).orEmpty()) } }
+    }
 
     fun instanceOf(module: FeatureModule): ModuleInstance = synchronized(lock) {
         instances.getOrPut(module.id) {

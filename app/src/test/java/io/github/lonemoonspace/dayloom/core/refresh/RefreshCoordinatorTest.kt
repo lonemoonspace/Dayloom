@@ -316,6 +316,29 @@ class RefreshCoordinatorTest {
     }
 
     @Test
+    fun `only the sources named by watchOnly react to input changes`() = runTest {
+        val weather = FakeSource("weather", clock)
+        val traffic = FakeSource("traffic", clock)
+        val c = coordinator(weather, traffic, watch = true)
+        c.watchOnly(setOf(weather.id))
+        runCurrent()
+
+        traffic.param.value = "B"
+        runCurrent()
+        assertEquals("registered but not watched, as for a module that is off", 0, traffic.fetchCount)
+
+        weather.param.value = "B"
+        runCurrent()
+        assertEquals(1, weather.fetchCount)
+
+        c.watchOnly(setOf(weather.id, traffic.id))
+        runCurrent()
+        traffic.param.value = "C"
+        runCurrent()
+        assertEquals("watched again once its module is on", 1, traffic.fetchCount)
+    }
+
+    @Test
     fun `a source registered later is watched with its own baseline`() = runTest {
         val weather = FakeSource("weather", clock)
         val c = coordinator(weather, watch = true)

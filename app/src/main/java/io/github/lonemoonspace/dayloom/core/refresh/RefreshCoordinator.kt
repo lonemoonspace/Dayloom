@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -79,6 +80,9 @@ class RefreshCoordinator(
     private val fetchContext: CoroutineContext = EmptyCoroutineContext,
 ) {
     private val registered = MutableStateFlow<Map<SourceId, CachedSource<*, *>>>(emptyMap())
+
+    /** Sources whose inputs are watched; null watches every registered one. / 监听输入的来源；为 null 时监听所有已注册的来源。 */
+    private val watched = MutableStateFlow<Set<SourceId>?>(null)
     private val _status = MutableStateFlow<Map<SourceId, SourceStatus>>(emptyMap())
 
     /** Refreshing / last error per source, including refreshes started in the background. / 每个来源的刷新中与上次错误，含后台发起的刷新。 */
@@ -103,6 +107,16 @@ class RefreshCoordinator(
     }
 
     val sourceIds: Set<SourceId> get() = registered.value.keys
+
+    /**
+     * Limits input watching to [ids]. A source stays registered once created, also for a module that is off or only shown in
+     * settings; without this limit, editing a shared input (a key, a place) would fetch for that module anyway.
+     * 只监听 [ids] 的输入。来源一旦创建就一直注册着，模块关闭或只在设置页里显示时也一样；不加这个限制，修改共用的输入（Key、
+     * 地点）时仍会为这个模块发请求。
+     */
+    fun watchOnly(ids: Set<SourceId>) {
+        watched.value = ids
+    }
 
     fun register(sources: Collection<CachedSource<*, *>>) {
         registered.update { current ->
@@ -312,7 +326,8 @@ class RefreshCoordinator(
         // 每个来源的基线：来源发出的第一个值不触发刷新（首次加载由调用方负责）。
         val baseline = mutableMapOf<SourceId, Any?>()
         try {
-            registered
+            combine(registered, watched) { sources, only -> if (only == null) sources else sources.filterKeys { it in only } }
+                .distinctUntilChanged()
                 .flatMapLatest { sources ->
                     if (sources.isEmpty()) flowOf(emptyMap()) else combine(sources.values.map(::watch)) { it.toMap() }
                 }

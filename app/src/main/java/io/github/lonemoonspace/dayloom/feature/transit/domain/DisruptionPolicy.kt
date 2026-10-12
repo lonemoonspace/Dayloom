@@ -22,9 +22,9 @@ object DisruptionPolicy {
     )
 
     /**
-     * [option] is the next option of the window under way, null outside the windows: then nothing is decided and the
-     * fingerprint passes through untouched.
-     * [option] 是正在进行的时间窗里的下一个方案；时间窗外为 null：此时不做判定，指纹原样透传。
+     * [option] is the next option of the current direction, null when there is none worth alerting about yet
+     * ([TransitPolicy.isAlertable]): then nothing is decided and the fingerprint passes through untouched.
+     * [option] 是当前方向的下一个方案；还没有值得提醒的方案时为 null（[TransitPolicy.isAlertable]）：此时不做判定，指纹原样透传。
      */
     fun evaluate(option: TripOption?, zone: ZoneId, previousFingerprint: String?): Decision {
         if (option == null) return Decision(emptyList(), previousFingerprint)
@@ -48,17 +48,18 @@ object DisruptionPolicy {
     }
 
     /**
-     * Date + line + from + cancelled + delay bucket. Only the date, not the time: the expected time moves with the delay and
-     * would change the fingerprint on every refresh. Buckets, not minutes: 6 and 8 minutes are the same event, 6 growing to 20
-     * is worth telling again.
-     * 日期 + 线路 + 起点 + 是否取消 + 延误档位。只取日期不取时刻：预计时刻会随延误后移，每次刷新都会改变指纹。取档位而不是
-     * 分钟数：6 分钟和 8 分钟是同一件事，6 分钟涨到 20 分钟才值得再提醒。
+     * Timetable departure + line + from + cancelled + delay bucket. The timetable (aimed) time, never the expected one: the
+     * expected time moves with the delay and would change the fingerprint on every refresh, while the aimed time tells the
+     * next train on the same line apart. Buckets, not minutes: 6 and 8 minutes are the same event, 6 growing to 20 is worth
+     * telling again.
+     * 时刻表发车时间 + 线路 + 起点 + 是否取消 + 延误档位。用时刻表（计划）时间而不是预计时间：预计时间随延误后移，每次刷新都会
+     * 改变指纹；计划时间则能区分同一线路的下一班车。取档位而不是分钟数：6 分钟和 8 分钟是同一件事，6 分钟涨到 20 分钟才值得再提醒。
      */
     private fun fingerprintOf(legs: List<TransitLeg>, zone: ZoneId): String = legs.joinToString("|") { leg ->
-        val day = Instant.ofEpochMilli(leg.aimedDeparture).atZone(zone).toLocalDate()
+        val aimed = Instant.ofEpochMilli(leg.aimedDeparture).atZone(zone).toLocalDateTime()
         val status = TransitPolicy.legStatus(leg)
         val delay = if (status.state == LegState.DELAYED) delayBucket(status.delayMinutes) else -1
-        "$day#${leg.line}#${leg.fromName}#${leg.cancelled}#$delay"
+        "$aimed#${leg.line}#${leg.fromName}#${leg.cancelled}#$delay"
     }
 
     private fun delayBucket(minutes: Int): Int = when {

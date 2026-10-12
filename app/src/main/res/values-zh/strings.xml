@@ -427,6 +427,7 @@
     <string name="football_summary">用你自己的免费 Key 从 football-data.org 获取关注球队的赛程、赛果与积分榜</string>
     <string name="football_setup_key">football-data.org Key</string>
     <string name="football_setup_team">关注的球队</string>
+    <string name="football_setup_competition">要看的赛事</string>
     <string name="football_tab_setup">请在「设置 → 足球」里保存 football-data.org 的 Key 并选择球队。</string>
     <string name="football_key">football-data.org API Key</string>
     <string name="football_key_note">在 football-data.org 免费注册即可获得；免费档覆盖下面十二项赛事，每分钟十次请求。Key 只保存在本机。</string>
@@ -531,6 +532,7 @@
     </plurals>
     <string name="news_all_read">全部读完了。</string>
     <string name="news_none">这里还没有内容。</string>
+    <string name="news_push_rejected">服务器没有接受本机的修改；下一次同步时会再次发送。</string>
     <string name="news_filter_unread">未读</string>
     <string name="news_filter_starred">收藏</string>
     <string name="news_filter_all">全部</string>

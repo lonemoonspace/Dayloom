@@ -29,6 +29,7 @@ import io.github.lonemoonspace.dayloom.feature.news.data.NewsSync
 import io.github.lonemoonspace.dayloom.feature.news.data.NewsSyncSource
 import io.github.lonemoonspace.dayloom.feature.news.data.RoomArticleStore
 import io.github.lonemoonspace.dayloom.feature.news.domain.ArticleFilter
+import io.github.lonemoonspace.dayloom.feature.news.domain.ArticleOwner
 import io.github.lonemoonspace.dayloom.feature.news.domain.ArticleItem
 import io.github.lonemoonspace.dayloom.feature.news.domain.NewsSyncPolicy
 import io.github.lonemoonspace.dayloom.feature.news.domain.StoredArticle
@@ -78,6 +79,8 @@ data class NewsSettings(
     /** OpenAI-compatible base, e.g. `https://api.example.org/v1`. / 兼容 OpenAI 的基础地址，如 `https://api.example.org/v1`。 */
     val llmUrl: String = "",
     val llmModel: String = "",
+    /** The server the stored articles came from (design §11.7); written by the sync. / 本地文章来自的服务器（设计文档 §11.7）；由同步写入。 */
+    val articlesFrom: String = "",
 )
 
 /** Saved values reach the source's inputs through DataStore within milliseconds; this is only a safety net. / 保存的值经 DataStore 几毫秒内就到达来源输入；这只是兜底。 */
@@ -90,10 +93,17 @@ private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
     private val store = ctx.settings(NewsSettings.serializer(), NewsSettings())
     private val token = ctx.secret("miniflux_token")
     private val llmKey = ctx.secret("llm_api_key")
-    private val articles = RoomArticleStore(ctx.database(NewsDatabase::class).articles())
+    private val articles = RoomArticleStore(ctx.database(NewsDatabase::class, *NewsDatabase.MIGRATIONS).articles())
     private val miniflux = MinifluxApi(ctx.http)
     private val llm = LlmApi(ctx.http)
-    private val sync = NewsSync(articles, miniflux)
+    private val sync = NewsSync(
+        articles,
+        miniflux,
+        object : ArticleOwner {
+            override suspend fun get() = store.get().articlesFrom
+            override suspend fun set(baseUrl: String) = store.update { it.copy(articlesFrom = baseUrl) }
+        },
+    )
 
     private val source = NewsSyncSource(
         id = ctx.sourceId("sync"),
@@ -123,7 +133,7 @@ private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
             val status by ctx.coordinator.status.collectAsStateWithLifecycle()
             val isReady by ready.collectAsStateWithLifecycle(initialValue = true)
             val stale = snapshot?.let { source.isStale(it, ctx.clock.now().toInstant()) } == true
-            NewsCard(summary.takeIf { snapshot != null }, isReady, status[source.id]?.lastError, stale)
+            NewsCard(summary.takeIf { snapshot != null }, isReady, status[source.id]?.lastError, stale, snapshot?.value?.pushRejected == true)
         },
     )
 
@@ -186,7 +196,7 @@ private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
             ctx.appScope.launch {
                 val base = NewsSyncPolicy.normalizeBaseUrl(store.get().serverUrl) ?: return@launch
                 val key = token.usable().ifBlank { return@launch }
-                sync.fetchFullText(base, key, article.id)
+                sync.fetchFullText(base, key, article.id, ctx.clock.now().toInstant().toEpochMilli())
             }
         }
 
@@ -238,6 +248,7 @@ private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
         val list = remember(listItems, query) { listItems?.filter { NewsSyncPolicy.matches(it, query) } }
         val open by remember(openId) { openId?.let { articles.observe(it) } ?: flowOf(null) }.collectAsStateWithLifecycle(initialValue = null)
         val counts by remember { articles.observeSummary() }.collectAsStateWithLifecycle(initialValue = null)
+        val snapshot by source.observe().collectAsStateWithLifecycle(initialValue = null)
         val status by ctx.coordinator.status.collectAsStateWithLifecycle()
         LaunchedEffect(Unit) {
             try {
@@ -259,6 +270,7 @@ private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
             onClose = { openId = null },
             counts = counts,
             error = status[source.id]?.lastError,
+            pushRejected = snapshot?.value?.pushRejected == true,
             actions = object : NewsActions by actions {
                 override fun open(article: StoredArticle) {
                     openId = article.id

@@ -141,6 +141,10 @@ class ReminderPolicyTest {
         assertEquals(UiText.Plural(R.plurals.reminders_notify_days, 2, listOf("Pass", 2)), inTwoDays.title)
         assertEquals(UiText.Res(R.string.reminders_notify_body, listOf("2026-09-17 23:59")), inTwoDays.body)
         assertEquals("reminders.expiry", inTwoDays.channelId)
+        // Every stage reuses the item's id, so each must ring rather than silently replace the last one.
+        // 每一档都复用条目的 id，所以每条都要响铃，而不是静默替换上一条。
+        assertFalse(tomorrow.alertOnce)
+        assertFalse(inTwoDays.alertOnce)
         // The state survives a round trip through the codec. / 状态经编解码往返后不变。
         assertEquals(decision.newState, rule.codec.decode(rule.codec.encode(decision.newState)))
         assertEquals(ReminderPolicy.NotifiedState(), rule.codec.decode("corrupt"))
@@ -162,5 +166,14 @@ class ReminderPolicyTest {
             briefLine(listOf(items[0], items[4]), now),
         )
         assertNull(briefLine(listOf(items[3], items[4]), now))
+    }
+
+    @Test
+    fun `a deleted item or a new date withdraws the shown notification, a rename does not`() {
+        val a = item("2026-09-17", id = "item1")
+        val b = item("2026-09-20", id = "item2")
+        assertEquals(listOf(b), ReminderPolicy.outdated(listOf(a, b), listOf(a)))
+        assertEquals(listOf(a), ReminderPolicy.outdated(listOf(a, b), listOf(a.copy(until = "2026-10-17"), b)))
+        assertEquals(emptyList<ReminderItem>(), ReminderPolicy.outdated(listOf(a, b), listOf(a.copy(name = "Card"), b, item("2026-09-30", id = "item3"))))
     }
 }

@@ -110,6 +110,18 @@ object ReminderPolicy {
     /** The number in `item<n>`, used to give each item its own notification id; 0 for anything else. / `item<n>` 里的数字，用来给每个条目分配通知 id；其他格式为 0。 */
     fun idNumber(id: String): Int = id.removePrefix("item").toIntOrNull() ?: 0
 
+    /**
+     * Items of [before] that were deleted or given another date in [after]. Their notifications are withdrawn so the shade
+     * never shows a deleted item or a stale date; a new date re-arms the reminders anyway. A rename keeps the notification,
+     * since nothing would send it again.
+     * [before] 里在 [after] 中被删除或改了日期的条目。撤下它们的通知，通知栏不会再显示已删除的条目或旧日期；改日期本来就会重新计提醒。
+     * 只改名时保留通知，因为不会有人再发一次。
+     */
+    fun outdated(before: List<ReminderItem>, after: List<ReminderItem>): List<ReminderItem> {
+        val now = after.associateBy { it.id }
+        return before.filter { old -> now[old.id]?.until != old.until }
+    }
+
     enum class Stage { SOON, LAST_DAY, EXPIRED }
 
     /** Keys of reminders already sent. / 已发送提醒的键。 */

@@ -67,6 +67,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import kotlin.reflect.KClass
 
 /**
@@ -152,8 +153,9 @@ class ModuleHostTest {
             override suspend fun put(plain: String) {}
         }
         override val googleMapsKey = secret("google_maps")
-        override fun <T : RoomDatabase> database(type: KClass<T>): T = error("no database in this test")
+        override fun <T : RoomDatabase> database(type: KClass<T>, vararg migrations: Migration): T = error("no database in this test")
         override fun notificationId(offset: Int) = offset
+        override fun cancelNotification(offset: Int) {}
     }
 
     private fun CoroutineScope.host(modules: List<FeatureModule>, settings: InMemoryValueStore<AppSettings>): Pair<ModuleHost, RefreshCoordinator> {
@@ -245,6 +247,8 @@ class ModuleHostTest {
         override fun send(notification: AppNotification) {
             notifications += notification
         }
+
+        override fun cancel(id: Int) {}
     }
 
     @Test

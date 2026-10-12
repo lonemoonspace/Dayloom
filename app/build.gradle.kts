@@ -136,6 +136,16 @@ afterEvaluate {
         dependsOn("test", "lintDebug", "assembleDebug", "compileReleaseKotlin")
     }
 
+    // CI gate: verify plus the release R8 pass (no signing needed), so a missing keep rule or a shrinking regression shows up
+    // on the push that caused it instead of in the first signed build. Too slow to run before every local commit.
+    // CI 门禁：verify 再加 Release 的 R8 处理（不需要签名），缺 keep 规则或收缩回归会在引入它的那次 push 上暴露，而不是等到第一次
+    // 打签名包。太慢，不要求每次本地提交前跑。
+    tasks.register("verifyRelease") {
+        group = "verification"
+        description = "verify + minifyReleaseWithR8"
+        dependsOn("verify", "minifyReleaseWithR8")
+    }
+
     // Used by the release workflows: gate, signed APK named by version, archived R8 mapping and SHA256SUMS in release/.
     // 发版 workflow 使用：门禁、按版本命名的签名 APK、归档的 R8 mapping，以及 release/ 下的 SHA256SUMS。
     tasks.register("publishVersionedRelease") {
@@ -204,4 +214,5 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.robolectric)
 }

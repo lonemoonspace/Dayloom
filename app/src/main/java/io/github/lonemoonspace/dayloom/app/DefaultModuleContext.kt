@@ -5,6 +5,7 @@ import io.github.lonemoonspace.dayloom.core.module.FeatureModule
 import io.github.lonemoonspace.dayloom.core.module.ModuleContext
 import io.github.lonemoonspace.dayloom.core.module.ModuleSecret
 import io.github.lonemoonspace.dayloom.core.network.NetworkStatus
+import io.github.lonemoonspace.dayloom.core.notify.Notifier
 import io.github.lonemoonspace.dayloom.core.refresh.RefreshCoordinator
 import io.github.lonemoonspace.dayloom.core.refresh.SourceId
 import io.github.lonemoonspace.dayloom.core.secret.SecretState
@@ -15,6 +16,7 @@ import io.github.lonemoonspace.dayloom.core.storage.SnapshotStore
 import io.github.lonemoonspace.dayloom.core.storage.ValueStore
 import io.github.lonemoonspace.dayloom.core.time.AppClock
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import kotlin.reflect.KClass
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -37,11 +39,12 @@ class DefaultModuleContext(
     private val secrets: SecretStore,
     private val snapshotFactory: SnapshotFactory,
     private val databaseFactory: DatabaseFactory,
+    private val notifier: Notifier,
 ) : ModuleContext {
 
     /** Builds the one Room database for the module that owns it. / 为持有它的模块构建唯一的 Room 数据库。 */
     interface DatabaseFactory {
-        fun <T : RoomDatabase> create(moduleId: String, type: KClass<T>): T
+        fun <T : RoomDatabase> create(moduleId: String, type: KClass<T>, migrations: Array<out Migration>): T
     }
 
     /** Creates one snapshot store per source file; the app enforces "one instance per file". / 每个来源文件创建一个快照存储；由 App 保证「一个文件一个实例」。 */
@@ -76,7 +79,9 @@ class DefaultModuleContext(
         }
     }
 
-    override fun <T : RoomDatabase> database(type: KClass<T>): T = databaseFactory.create(moduleId, type)
+    override fun <T : RoomDatabase> database(type: KClass<T>, vararg migrations: Migration): T = databaseFactory.create(moduleId, type, migrations)
 
     override fun notificationId(offset: Int): Int = ModulePolicy.notificationId(moduleId, module.notificationIds, offset)
+
+    override fun cancelNotification(offset: Int) = notifier.cancel(notificationId(offset))
 }

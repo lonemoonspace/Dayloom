@@ -67,8 +67,10 @@ class ArchitectureTest {
     }
 
     @Test
-    fun `policies stay free of Android so they run as plain JVM tests`() {
-        val violations = sources.filter { it.file.name.endsWith("Policy.kt") }.flatMap { s ->
+    fun `policies and domain code stay free of Android so they run as plain JVM tests`() {
+        // By package as well as by name: rules, briefs and models in a domain package are decision logic too.
+        // 既按文件名也按包：domain 包里的规则、简报与模型同样是判定逻辑。
+        val violations = sources.filter { it.file.name.endsWith("Policy.kt") || "/domain/" in it.path }.flatMap { s ->
             s.text.lineSequence().filter { it.startsWith("import android.") || it.startsWith("import androidx.") }
                 .map { "${s.path}: $it" }.toList()
         }

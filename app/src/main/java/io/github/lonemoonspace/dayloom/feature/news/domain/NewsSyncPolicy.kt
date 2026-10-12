@@ -98,6 +98,7 @@ object NewsSyncPolicy {
                 readAt = readAt(old, read),
                 summary = old?.summary.orEmpty(),
                 summaryLanguage = old?.summaryLanguage.orEmpty(),
+                fullTextTriedAt = old?.fullTextTriedAt ?: 0,
             )
         }
 
@@ -121,8 +122,14 @@ object NewsSyncPolicy {
         return MergeResult(upsert, delete)
     }
 
+    /** Newest unread headlines on the home card. / 首页卡片上最新的未读标题条数。 */
+    const val HEADLINES = 3
+
+    /** Articles the "All" list shows; its count is capped the same way, so the number matches the list. / 「全部」列表显示的篇数；它的计数也按这个封顶，数字与列表一致。 */
+    const val RECENT_LIMIT = 300
+
     /** The home card's view of the stored articles. / 首页卡片眼中的本地文章。 */
-    fun summary(articles: List<StoredArticle>, headlines: Int = 3): SyncSummary = SyncSummary(
+    fun summary(articles: List<StoredArticle>, headlines: Int = HEADLINES): SyncSummary = SyncSummary(
         total = articles.size,
         unread = articles.count { !it.read },
         starred = articles.count { it.starred },
@@ -177,16 +184,24 @@ object NewsSyncPolicy {
     /** A failed full-text fetch waits this long before it is tried again. / 抓取全文失败后，等这么久再试。 */
     val FULL_TEXT_RETRY: Duration = Duration.ofMinutes(30)
 
+    /**
+     * [StoredArticle.fullTextTriedAt] when the server's full text came back no longer than the excerpt: the article really
+     * is that short, so asking again would never help.
+     * 服务器返回的全文并不比摘要长时的 [StoredArticle.fullTextTriedAt]：文章本来就这么短，再请求也没用。
+     */
+    const val FULL_TEXT_SHORT = Long.MAX_VALUE
+
     fun isStub(html: String): Boolean = plainText(html, Int.MAX_VALUE).length < STUB_TEXT_CHARS
 
     /**
-     * Excerpt-only articles worth fetching in full: unread or starred, not tried in the last [FULL_TEXT_RETRY], newest first.
-     * 值得抓取全文的只有摘要的文章：未读或已收藏、最近 [FULL_TEXT_RETRY] 内没试过的，最新的在前。
+     * Excerpt-only articles worth fetching in full: unread or starred, not known to be short, not tried in the last
+     * [FULL_TEXT_RETRY], newest first.
+     * 值得抓取全文的只有摘要的文章：未读或已收藏、不是已知的短文、最近 [FULL_TEXT_RETRY] 内没试过的，最新的在前。
      */
-    fun fullTextDue(articles: List<StoredArticle>, triedAt: Map<Long, Long>, nowMillis: Long, limit: Int = FULL_TEXT_PER_SYNC): List<StoredArticle> =
+    fun fullTextDue(articles: List<StoredArticle>, nowMillis: Long, limit: Int = FULL_TEXT_PER_SYNC): List<StoredArticle> =
         articles.asSequence()
             .filter { !it.read || it.starred }
-            .filter { a -> triedAt[a.id]?.let { nowMillis - it < FULL_TEXT_RETRY.toMillis() } != true }
+            .filter { it.fullTextTriedAt != FULL_TEXT_SHORT && (it.fullTextTriedAt == 0L || nowMillis - it.fullTextTriedAt >= FULL_TEXT_RETRY.toMillis()) }
             .sortedByDescending { it.publishedAt }
             .filter { isStub(it.contentHtml) }
             .take(limit)

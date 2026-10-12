@@ -136,11 +136,6 @@ private class FootballInstance(private val ctx: ModuleContext) : ModuleInstance 
     private suspend fun currentTeamMatches(): List<Match>? =
         matches.current()?.value?.takeIf { it.teamId == store.get().team.id }?.matches
 
-    init {
-        // The matches cadence follows the schedule; it learns it from the cached snapshot too, not only from a fetch.
-        // 比赛来源的刷新节奏随赛程变化；它不只从抓取结果、也从缓存快照里得知赛程。
-        ctx.appScope.launch { matches.observe().collect { snapshot -> matches.known = snapshot?.value?.matches.orEmpty() } }
-    }
 
     private val scorers = ScorersSource(
         id = ctx.sourceId("scorers"),
@@ -198,7 +193,7 @@ private class FootballInstance(private val ctx: ModuleContext) : ModuleInstance 
 
     override val notificationChannels = listOf(channel)
 
-    private val target get() = FootballNotifyTarget(ctx.channelId(channel.name), ctx.deepLink, ctx.notificationId(0))
+    private val target get() = FootballNotifyTarget(ctx.channelId(channel.name), ctx.deepLink) { id -> ctx.notificationId(FootballPolicy.notificationSlot(id)) }
 
     override val notificationRules = listOf(
         KickoffRule(

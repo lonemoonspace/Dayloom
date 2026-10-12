@@ -90,6 +90,27 @@ looks it up literally.
   text, and one card per article with an unread dot, a star to tap, a preview, source, time and "Full text saved". Articles
   that arrive as a feed's excerpt get their full text from Miniflux after each sync (ten at a time, a failed one waits half an
   hour) or when opened, and a later sync no longer replaces it with the excerpt.
+- Fixes from the code review of 0.1.0-rc.9:
+  - Notifications: each stage of an expiry reminder rings even while the previous one is still in the shade, and so do a
+    new commute disruption and each day's morning brief (they replaced the earlier notification silently). Deleting a
+    reminder, or giving it another date, withdraws its notification. A match's final score replaces only its own kick-off
+    reminder.
+  - News: switching to another Miniflux server drops the articles of the old one instead of sending their read and star
+    changes to unrelated articles on the new one. When the server refuses changes made here (a read-only token, a proxy
+    refusing PUT), the card and the tab say so. An article whose full text is as short as its excerpt is no longer fetched
+    again on every sync, and failed attempts survive a restart. Lists are indexed and counted in SQL (`dayloom.db` version
+    2, with a migration and a test of it). Quick read/unread taps reach the server in order. The "All" count matches the
+    list it opens.
+  - Public transport: a morning brief set for the afternoon shows the way home instead of nothing. The next train on the
+    same line, late by as much, is a new disruption. A trip whose times cannot be read is dropped rather than shown with a
+    leg missing; one failing stop no longer blanks a whole departure board.
+  - Football: the refresh pace follows the stored schedule from the first round after a start; a missing competition is
+    asked for by name.
+  - Calendar: a Norwegian fixed holiday no longer hides a movable one on the same day (17 May 2012 is also Ascension Day).
+  - Credentials typed into a field are no longer kept in the saved instance state; AI summaries are no longer cut off by
+    the shared 90-second call limit.
+  - Build: CI runs `verifyRelease`, the local gate plus the release R8 pass. Places are searched with Entur Geocoder and
+    Nominatim (the Open-Meteo search mentioned for M1 was replaced in rc.4).
 - Status pills (traffic congestion, transit status, expiry reminders) show only their wording, without a leading "!", tick or
   other symbol. On the departure board the countdown sits in a fixed column at the right edge with the platform before it,
   so times line up across rows and stops; the expiry reminders card lines up its dates the same way.
@@ -156,5 +177,18 @@ looks it up literally.
 - 新闻标签页改用原 App 的布局：带数量的「全部 / 未读 / 收藏」，可搜索标题、来源与正文，每篇文章一张卡片（未读圆点、可点的
   星标、预览、来源、时间与「已缓存全文」）。只发摘要的订阅源的文章，会在每次同步后（每次十篇，失败的等半小时再试）或打开时从
   Miniflux 取回全文，之后的同步不会再用摘要把它覆盖。
+- 0.1.0-rc.9 代码审查后的修正：
+  - 通知：到期提醒的每一档都会响铃，即使上一档还留在通知栏；新的通勤异常和每天的早间简报也一样（原来会静默替换前一条）。删除提醒
+    或改日期时撤下它的通知。比赛的终场比分只替换同一场的开赛提醒。
+  - 新闻：换到另一台 Miniflux 服务器时清掉旧服务器的文章，不再把它们的已读与收藏修改发到新服务器上不相干的文章。服务器拒收本机的
+    修改时（只读令牌、代理拒绝 PUT），卡片与标签页会提示。全文和摘要一样短的文章不再每次同步都重抓，失败记录重启后仍在。列表加了
+    索引并在 SQL 里计数（`dayloom.db` 第 2 版，带迁移及其测试）。快速的已读/未读点按按顺序到达服务器。「全部」的数量与打开的列表一致。
+  - 公共交通：设在下午的早间简报显示回家方向，而不是空着。同一线路的下一班车晚点同样多，也算新的异常。时刻读不出的方案整个丢掉，
+    不再少一段显示；某一个站点出错不再让整个发车板空白。
+  - 足球：刷新节奏从启动后的第一轮起就按已存的赛程；缺赛事时提示的是赛事。
+  - 日历：挪威的固定节日不再盖住同一天的浮动节日（2012-05-17 也是耶稣升天节）。
+  - 输入框里的凭据不再存进保存的实例状态；AI 摘要不再被共享的 90 秒调用上限截断。
+  - 构建：CI 运行 `verifyRelease`，即本地门禁再加 Release 的 R8 处理。地点搜索用 Entur Geocoder 与 Nominatim（M1 提到的 Open-Meteo
+    搜索已在 rc.4 换掉）。
 - 状态胶囊（路况拥堵、公共交通状态、到期提醒）只显示文字，前面不再加「!」、对勾等符号。发车板的倒计时放在靠右的固定列，
   站台在它前面，各行、各站点的时刻上下对齐；到期提醒卡片的日期也同样对齐。

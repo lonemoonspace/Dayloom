@@ -105,6 +105,9 @@ class CalendarTest {
         assertEquals(listOf(Holiday.WHIT_SUNDAY), on(2026, 5, 24, no))
         assertEquals(listOf(Holiday.WHIT_MONDAY), on(2026, 5, 25, no))
         assertEquals(listOf(Holiday.BOXING_DAY), on(2026, 12, 26, no))
+        // A fixed holiday does not hide a movable one on the same day. / 固定节日不会盖住同一天的浮动节日。
+        assertEquals(listOf(Holiday.CONSTITUTION_DAY, Holiday.ASCENSION_DAY), on(2012, 5, 17, no))
+        assertEquals(listOf(Holiday.LABOUR_DAY, Holiday.ASCENSION_DAY), on(2008, 5, 1, no))
     }
 
     @Test

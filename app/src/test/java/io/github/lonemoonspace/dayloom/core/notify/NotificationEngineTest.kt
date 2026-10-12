@@ -46,6 +46,8 @@ class NotificationEngineTest {
         override fun send(notification: AppNotification) {
             sent += notification
         }
+
+        override fun cancel(id: Int) {}
     }
 
     private fun note(id: Int) = AppNotification(id, "m.ch", UiText.Raw("t$id"), UiText.Raw("b$id"), "dayloom://home")
@@ -80,6 +82,8 @@ class NotificationEngineTest {
                 if (notification.id == 1) error("send failed")
                 sent += notification.id
             }
+
+            override fun cancel(id: Int) {}
         }
         val first = FakeRule("a") { RuleDecision(1, listOf(note(1))) }
         val second = FakeRule("b") { RuleDecision(1, listOf(note(2))) }

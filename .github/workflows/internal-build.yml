@@ -27,7 +27,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          # The versionCode check reads the latest v* tag. / versionCode 校验要读最新的 v* tag。
+          # The versionCode checks read the latest v* tag and the other testbuild/* branches. / versionCode 校验要读最新的 v* tag 与其他 testbuild/* 分支。
           fetch-depth: 0
           fetch-tags: true
 
@@ -64,6 +64,15 @@ jobs:
               exit 1
             fi
           fi
+          # Two test builds with one versionCode cannot replace each other on a phone. / 两个 versionCode 相同的测试包在手机上不能互相覆盖安装。
+          for ref in $(git for-each-ref --format='%(refname:strip=3)' 'refs/remotes/origin/testbuild/'); do
+            [ "$ref" = "$GITHUB_REF_NAME" ] && continue
+            other_code="$(git show "origin/$ref:app/build.gradle.kts" | grep -oP 'versionCode\s*=\s*\K[0-9]+' | head -n1 || true)"
+            if [ "$other_code" = "$code" ]; then
+              echo "::error::versionCode $code is already used by $ref / versionCode 已被 $ref 使用"
+              exit 1
+            fi
+          done
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "versionName $version (versionCode $code)"
 

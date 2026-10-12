@@ -35,6 +35,19 @@ abstract class CachedSource<P, T>(
     open val cadence: RefreshCadence = RefreshCadence.DEFAULT
 
     /**
+     * The cadence given the stored snapshot; [cadence] unless the pace follows the data itself (a live match). It gets the
+     * snapshot from storage, so it is right from the first round after a cold start.
+     * 按已存快照决定的刷新节奏；除非节奏随数据本身变化（比赛进行中），否则就是 [cadence]。快照直接从存储读出，冷启动后的第一轮就是对的。
+     */
+    open fun cadence(current: Snapshot<T>?): RefreshCadence = cadence
+
+    /** When it was last fetched, and how often it should be, from one read of the snapshot. / 上次抓取的时刻与应有的节奏，由同一次读取快照得出。 */
+    internal suspend fun schedule(): Pair<Instant?, RefreshCadence> {
+        val snapshot = current()
+        return snapshot?.let { Instant.ofEpochMilli(it.fetchedAt) } to cadence(snapshot)
+    }
+
+    /**
      * Everything the fetch depends on. Must emit the current value immediately (DataStore flows do), because the coordinator
      * reads it one-shot before each refresh.
      * 抓取依赖的全部输入。必须立即发出当前值（DataStore 的流就是这样），因为协调器每次刷新前一次性读取它。

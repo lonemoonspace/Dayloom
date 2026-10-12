@@ -442,6 +442,7 @@
     <string name="football_summary">Your team\'s fixtures, results and table from football-data.org, with your own free key</string>
     <string name="football_setup_key">football-data.org key</string>
     <string name="football_setup_team">A team to follow</string>
+    <string name="football_setup_competition">A competition</string>
     <string name="football_tab_setup">Save your football-data.org key and choose a team under Settings → Football.</string>
     <string name="football_key">football-data.org API key</string>
     <string name="football_key_note">Register for free at football-data.org; the free tier covers the twelve competitions below and ten requests a minute. The key stays on this phone.</string>
@@ -547,6 +548,7 @@
     </plurals>
     <string name="news_all_read">All caught up.</string>
     <string name="news_none">Nothing here yet.</string>
+    <string name="news_push_rejected">Your server did not accept the changes made here; they will be sent again with the next sync.</string>
     <string name="news_filter_unread">Unread</string>
     <string name="news_filter_starred">Starred</string>
     <string name="news_filter_all">All</string>

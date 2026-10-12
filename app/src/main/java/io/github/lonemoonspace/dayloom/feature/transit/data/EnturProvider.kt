@@ -78,8 +78,10 @@ class EnturProvider(
             }
             trip.tripPatterns.mapNotNull { pattern ->
                 // Walking legs only connect rides; a pattern with no ride at all is just a walk. / 步行段只是连接各段；一段车都不坐的方案只是步行。
-                val legs = pattern.legs.filter { it.mode != "foot" }.mapNotNull(::toLeg)
-                legs.takeIf { it.isNotEmpty() }?.let(::TripOption)
+                val legs = pattern.legs.filter { it.mode != "foot" }.map(::toLeg)
+                // A ride without readable times drops the whole option: without it the line, transfers or arrival would be wrong.
+                // 某段车的时刻读不出来就丢掉整个方案：少了它，线路、换乘或到达时间都会是错的。
+                if (legs.isEmpty() || null in legs) null else TripOption(legs.filterNotNull())
             }
         }
 
@@ -106,7 +108,7 @@ class EnturProvider(
             )
         }
         val response = decode(TripResponse.serializer(), post(TRIP_QUERY, variables), "trip response")
-        failOnErrors(response.errors)
+        failOnErrors(response.errors, usable = response.data?.trip != null)
         return response.data?.trip ?: TripResponse.Trip()
     }
 
@@ -126,7 +128,7 @@ class EnturProvider(
                 stopIds.forEachIndexed { index, id -> put("stop$index", id) }
             }
             val response = decode(BoardsResponse.serializer(), post(query, variables), "departures response")
-            failOnErrors(response.errors)
+            failOnErrors(response.errors, usable = response.data != null)
             val data = response.data ?: return@withContext emptyMap()
             stopIds.mapIndexedNotNull { index, id ->
                 // A retired stop id comes back as null instead of an error. / 已退役的站点 id 返回 null 而不是报错。
@@ -190,8 +192,14 @@ class EnturProvider(
     private fun <T> decode(serializer: KSerializer<T>, body: String, what: String): T =
         decodeOrBadData(SERVICE, what) { AppJson.standard.decodeFromString(serializer, body) }
 
-    private fun failOnErrors(errors: List<GraphQlError>) {
-        if (errors.isNotEmpty()) throw AppError.BadData(SERVICE, "GraphQL: " + errors.joinToString("; ") { it.message })
+    /**
+     * GraphQL may answer with errors and data together, e.g. one stop of a board failing; usable data wins, so one bad stop
+     * does not blank the others. Errors without usable data fail.
+     * GraphQL 可能同时返回错误与数据，比如发车板里某一个站点出错；有可用数据时以数据为准，一个坏站点不会让其他站点一起空白。
+     * 只有错误、没有可用数据时才失败。
+     */
+    private fun failOnErrors(errors: List<GraphQlError>, usable: Boolean) {
+        if (errors.isNotEmpty() && !usable) throw AppError.BadData(SERVICE, "GraphQL: " + errors.joinToString("; ") { it.message })
     }
 
     private fun millis(iso: String?): Long? = try {

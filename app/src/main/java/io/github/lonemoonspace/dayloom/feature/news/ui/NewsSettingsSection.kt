@@ -87,7 +87,8 @@ internal sealed interface ConnectResult {
 @Composable
 private fun ServerForm(savedUrl: String, token: SecretState, connect: suspend (url: String, token: String?) -> ConnectResult) {
     var url by rememberSaveable(savedUrl) { mutableStateOf(savedUrl) }
-    var tokenInput by rememberSaveable(token.display) { mutableStateOf(token.display) }
+    // Not saveable, like SecretInput: the plain token must not land in the saved instance state. / 与 SecretInput 一样不保存：明文令牌不能进入保存的实例状态。
+    var tokenInput by remember(token.display) { mutableStateOf(token.display) }
     var visible by rememberSaveable { mutableStateOf(false) }
     var working by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<ConnectResult?>(null) }

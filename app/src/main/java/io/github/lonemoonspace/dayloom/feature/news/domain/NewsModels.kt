@@ -43,6 +43,13 @@ data class StoredArticle(
     /** AI summary and the language it was written in; kept across syncs. / AI 摘要及其语言；同步时保留。 */
     val summary: String = "",
     val summaryLanguage: String = "",
+    /**
+     * Last failed full-text fetch, epoch millis; 0 = not tried, [NewsSyncPolicy.FULL_TEXT_SHORT] = the server's own text is
+     * this short, so it is never asked for again. Kept in the database so a restart does not retry everything.
+     * 上次抓全文失败的时刻（epoch 毫秒）；0 = 没试过，[NewsSyncPolicy.FULL_TEXT_SHORT] = 服务器上的全文本来就这么短，不再请求。
+     * 存在数据库里，重启后不会全部重试一遍。
+     */
+    val fullTextTriedAt: Long = 0,
 )
 
 enum class ArticleFilter { UNREAD, STARRED, ALL }
@@ -53,7 +60,14 @@ data class Headline(val id: Long = 0, val title: String = "", val feed: String =
 
 /** The snapshot of `news.sync`: what the home card shows; the articles themselves live in Room. / `news.sync` 的快照：首页卡片显示的内容；文章本身在 Room 里。 */
 @Serializable
-data class SyncSummary(val unread: Int = 0, val starred: Int = 0, val latest: List<Headline> = emptyList(), val total: Int = 0)
+data class SyncSummary(
+    val unread: Int = 0,
+    val starred: Int = 0,
+    val latest: List<Headline> = emptyList(),
+    val total: Int = 0,
+    /** The last sync could not send the changes made here (read-only token, a proxy refusing PUT…); they stay pending. / 上一次同步没能发出本机的修改（只读令牌、代理拒绝 PUT……）；修改仍待发送。 */
+    val pushRejected: Boolean = false,
+)
 
 /** An article with what the list shows of it; [text] is its plain text, for search. / 文章及其在列表里显示的内容；[text] 是纯文本，供搜索用。 */
 data class ArticleItem(val article: StoredArticle, val preview: String, val text: String, val fullText: Boolean)

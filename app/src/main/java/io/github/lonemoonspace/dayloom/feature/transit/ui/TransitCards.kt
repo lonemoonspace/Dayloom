@@ -57,11 +57,10 @@ import java.time.Instant
 import java.time.ZonedDateTime
 
 /**
- * One commute card (train or bus): inside a daily window the next options in that direction, otherwise the next option each
- * way. One row per option: departure time, lines, arrival and duration, transfers and platform, and the worst real-time
- * status of its legs.
- * 一张通勤卡片（火车或公交）：日常时间窗内显示该方向的接下来几个方案，时间窗外两个方向各显示下一个。每个方案一行：出发时刻、
- * 线路、到达与用时、换乘与站台，以及各段中最差的实时状态。
+ * One commute card (train or bus): the next options towards the destination before noon, back from noon on. One row per
+ * option: departure time, lines, arrival and duration, transfers and platform, and the worst real-time status of its legs.
+ * 一张通勤卡片（火车或公交）：中午前显示去程、中午起显示回程的接下来几个方案。每个方案一行：出发时刻、线路、到达与用时、
+ * 换乘与站台，以及各段中最差的实时状态。
  */
 @Composable
 internal fun CommuteCard(

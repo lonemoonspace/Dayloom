@@ -18,6 +18,7 @@ import io.github.lonemoonspace.dayloom.feature.reminders.ui.RemindersCard
 import io.github.lonemoonspace.dayloom.feature.reminders.ui.RemindersSettingsSection
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
@@ -51,6 +52,20 @@ private class RemindersInstance(private val ctx: ModuleContext) : ModuleInstance
 
     private val channel = ChannelSpec("expiry", R.string.reminders_channel, R.string.reminders_channel_description)
 
+    init {
+        // Withdraws the notification of an item that was deleted or edited, whichever screen made the change.
+        // 条目被删除或修改时撤下它的通知，不管改动来自哪个界面。
+        ctx.appScope.launch {
+            var before: List<ReminderItem>? = null
+            store.flow.map { it.items }.distinctUntilChanged().collect { items ->
+                before?.let { old -> ReminderPolicy.outdated(old, items).forEach { ctx.cancelNotification(slot(it)) } }
+                before = items
+            }
+        }
+    }
+
+    private fun slot(item: ReminderItem) = ReminderPolicy.idNumber(item.id) % NOTIFICATION_SLOTS
+
     override val homeCards = listOf(
         HomeCard(
             key = "items",
@@ -82,7 +97,7 @@ private class RemindersInstance(private val ctx: ModuleContext) : ModuleInstance
             // list from throwing.
             // 每个条目一个 id，通知互不覆盖。id 为 `item<n>`，n 取最小未用的数，所以 n 不会超过条目数，超过 1000 个条目才会共用
             // 一个位置；取模只是让这样的列表不至于抛异常。
-            notificationId = { item -> ctx.notificationId(ReminderPolicy.idNumber(item.id) % NOTIFICATION_SLOTS) },
+            notificationId = { item -> ctx.notificationId(slot(item)) },
         ),
     )
 

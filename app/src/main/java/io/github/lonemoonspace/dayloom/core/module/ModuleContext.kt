@@ -9,6 +9,7 @@ import io.github.lonemoonspace.dayloom.core.storage.SnapshotStore
 import io.github.lonemoonspace.dayloom.core.storage.ValueStore
 import io.github.lonemoonspace.dayloom.core.time.AppClock
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import kotlin.reflect.KClass
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -54,8 +55,10 @@ interface ModuleContext {
      * fails at creation, so a new module needing Room gets its own file instead of sharing tables.
      * App 的 Room 数据库 `dayloom.db`（设计文档 §6.1），按 [type] 构建。只能由一个模块持有；第二个调用者在创建时就会失败，
      * 所以新模块需要 Room 时要用自己的文件，而不是共用表。
+     * [migrations] must cover every earlier version still installed; a missing one fails at open rather than wiping data.
+     * [migrations] 必须覆盖仍可能装着的每个旧版本；缺了会在打开时失败，而不是清空数据。
      */
-    fun <T : RoomDatabase> database(type: KClass<T>): T
+    fun <T : RoomDatabase> database(type: KClass<T>, vararg migrations: Migration): T
 
     fun channelId(name: String): String = "$moduleId.$name"
 
@@ -64,6 +67,12 @@ interface ModuleContext {
      * 本模块通知号段中的第 [offset] 个 id；超出号段时抛异常。
      */
     fun notificationId(offset: Int): Int
+
+    /**
+     * Removes this module's notification with [notificationId] ([offset]) if it is shown.
+     * 撤下本模块 [notificationId]（[offset]）对应的通知（如果正在显示）。
+     */
+    fun cancelNotification(offset: Int)
 
     /** `dayloom://<moduleId>`, opens the module's tab, or home when it has none. / `dayloom://<模块id>`，打开模块的标签页，没有时打开首页。 */
     val deepLink: String get() = "dayloom://$moduleId"

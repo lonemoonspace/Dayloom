@@ -6,8 +6,10 @@ import io.github.lonemoonspace.dayloom.feature.news.data.LlmApi
 import io.github.lonemoonspace.dayloom.feature.news.data.MinifluxApi
 import io.github.lonemoonspace.dayloom.feature.news.data.NewsSync
 import io.github.lonemoonspace.dayloom.feature.news.domain.ArticleFilter
+import io.github.lonemoonspace.dayloom.feature.news.domain.ArticleOwner
 import io.github.lonemoonspace.dayloom.feature.news.domain.ArticleStore
 import io.github.lonemoonspace.dayloom.feature.news.domain.MergeResult
+import io.github.lonemoonspace.dayloom.feature.news.domain.NewsSyncPolicy
 import io.github.lonemoonspace.dayloom.feature.news.domain.StoredArticle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +23,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -106,9 +109,22 @@ class NewsApiTest {
         assertEquals(401, (runCatching { LlmApi(OkHttpClient()).summarize(base, "key", "m", "T", "X", "en") }.exceptionOrNull() as AppError.Http).code)
     }
 
+    private class MemoryOwner(var value: String = "") : ArticleOwner {
+        override suspend fun get() = value
+        override suspend fun set(baseUrl: String) {
+            value = baseUrl
+        }
+    }
+
     private class MemoryStore : ArticleStore {
         val rows = MutableStateFlow<Map<Long, StoredArticle>>(emptyMap())
         override suspend fun all() = rows.value.values.toList()
+        override suspend fun pending() = all().filter { it.pendingRead != null || it.pendingStarred != null }
+        override suspend fun summary() = io.github.lonemoonspace.dayloom.feature.news.domain.NewsSyncPolicy.summary(all())
+        override suspend fun clear() {
+            rows.value = emptyMap()
+        }
+        override suspend fun markFullTextTried(id: Long, at: Long) = edit(id) { it.copy(fullTextTriedAt = at) }
         override suspend fun apply(result: MergeResult) {
             rows.value = rows.value - result.delete.toSet() + result.upsert.associateBy { it.id }
         }
@@ -128,7 +144,7 @@ class NewsApiTest {
     @Test
     fun `excerpts get their full text after a sync, and a failure waits before the next try`() = runTest {
         val store = MemoryStore()
-        val sync = NewsSync(store, MinifluxApi(OkHttpClient()))
+        val sync = NewsSync(store, MinifluxApi(OkHttpClient()), MemoryOwner())
         val full = "<p>" + "Full text. ".repeat(20) + "</p>"
         server.enqueue(MockResponse().setBody(entries(1, 2, excerpt = true)))
         server.enqueue(MockResponse().setBody(entries()))
@@ -157,7 +173,7 @@ class NewsApiTest {
     @Test
     fun `a sync downloads, pushes local changes and keeps them pending when the push fails`() = runTest {
         val store = MemoryStore()
-        val sync = NewsSync(store, MinifluxApi(OkHttpClient()))
+        val sync = NewsSync(store, MinifluxApi(OkHttpClient()), MemoryOwner())
         server.enqueue(MockResponse().setBody(entries(1, 2)))
         server.enqueue(MockResponse().setBody(entries()))
         val first = sync.sync(base, "tok", nowMillis = java.time.Instant.parse("2026-10-09T12:00:00Z").toEpochMilli())
@@ -187,7 +203,7 @@ class NewsApiTest {
     @Test
     fun `read states go out right away, once, and stay pending until a sync confirms them`() = runTest {
         val store = MemoryStore()
-        val sync = NewsSync(store, MinifluxApi(OkHttpClient()))
+        val sync = NewsSync(store, MinifluxApi(OkHttpClient()), MemoryOwner())
         server.enqueue(MockResponse().setBody(entries(1)))
         server.enqueue(MockResponse().setBody(entries()))
         sync.sync(base, "tok", nowMillis = 0)
@@ -200,5 +216,60 @@ class NewsApiTest {
         sync.pushReadStates(base, "tok")
         assertEquals("nothing new to send", 1 + 2, server.requestCount)
         assertEquals(true, store.rows.value.getValue(1).pendingRead)
+    }
+
+    @Test
+    fun `a sync with another server drops the old articles and never sends their changes there`() = runTest {
+        val store = MemoryStore()
+        val owner = MemoryOwner()
+        val sync = NewsSync(store, MinifluxApi(OkHttpClient()), owner)
+        server.enqueue(MockResponse().setBody(entries(1, 2)))
+        server.enqueue(MockResponse().setBody(entries()))
+        sync.sync(base, "tok", nowMillis = 0)
+        assertEquals(base, owner.value)
+        sync.markRead(1, true, nowMillis = 5)
+        repeat(2) { server.takeRequest() }
+
+        val other = server.url("/other").toString().trimEnd('/')
+        sync.pushReadStates(other, "tok")
+        assertEquals("nothing goes to a server the articles did not come from", 2, server.requestCount)
+
+        server.enqueue(MockResponse().setBody(entries(7)))
+        server.enqueue(MockResponse().setBody(entries()))
+        val summary = sync.sync(other, "tok", nowMillis = 10)
+        assertEquals("only downloads, no push of the old read state", listOf("GET", "GET"), (1..2).map { server.takeRequest().method })
+        assertEquals(setOf(7L), store.rows.value.keys)
+        assertEquals(other, owner.value)
+        assertEquals(1, summary.unread)
+    }
+
+    @Test
+    fun `a refused push is reported and the change stays pending`() = runTest {
+        val store = MemoryStore()
+        val sync = NewsSync(store, MinifluxApi(OkHttpClient()), MemoryOwner())
+        server.enqueue(MockResponse().setBody(entries(1)))
+        server.enqueue(MockResponse().setBody(entries()))
+        assertFalse(sync.sync(base, "tok", nowMillis = 0).pushRejected)
+        sync.markRead(1, true, nowMillis = 5)
+        server.enqueue(MockResponse().setBody(entries(1)))
+        server.enqueue(MockResponse().setBody(entries()))
+        server.enqueue(MockResponse().setResponseCode(403))
+        assertTrue(sync.sync(base, "tok", nowMillis = 10).pushRejected)
+        assertEquals(true, store.rows.value.getValue(1).pendingRead)
+    }
+
+    @Test
+    fun `an article that is short on the server too is not fetched again`() = runTest {
+        val store = MemoryStore()
+        val sync = NewsSync(store, MinifluxApi(OkHttpClient()), MemoryOwner())
+        server.enqueue(MockResponse().setBody(entries(1, excerpt = true)))
+        server.enqueue(MockResponse().setBody(entries()))
+        server.enqueue(MockResponse().setBody("""{"content":"<p>Short note.</p>"}"""))
+        sync.sync(base, "tok", nowMillis = 0)
+        assertEquals(NewsSyncPolicy.FULL_TEXT_SHORT, store.rows.value.getValue(1).fullTextTriedAt)
+        server.enqueue(MockResponse().setBody(entries(1, excerpt = true)))
+        server.enqueue(MockResponse().setBody(entries()))
+        sync.sync(base, "tok", nowMillis = 2 * 60 * 60_000L)
+        assertEquals("downloads only, long after the retry wait", 5, server.requestCount)
     }
 }

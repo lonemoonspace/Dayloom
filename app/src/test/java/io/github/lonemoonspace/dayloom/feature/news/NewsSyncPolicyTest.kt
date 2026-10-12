@@ -139,7 +139,7 @@ class NewsSyncPolicyTest {
     }
 
     @Test
-    fun `excerpts are fetched newest first, unread or starred, and not again during the retry wait`() {
+    fun `excerpts are fetched newest first, unread or starred, not again during the retry wait, never when known short`() {
         val long = "<p>" + "word ".repeat(40) + "</p>"
         val articles = listOf(
             stored(1, age = 3 * day),
@@ -148,10 +148,19 @@ class NewsSyncPolicyTest {
             stored(4, read = true, starred = true, age = 2 * day),
             stored(5).copy(contentHtml = long),
         )
-        assertEquals(listOf(2L, 4L, 1L), NewsSyncPolicy.fullTextDue(articles, triedAt = emptyMap(), nowMillis = now).map { it.id })
-        val tried = mapOf(2L to now - NewsSyncPolicy.FULL_TEXT_RETRY.toMillis() + 1, 1L to now - NewsSyncPolicy.FULL_TEXT_RETRY.toMillis())
-        assertEquals(listOf(4L, 1L), NewsSyncPolicy.fullTextDue(articles, tried, now).map { it.id })
-        assertEquals(1, NewsSyncPolicy.fullTextDue(articles, emptyMap(), now, limit = 1).size)
+        assertEquals(listOf(2L, 4L, 1L), NewsSyncPolicy.fullTextDue(articles, nowMillis = now).map { it.id })
+        // 30 minutes written out, so shrinking the constant fails the test. / 30 分钟写成字面量，改小常量会让测试失败。
+        val wait = 30 * 60_000L
+        val tried = articles.map {
+            when (it.id) {
+                2L -> it.copy(fullTextTriedAt = now - wait + 1)
+                1L -> it.copy(fullTextTriedAt = now - wait)
+                4L -> it.copy(fullTextTriedAt = NewsSyncPolicy.FULL_TEXT_SHORT)
+                else -> it
+            }
+        }
+        assertEquals(listOf(1L), NewsSyncPolicy.fullTextDue(tried, now).map { it.id })
+        assertEquals(1, NewsSyncPolicy.fullTextDue(articles, now, limit = 1).size)
     }
 
     @Test

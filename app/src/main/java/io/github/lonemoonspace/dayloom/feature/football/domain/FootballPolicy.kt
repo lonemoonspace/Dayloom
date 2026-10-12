@@ -151,6 +151,14 @@ object FootballPolicy {
             .maxByOrNull { it.kickoff }
     }
 
+    /**
+     * The match's place in the module's 1,000 notification ids; two matches only collide when their ids differ by a multiple of 1,000.
+     * 比赛在本模块 1000 个通知 id 中的位置；只有 id 相差 1000 的整数倍的两场比赛才会撞上。
+     */
+    fun notificationSlot(matchId: Long): Int = Math.floorMod(matchId, NOTIFICATION_SLOTS.toLong()).toInt()
+
+    private const val NOTIFICATION_SLOTS = 1_000
+
     /** Ids remembered by the rules: enough for a season's worth of overlapping fetches, without growing forever. / 规则记住的 id：足够覆盖相互重叠的多次抓取，又不会无限增长。 */
     fun remember(notified: Set<Long>, id: Long): Set<Long> = (notified.sortedDescending().take(MEMORY - 1) + id).toSet()
 

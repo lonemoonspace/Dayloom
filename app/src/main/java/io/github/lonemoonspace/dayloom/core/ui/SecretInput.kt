@@ -9,6 +9,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -29,7 +30,9 @@ import io.github.lonemoonspace.dayloom.core.secret.SecretState
  */
 @Composable
 fun SecretInput(label: String, state: SecretState, onSave: (String) -> Unit) {
-    var input by rememberSaveable(state.display) { mutableStateOf(state.display) }
+    // remember, not rememberSaveable: a saved instance state Bundle would keep the plain credential outside SecretStore.
+    // 用 remember 而不是 rememberSaveable：保存的实例状态 Bundle 会把明文凭据留在 SecretStore 之外。
+    var input by remember(state.display) { mutableStateOf(state.display) }
     var visible by rememberSaveable { mutableStateOf(false) }
     val rejected = SecretField.isCiphertext(input.trim())
     OutlinedTextField(

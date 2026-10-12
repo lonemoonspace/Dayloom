@@ -142,7 +142,7 @@ class FootballPolicyTest {
         assertTrue(100L in many)
     }
 
-    private val target = FootballNotifyTarget("football.matches", "dayloom://football", 3_000)
+    private val target = FootballNotifyTarget("football.matches", "dayloom://football") { 3_000 + FootballPolicy.notificationSlot(it) }
 
     @Test
     fun `the result rule names the outcome and the shoot-out`() = runTest {
@@ -157,6 +157,9 @@ class FootballPolicyTest {
         val score = UiText.Res(R.string.football_result_line, listOf("Team B", 1, 1, "Team A"))
         assertEquals(UiText.Res(R.string.football_with_penalties, listOf(score, 3, 5)), note.body)
         assertTrue(rule.evaluate(RuleInput(fresh, now), decision.newState).notifications.isEmpty())
+        assertEquals("a match's result replaces its own kick-off reminder", 3_003, note.id)
+        val kickoffs = mapOf(9L to 1L)
+        assertEquals("kick-offs survive", kickoffs, rule.evaluate(RuleInput(fresh, now), AnnouncedMatches(kickoffs = kickoffs)).newState.kickoffs)
 
         val stale = RefreshReport(emptyMap(), Instant.EPOCH)
         assertTrue("only from a fresh snapshot", rule.evaluate(RuleInput(stale, now), AnnouncedMatches()).notifications.isEmpty())

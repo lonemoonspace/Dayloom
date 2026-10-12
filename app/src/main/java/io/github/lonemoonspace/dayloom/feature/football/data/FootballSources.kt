@@ -12,7 +12,6 @@ import io.github.lonemoonspace.dayloom.core.storage.Snapshot
 import io.github.lonemoonspace.dayloom.core.storage.SnapshotStore
 import io.github.lonemoonspace.dayloom.core.time.AppClock
 import io.github.lonemoonspace.dayloom.feature.football.domain.FootballPolicy
-import io.github.lonemoonspace.dayloom.feature.football.domain.Match
 import io.github.lonemoonspace.dayloom.feature.football.domain.Scorers
 import io.github.lonemoonspace.dayloom.feature.football.domain.Standings
 import io.github.lonemoonspace.dayloom.feature.football.domain.TeamMatches
@@ -54,11 +53,8 @@ class MatchesSource(
 
     override val maxAge: Duration = Duration.ofHours(12)
 
-    /** The last known matches, kept by the module from [observe] so the cadence can follow them. / 最近一次的比赛列表，由模块从 [observe] 更新，刷新节奏据此变化。 */
-    @Volatile
-    var known: List<Match> = emptyList()
-
-    override val cadence: RefreshCadence get() = FootballPolicy.cadence(known, clock.now().toInstant())
+    override fun cadence(current: Snapshot<TeamMatches>?): RefreshCadence =
+        FootballPolicy.cadence(current?.value?.matches.orEmpty(), clock.now().toInstant())
 
     override val inputs: Flow<SourceInput<Int>> = combine(teamId, secret) { team, s ->
         keyedInput(team.takeIf { it > 0 }, key = "team:$team", secret = s, missing = R.string.football_setup_team)
@@ -68,7 +64,7 @@ class MatchesSource(
         val key = apiKey().ifBlank { throw AppError.NotConfigured(uiText(R.string.football_setup_key)) }
         val today = now.toLocalDate()
         val matches = api.teamMatches(key, params, today.minusDays(FootballPolicy.PAST_DAYS), today.plusDays(FootballPolicy.FUTURE_DAYS))
-        return TeamMatches(teamId = params, matches = matches.sortedBy { it.kickoff }).also { known = it.matches }
+        return TeamMatches(teamId = params, matches = matches.sortedBy { it.kickoff })
     }
 }
 
@@ -93,7 +89,7 @@ class ScorersSource(
     override val cadence = RefreshCadence(interval = Duration.ofHours(6))
 
     override val inputs: Flow<SourceInput<String>> = combine(competition, secret) { code, s ->
-        keyedInput(code.takeIf { it.isNotBlank() }, key = "competition:$code", secret = s, missing = R.string.football_setup_team)
+        keyedInput(code.takeIf { it.isNotBlank() }, key = "competition:$code", secret = s, missing = R.string.football_setup_competition)
     }
 
     override suspend fun fetch(params: String, now: ZonedDateTime, previous: Snapshot<Scorers>?): Scorers {
@@ -125,7 +121,7 @@ class StandingsSource(
     override val cadence = RefreshCadence(interval = Duration.ofHours(6))
 
     override val inputs: Flow<SourceInput<String>> = combine(competition, secret) { code, s ->
-        keyedInput(code.takeIf { it.isNotBlank() }, key = "competition:$code", secret = s, missing = R.string.football_setup_team)
+        keyedInput(code.takeIf { it.isNotBlank() }, key = "competition:$code", secret = s, missing = R.string.football_setup_competition)
     }
 
     override suspend fun fetch(params: String, now: ZonedDateTime, previous: Snapshot<Standings>?): Standings {

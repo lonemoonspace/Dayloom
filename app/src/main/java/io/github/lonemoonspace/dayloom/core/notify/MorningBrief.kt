@@ -86,6 +86,8 @@ class MorningBriefRule(
             title = UiText.Res(R.string.brief_title),
             body = UiText.Lines(lines),
             deepLink = CoreNotifications.BRIEF_DEEP_LINK,
+            // Each day's brief is news, even when yesterday's was never dismissed. / 每天的简报都是新消息，即使昨天那条没划掉。
+            alertOnce = false,
         )
         return RuleDecision(day, listOf(notification))
     }

@@ -47,7 +47,7 @@ object HolidayPolicy {
         solarTermsShown: Boolean = false,
     ): List<Holiday> = buildList {
         if (HolidayCountry.CN in countries) addAll(china(date, lunar))
-        if (HolidayCountry.NO in countries) norway(date)?.let(::add)
+        if (HolidayCountry.NO in countries) addAll(norway(date))
     }.distinct().filterNot { solarTermsShown && it in SOLAR_TERM_HOLIDAYS }
 
     /** The first holiday strictly after [today] and at most [withinDays] away. / 严格晚于 [today]、且不超过 [withinDays] 天的第一个节日。 */
@@ -83,10 +83,14 @@ object HolidayPolicy {
         return listOfNotNull(fixed, festival ?: eve, qingming)
     }
 
-    private fun norway(date: LocalDate): Holiday? {
-        NORWAY_FIXED[date.monthValue to date.dayOfMonth]?.let { return it }
+    /**
+     * Fixed date first, then the Easter-based one; they can fall on the same day (Ascension Day on 1 May 2008 and 17 May
+     * 2012, Whit Sunday on 17 May 2043), and both are shown.
+     * 固定日期的在前，按复活节推算的在后；两者可能同一天（2008-05-01 与 2012-05-17 的耶稣升天节、2043-05-17 的圣灵降临节），都显示。
+     */
+    private fun norway(date: LocalDate): List<Holiday> {
         val easter = easterSunday(date.year)
-        return when (date) {
+        val movable = when (date) {
             easter.minusDays(3) -> Holiday.MAUNDY_THURSDAY
             easter.minusDays(2) -> Holiday.GOOD_FRIDAY
             easter -> Holiday.EASTER_SUNDAY
@@ -96,6 +100,7 @@ object HolidayPolicy {
             easter.plusDays(50) -> Holiday.WHIT_MONDAY
             else -> null
         }
+        return listOfNotNull(NORWAY_FIXED[date.monthValue to date.dayOfMonth], movable)
     }
 
     /**

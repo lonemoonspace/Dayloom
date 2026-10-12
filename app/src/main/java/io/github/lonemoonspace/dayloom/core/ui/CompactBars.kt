@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -53,6 +54,7 @@ fun CompactTopBar(
      * 标题后可选的一行浅色小字，与标题基线对齐；空间不够时先省略它，标题不被截断。
      */
     subtitle: String? = null,
+    subtitleStyle: TextStyle = MaterialTheme.typography.labelMedium,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val edge = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
@@ -84,7 +86,7 @@ fun CompactTopBar(
                 Spacer(Modifier.width(10.dp))
                 Text(
                     text = subtitle,
-                    style = MaterialTheme.typography.labelMedium,
+                    style = subtitleStyle,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

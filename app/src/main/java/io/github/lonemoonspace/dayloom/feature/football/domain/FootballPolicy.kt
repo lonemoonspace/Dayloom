@@ -153,7 +153,10 @@ object FootballPolicy {
 
     /**
      * The match's place in the module's 1,000 notification ids; two matches only collide when their ids differ by a multiple of 1,000.
+     * A match's notification lives only from kickoff to result, and the followed team plays one match at a time, so 1,000 slots
+     * leave ample room.
      * 比赛在本模块 1000 个通知 id 中的位置；只有 id 相差 1000 的整数倍的两场比赛才会撞上。
+     * 一场比赛的通知只从开球存续到出结果，所关注的球队同一时间只踢一场，所以 1000 个槽位绰绰有余。
      */
     fun notificationSlot(matchId: Long): Int = Math.floorMod(matchId, NOTIFICATION_SLOTS.toLong()).toInt()
 

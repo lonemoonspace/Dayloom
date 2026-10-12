@@ -227,31 +227,21 @@ def star(cx, cy, outer, inner):
     return "M" + " L".join(f"{fmt(x)},{fmt(y)}" for x, y in pts) + " Z"
 
 
-DISC = "M3,12 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z"
 STAR = star(12, 12.8, 8.2, 3.6)
 TRIANGLE = "M10.27,5.2 a2,2 0 0,1 3.46,0 l6.93,12 a2,2 0 0,1 -1.73,3 H4.07 a2,2 0 0,1 -1.73,-3 Z"
 CANOPY = "M3.5,12 A8.5,8.5 0 0,1 20.5,12 Z"
 STATUS = {
-    "ic_status_ok": ("OK: check mark on a tinted disc.", "正常：淡色圆底上的对勾。",
-                     [("soft", DISC)], [("M8,12.4 L10.7,15.1 L16,9.6", "round")]),
-    "ic_status_late": ("Late: clock hands on a tinted disc.", "晚点：淡色圆底上的时钟指针。",
-                       [("soft", DISC)], [("M12,7 V12 L15.2,14", "round")]),
     # Where the tinted shape is the symbol itself it is outlined too: on a tinted pill, such as the weather card's, a soft
     # shape alone fades away.
     # 淡色形状本身就是符号时再加描边：放在有底色的胶囊上（比如天气卡片），只有淡色形状会看不清。
     "ic_status_warn": ("Warning: exclamation mark in an outlined, tinted triangle.", "警示：描边淡色三角里的感叹号。",
                        [("soft", TRIANGLE), ("ink", dot(12, 16.6, 1.2))], [(TRIANGLE, "round"), ("M12,10 V13.2", "round")]),
-    "ic_status_cancel": ("Cancelled: cross on a tinted disc.", "已取消：淡色圆底上的叉。",
-                         [("soft", DISC)], [("M9.2,9.2 L14.8,14.8 M14.8,9.2 L9.2,14.8", "round")]),
     "ic_status_umbrella": ("Umbrella: outlined, tinted canopy and a hooked handle.", "带伞：描边的淡色伞面与弯钩伞柄。",
                            [("soft", CANOPY)], [(CANOPY, "round"), ("M12,12 V18 A2,2 0 0,1 8,18", "round")]),
-    "ic_status_unknown": ("No real-time data: question mark on a faint disc.", "没有实时数据：浅色圆底上的问号。",
-                          [("faint", DISC), ("ink", dot(12, 16.6, 1.2))],
-                          [("M9.8,9.6 a2.3,2.3 0 1,1 3.2,2.1 c-0.6,0.3 -1,0.8 -1,1.5 v0.3", "round")]),
     # The fill and an outline of the same path round off the points. / 同一路径既填充又描边，星角就是圆的。
     "ic_star": ("Starred: a solid star with rounded points.", "已收藏：圆角的实心星。", [("ink", STAR)], [(STAR, "round")]),
 }
-STATUS_PALETTE = {"ink": "#FF000000", "soft": "#33000000", "faint": "#24000000"}
+STATUS_PALETTE = {"ink": "#FF000000", "soft": "#33000000"}
 
 # ---------------- launcher / 启动器 ----------------
 

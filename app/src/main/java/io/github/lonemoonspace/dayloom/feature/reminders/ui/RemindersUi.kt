@@ -66,7 +66,9 @@ internal fun RemindersCard(settings: Flow<RemindersSettings>) {
         if (saved != null && statuses.isEmpty()) {
             Hint(stringResource(R.string.reminders_empty))
         }
-        // One row per item: name, its date, the remaining time. / 每个条目一行：名称、日期、剩余时间。
+        // One row per item: name, its date, the remaining time. The name always takes its full share, so the dates start in
+        // one column however long each name is.
+        // 每个条目一行：名称、日期、剩余时间。名称总是占满它那一份宽度，无论名称长短，日期都从同一列开始。
         statuses.forEach { status ->
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 3.dp)) {
                 Text(
@@ -75,7 +77,7 @@ internal fun RemindersCard(settings: Flow<RemindersSettings>) {
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
+                    modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
@@ -86,8 +88,7 @@ internal fun RemindersCard(settings: Flow<RemindersSettings>) {
                     modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.width(8.dp))
-                val (color, icon) = chip(status.state)
-                StatusChip(remainingText(status), color, icon)
+                StatusChip(remainingText(status), chipColor(status.state))
             }
         }
     }
@@ -270,10 +271,10 @@ private fun remainingText(status: ReminderPolicy.Status): String = when {
 }
 
 @Composable
-private fun chip(state: ReminderPolicy.State): Pair<Color, Int> = when (state) {
-    ReminderPolicy.State.ACTIVE -> MaterialTheme.statusColors.green to R.drawable.ic_status_ok
-    ReminderPolicy.State.EXPIRING -> MaterialTheme.statusColors.amber to R.drawable.ic_status_late
-    ReminderPolicy.State.EXPIRED -> MaterialTheme.statusColors.red to R.drawable.ic_status_cancel
+private fun chipColor(state: ReminderPolicy.State): Color = when (state) {
+    ReminderPolicy.State.ACTIVE -> MaterialTheme.statusColors.green
+    ReminderPolicy.State.EXPIRING -> MaterialTheme.statusColors.amber
+    ReminderPolicy.State.EXPIRED -> MaterialTheme.statusColors.red
 }
 
 @Composable

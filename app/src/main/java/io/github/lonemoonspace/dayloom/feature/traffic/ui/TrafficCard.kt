@@ -73,17 +73,17 @@ internal fun TrafficCard(
         },
     ) {
         if (status != null) {
-            val (color, icon) = when (status.level) {
-                TrafficLevel.CLEAR -> MaterialTheme.statusColors.green to R.drawable.ic_status_ok
-                TrafficLevel.SLIGHT -> MaterialTheme.statusColors.amber to R.drawable.ic_status_warn
-                TrafficLevel.MODERATE -> MaterialTheme.statusColors.orange to R.drawable.ic_status_warn
-                TrafficLevel.SEVERE -> MaterialTheme.statusColors.red to R.drawable.ic_status_warn
-                TrafficLevel.UNKNOWN -> MaterialTheme.statusColors.gray to null
+            val color = when (status.level) {
+                TrafficLevel.CLEAR -> MaterialTheme.statusColors.green
+                TrafficLevel.SLIGHT -> MaterialTheme.statusColors.amber
+                TrafficLevel.MODERATE -> MaterialTheme.statusColors.orange
+                TrafficLevel.SEVERE -> MaterialTheme.statusColors.red
+                TrafficLevel.UNKNOWN -> MaterialTheme.statusColors.gray
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(minutes(status.durationSec), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(8.dp))
-                StatusChip(stringResource(levelText(status.level)), color, icon)
+                StatusChip(stringResource(levelText(status.level)), color)
                 Spacer(Modifier.weight(1f))
                 Text(
                     text = String.format(Locale.ROOT, "%.1f km", status.distanceMeters / 1000.0),

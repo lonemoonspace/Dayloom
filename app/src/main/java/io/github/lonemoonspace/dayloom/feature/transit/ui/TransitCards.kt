@@ -270,6 +270,12 @@ internal fun BoardsCard(
     }
 }
 
+/**
+ * One departure: line, destination, a badge only when it deviates, then platform and countdown in a fixed column at the
+ * right edge, so "27 min" and "09:57" start at the same place in every row and every stop whether or not a badge shows.
+ * 一班车：线路、终点、只有异常时才有的徽标，然后是靠右固定列里的站台与倒计时；无论有没有徽标，「27 分钟」与「09:57」
+ * 在每一行、每个站点都从同一位置开始。
+ */
 @Composable
 private fun DepartureRow(departure: BoardDeparture, now: ZonedDateTime) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
@@ -281,15 +287,6 @@ private fun DepartureRow(departure: BoardDeparture, now: ZonedDateTime) {
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        if (departure.platform.isNotEmpty()) {
-            Text(
-                stringResource(R.string.transit_platform, departure.platform),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.width(6.dp))
-        }
-        Text(countdown(departure.expected, now), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
         val status = TransitPolicy.legStatus(departure)
         // On time is the normal case; only deviations get a badge, which keeps a busy board readable.
         // 准点是常态；只有异常才加徽标，繁忙的发车板才看得清。
@@ -297,6 +294,23 @@ private fun DepartureRow(departure: BoardDeparture, now: ZonedDateTime) {
             Spacer(Modifier.width(6.dp))
             StatusBadge(status)
         }
+        if (departure.platform.isNotEmpty()) {
+            Spacer(Modifier.width(6.dp))
+            Text(
+                stringResource(R.string.transit_platform, departure.platform),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            countdown(departure.expected, now),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            modifier = Modifier.widthIn(min = COUNTDOWN_WIDTH),
+        )
     }
 }
 
@@ -312,23 +326,19 @@ private fun countdown(millis: Long, now: ZonedDateTime): String {
 }
 
 /**
- * The four states, each with its own colour and icon so the status never depends on colour alone. No real-time data is grey,
- * never green.
- * 四种状态各有颜色与图标，状态不只靠颜色区分。没有实时数据是灰色，绝不是绿色。
+ * The four states, each with its own colour; the wording alone tells them apart, so no leading symbol is added. No real-time
+ * data is grey, never green.
+ * 四种状态各有颜色；文字本身就能区分，不加前置符号。没有实时数据是灰色，绝不是绿色。
  */
 @Composable
 private fun StatusBadge(status: LegStatus, prefix: String? = null) {
-    val (text, color, icon) = when (status.state) {
-        LegState.ON_TIME -> Triple(stringResource(R.string.transit_on_time), MaterialTheme.statusColors.green, R.drawable.ic_status_ok)
-        LegState.DELAYED -> Triple(
-            pluralStringResource(R.plurals.transit_late, status.delayMinutes, status.delayMinutes),
-            MaterialTheme.statusColors.amber,
-            R.drawable.ic_status_late,
-        )
-        LegState.NO_REALTIME -> Triple(stringResource(R.string.transit_no_realtime), MaterialTheme.statusColors.gray, R.drawable.ic_status_unknown)
-        LegState.CANCELLED -> Triple(stringResource(R.string.transit_cancelled), MaterialTheme.statusColors.red, R.drawable.ic_status_cancel)
+    val (text, color) = when (status.state) {
+        LegState.ON_TIME -> stringResource(R.string.transit_on_time) to MaterialTheme.statusColors.green
+        LegState.DELAYED -> pluralStringResource(R.plurals.transit_late, status.delayMinutes, status.delayMinutes) to MaterialTheme.statusColors.amber
+        LegState.NO_REALTIME -> stringResource(R.string.transit_no_realtime) to MaterialTheme.statusColors.gray
+        LegState.CANCELLED -> stringResource(R.string.transit_cancelled) to MaterialTheme.statusColors.red
     }
-    StatusChip(if (prefix.isNullOrEmpty()) text else stringResource(R.string.transit_line_status, prefix, text), color, icon)
+    StatusChip(if (prefix.isNullOrEmpty()) text else stringResource(R.string.transit_line_status, prefix, text), color)
 }
 
 @Composable
@@ -356,3 +366,9 @@ private fun Attribution() {
         modifier = Modifier.padding(top = 6.dp),
     )
 }
+
+/**
+ * Wide enough for "59 min", "59 分钟" and a 24-hour time; a 12-hour time may widen its row slightly.
+ * 足够放下「59 min」「59 分钟」与 24 小时制时刻；12 小时制时刻可能让那一行稍宽一点。
+ */
+private val COUNTDOWN_WIDTH = 60.dp

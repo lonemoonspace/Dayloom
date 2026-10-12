@@ -90,6 +90,9 @@ looks it up literally.
   text, and one card per article with an unread dot, a star to tap, a preview, source, time and "Full text saved". Articles
   that arrive as a feed's excerpt get their full text from Miniflux after each sync (ten at a time, a failed one waits half an
   hour) or when opened, and a later sync no longer replaces it with the excerpt.
+- Status pills (traffic congestion, transit status, expiry reminders) show only their wording, without a leading "!", tick or
+  other symbol. On the departure board the countdown sits in a fixed column at the right edge with the platform before it,
+  so times line up across rows and stops; the expiry reminders card lines up its dates the same way.
 
 - 项目骨架（M0）：带注册表、宿主与命名空间存储的模块系统；从 PersonalAssistant 移植并泛化的刷新协调器与通知引擎；
   卡片可拖动排序的首页；语言、时区与模块开关设置；中英文资源；架构测试与字符串一致性测试；CI 与发版 workflow。
@@ -153,3 +156,5 @@ looks it up literally.
 - 新闻标签页改用原 App 的布局：带数量的「全部 / 未读 / 收藏」，可搜索标题、来源与正文，每篇文章一张卡片（未读圆点、可点的
   星标、预览、来源、时间与「已缓存全文」）。只发摘要的订阅源的文章，会在每次同步后（每次十篇，失败的等半小时再试）或打开时从
   Miniflux 取回全文，之后的同步不会再用摘要把它覆盖。
+- 状态胶囊（路况拥堵、公共交通状态、到期提醒）只显示文字，前面不再加「!」、对勾等符号。发车板的倒计时放在靠右的固定列，
+  站台在它前面，各行、各站点的时刻上下对齐；到期提醒卡片的日期也同样对齐。

@@ -191,7 +191,10 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?) {
             contentColor = MaterialTheme.colorScheme.onBackground,
             topBar = {
                 when (route) {
-                    Routes.HOME -> CompactTopBar(title = stringResource(R.string.app_name)) {
+                    Routes.HOME -> CompactTopBar(
+                        title = stringResource(R.string.app_name),
+                        subtitle = stringResource(R.string.app_slogan),
+                    ) {
                         if (homeState.cards.isNotEmpty()) {
                             IconButton(onClick = { editing = !editing }) {
                                 Icon(

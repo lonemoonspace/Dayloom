@@ -2,6 +2,7 @@
 <!-- 中文。键必须与 values/strings.xml 完全一致。 -->
 <resources>
     <string name="app_name">织日</string>
+    <string name="app_slogan">千丝万缕，织成一日</string>
 
     <string name="common_cached">缓存</string>
     <string name="common_loading">加载中</string>

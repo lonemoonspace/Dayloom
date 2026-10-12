@@ -48,6 +48,11 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun CompactTopBar(
     title: String,
+    /**
+     * Optional muted line after the title, baseline-aligned; it ellipsizes first so the title is never cut.
+     * 标题后可选的一行浅色小字，与标题基线对齐；空间不够时先省略它，标题不被截断。
+     */
+    subtitle: String? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val edge = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
@@ -73,8 +78,19 @@ fun CompactTopBar(
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
+                modifier = if (subtitle == null) Modifier.weight(1f) else Modifier.alignByBaseline(),
             )
+            if (subtitle != null) {
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).alignByBaseline(),
+                )
+            }
             actions()
             Spacer(Modifier.width(4.dp))
         }

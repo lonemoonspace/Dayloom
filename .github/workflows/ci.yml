@@ -1,5 +1,6 @@
-# Runs the same checks as the local `verify` gate (test + lintDebug + assembleDebug + compileReleaseKotlin) on every push.
-# 每次 push 运行与本地 `verify` 门禁相同的检查（test + lintDebug + assembleDebug + compileReleaseKotlin）。
+# Runs `verifyRelease` on every push: the local `verify` gate (test + lintDebug + assembleDebug + compileReleaseKotlin) plus
+# the release R8 pass.
+# 每次 push 运行 `verifyRelease`：本地 `verify` 门禁（test + lintDebug + assembleDebug + compileReleaseKotlin）加上 Release 的 R8 处理。
 
 name: CI
 
@@ -37,18 +38,9 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Unit tests
-        run: ./gradlew test --stacktrace
-
-      - name: Android Lint
-        run: ./gradlew :app:lintDebug --stacktrace
-
-      - name: Assemble debug APK
-        run: ./gradlew assembleDebug --stacktrace
-
-      # Catches code that only exists in src/debug; no signing or R8 needed. / 发现只存在于 src/debug 的代码；不需要签名或 R8。
-      - name: Compile release sources
-        run: ./gradlew :app:compileReleaseKotlin --stacktrace
+      # One Gradle task, so CI cannot drift from the local gate it extends. / 只调用一个 Gradle 任务，CI 不会与它扩展的本地门禁走样。
+      - name: Gate (verify + R8)
+        run: ./gradlew :app:verifyRelease --stacktrace
 
       - name: Upload test results
         if: always()

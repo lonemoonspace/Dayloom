@@ -2,7 +2,7 @@
 <!-- English (default). Every key must also exist in values-zh/strings.xml. / 英文（默认）。每个键都必须同时存在于 values-zh/strings.xml。 -->
 <resources>
     <string name="app_name">Dayloom</string>
-    <string name="app_slogan">All threads, one day</string>
+    <string name="app_slogan">All threads, for your day</string>
 
     <!-- Language names are shown in their own language, so they are not translated. / 语言名用其自身语言显示，不翻译。 -->
     <string name="language_name_english" translatable="false">English</string>

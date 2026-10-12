@@ -111,6 +111,9 @@ looks it up literally.
     the shared 90-second call limit.
   - Build: CI runs `verifyRelease`, the local gate plus the release R8 pass. Places are searched with Entur Geocoder and
     Nominatim (the Open-Meteo search mentioned for M1 was replaced in rc.4).
+- Status pills (traffic congestion, transit status, expiry reminders) show only their wording, without a leading "!", tick or
+  other symbol. On the departure board the countdown sits in a fixed column at the right edge with the platform before it,
+  so times line up across rows and stops; the expiry reminders card lines up its dates the same way.
 
 - 项目骨架（M0）：带注册表、宿主与命名空间存储的模块系统；从 PersonalAssistant 移植并泛化的刷新协调器与通知引擎；
   卡片可拖动排序的首页；语言、时区与模块开关设置；中英文资源；架构测试与字符串一致性测试；CI 与发版 workflow。
@@ -187,3 +190,5 @@ looks it up literally.
   - 输入框里的凭据不再存进保存的实例状态；AI 摘要不再被共享的 90 秒调用上限截断。
   - 构建：CI 运行 `verifyRelease`，即本地门禁再加 Release 的 R8 处理。地点搜索用 Entur Geocoder 与 Nominatim（M1 提到的 Open-Meteo
     搜索已在 rc.4 换掉）。
+- 状态胶囊（路况拥堵、公共交通状态、到期提醒）只显示文字，前面不再加「!」、对勾等符号。发车板的倒计时放在靠右的固定列，
+  站台在它前面，各行、各站点的时刻上下对齐；到期提醒卡片的日期也同样对齐。

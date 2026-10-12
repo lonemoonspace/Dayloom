@@ -28,9 +28,9 @@ import kotlinx.coroutines.flow.map
 data class CommuteParams(val mode: CommuteMode, val origin: TransitStop, val destination: TransitStop, val options: Int)
 
 /**
- * `transit.train` / `transit.bus`: trip options between one route's two stops on that kind of vehicle, in the direction the
- * daily windows call for.
- * `transit.train` / `transit.bus`：一条路线两个站点之间、只坐该类车辆的出行方案，方向按日常时间窗决定。
+ * `transit.train` / `transit.bus`: trip options between one route's two stops on that kind of vehicle, towards the
+ * destination before noon and back from noon on ([TransitPolicy.commuteMode]).
+ * `transit.train` / `transit.bus`：一条路线两个站点之间、只坐该类车辆的出行方案，中午前去程、中午起回程（[TransitPolicy.commuteMode]）。
  */
 class CommuteSource(
     id: SourceId,
@@ -46,8 +46,8 @@ class CommuteSource(
 
     override val maxAge: Duration = Duration.ofMinutes(30)
 
-    // Real-time data changes by the minute around the commute; Entur is free, so the windows refresh often.
-    // 通勤时段的实时数据每分钟都在变；Entur 免费，所以时间窗内刷新得勤。
+    // Real-time data changes by the minute; Entur is free, so the daytime refreshes often.
+    // 实时数据每分钟都在变；Entur 免费，所以白天刷新得勤。
     override val cadence = RefreshCadence(
         interval = Duration.ofMinutes(30),
         busyInterval = Duration.ofMinutes(5),

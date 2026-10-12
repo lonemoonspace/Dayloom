@@ -22,11 +22,13 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Any OpenAI-compatible chat completions endpoint the user configures (`<base>/chat/completions`, bearer key). Models can
- * take a while to answer, so this call gets a longer read timeout than the shared client's.
- * 用户配置的任意兼容 OpenAI 的对话补全接口（`<base>/chat/completions`，Bearer Key）。模型回答可能较慢，所以读取超时比共享客户端的长。
+ * take a while to answer, so this call gets a longer read timeout than the shared client's, and a whole-call limit above
+ * it; the shared 90-second call limit would otherwise cut the call off first.
+ * 用户配置的任意兼容 OpenAI 的对话补全接口（`<base>/chat/completions`，Bearer Key）。模型回答可能较慢，所以读取超时比共享客户端的长，
+ * 整个调用的上限也放到它之上；否则共享客户端 90 秒的调用上限会先把它截断。
  */
 class LlmApi(http: OkHttpClient, private val io: CoroutineContext = Dispatchers.IO) {
-    private val client = http.newBuilder().readTimeout(90, TimeUnit.SECONDS).build()
+    private val client = http.newBuilder().readTimeout(90, TimeUnit.SECONDS).callTimeout(150, TimeUnit.SECONDS).build()
 
     suspend fun summarize(baseUrl: String, apiKey: String, model: String, title: String, text: String, language: String): String =
         withContext(io) {

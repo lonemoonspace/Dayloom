@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.datastore.dataStoreFile
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import io.github.lonemoonspace.dayloom.BuildConfig
 import io.github.lonemoonspace.dayloom.app.work.BackgroundRound
 import io.github.lonemoonspace.dayloom.core.i18n.AppLanguage
@@ -118,9 +119,11 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
         fetchContext = Dispatchers.IO,
     )
 
+    private val notifier = NotificationSender(appContext)
+
     val notificationEngine = NotificationEngine(
         stateStore = PrefsNotificationStateStore(appContext.notifyStateDataStore),
-        notifier = NotificationSender(appContext),
+        notifier = notifier,
         onError = { rule, e -> Log.w(TAG, "notification rule ${rule.stateKey} failed", e) },
     )
 
@@ -139,13 +142,13 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
     private var databaseOwner: String? = null
 
     private val databaseFactory = object : DefaultModuleContext.DatabaseFactory {
-        override fun <T : RoomDatabase> create(moduleId: String, type: KClass<T>): T {
+        override fun <T : RoomDatabase> create(moduleId: String, type: KClass<T>, migrations: Array<out Migration>): T {
             synchronized(this) {
                 val owner = databaseOwner
                 check(owner == null || owner == moduleId) { "$DATABASE_FILE is owned by $owner, not $moduleId" }
                 databaseOwner = moduleId
             }
-            return Room.databaseBuilder(appContext, type.java, DATABASE_FILE).build()
+            return Room.databaseBuilder(appContext, type.java, DATABASE_FILE).addMigrations(*migrations).build()
         }
     }
 
@@ -165,6 +168,7 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
                 secrets = secrets,
                 snapshotFactory = snapshotFactory,
                 databaseFactory = databaseFactory,
+                notifier = notifier,
             )
         },
         coordinator = coordinator,

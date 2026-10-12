@@ -97,7 +97,7 @@ internal interface NewsActions {
  * The home card: unread count and the three newest unread headlines. / 首页卡片：未读数与最新的三条未读标题。
  */
 @Composable
-internal fun NewsCard(summary: SyncSummary?, configured: Boolean, error: AppError?, stale: Boolean) {
+internal fun NewsCard(summary: SyncSummary?, configured: Boolean, error: AppError?, stale: Boolean, pushRejected: Boolean) {
     val now = rememberMinuteTick()
     InfoCard(
         title = stringResource(R.string.news_title),
@@ -112,6 +112,7 @@ internal fun NewsCard(summary: SyncSummary?, configured: Boolean, error: AppErro
             else -> summary.latest.forEach { HeadlineRow(it, now) }
         }
         if (error != null) ErrorLine(error)
+        if (pushRejected) PushRejectedLine()
     }
 }
 
@@ -141,6 +142,7 @@ internal fun NewsTab(
     onClose: () -> Unit,
     counts: SyncSummary?,
     error: AppError?,
+    pushRejected: Boolean,
     actions: NewsActions,
 ) {
     val now = rememberMinuteTick()
@@ -160,7 +162,7 @@ internal fun NewsTab(
         }
         item(key = "filters") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterButton(filter == ArticleFilter.ALL, stringResource(R.string.news_filter_all), counts?.total) { onFilter(ArticleFilter.ALL) }
+                FilterButton(filter == ArticleFilter.ALL, stringResource(R.string.news_filter_all), counts?.total?.coerceAtMost(NewsSyncPolicy.RECENT_LIMIT)) { onFilter(ArticleFilter.ALL) }
                 FilterButton(filter == ArticleFilter.UNREAD, stringResource(R.string.news_filter_unread), counts?.unread) { onFilter(ArticleFilter.UNREAD) }
                 FilterButton(filter == ArticleFilter.STARRED, stringResource(R.string.news_filter_starred), counts?.starred, star = true) {
                     onFilter(ArticleFilter.STARRED)
@@ -169,6 +171,7 @@ internal fun NewsTab(
         }
         item(key = "search") { SearchField(query, onQuery) }
         if (error != null) item(key = "error") { ErrorLine(error) }
+        if (pushRejected) item(key = "push") { PushRejectedLine() }
         when {
             articles == null -> item { SkeletonLines(lines = 4) }
             articles.isEmpty() -> item {
@@ -417,6 +420,15 @@ private fun ago(millis: Long, now: ZonedDateTime): String {
 @Composable
 internal fun Hint(text: String) {
     Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+/**
+ * The server refused the changes made here; they stay pending and go out with a later sync.
+ * 服务器拒收了本机的修改；修改仍待发送，会随之后的同步发出。
+ */
+@Composable
+internal fun PushRejectedLine() {
+    Text(stringResource(R.string.news_push_rejected), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.statusColors.red)
 }
 
 @Composable

@@ -85,6 +85,7 @@ class TransitPolicyTest {
     fun `alerts only in the daytime and for trips leaving within 45 minutes`() {
         assertTrue(TransitPolicy.isAlertable(option(leg(dep = now.plusMinutes(45))), now))
         assertFalse(TransitPolicy.isAlertable(option(leg(dep = now.plusMinutes(46))), now))
+        assertFalse("already left", TransitPolicy.isAlertable(option(leg(dep = now.minusMinutes(1))), now))
         val late = t(5, 22, 5)
         assertFalse(TransitPolicy.isAlertable(option(leg(dep = late.plusMinutes(5))), late))
         val early = t(5, 5, 50)
@@ -171,6 +172,12 @@ class TransitPolicyTest {
     }
 
     @Test
+    fun `the next train on the same line, late by as much, is a new disruption`() {
+        val first = DisruptionPolicy.evaluate(option(leg(delay = 6)), zone, null)
+        assertEquals(1, DisruptionPolicy.evaluate(option(leg(dep = now.plusMinutes(40), delay = 6)), zone, first.newFingerprint).disrupted.size)
+    }
+
+    @Test
     fun `clearing resets the fingerprint so a recurrence notifies, and so does the next day`() {
         val first = DisruptionPolicy.evaluate(option(leg(cancelled = true)), zone, null)
         val cleared = DisruptionPolicy.evaluate(option(leg()), zone, first.newFingerprint)
@@ -250,5 +257,11 @@ class TransitPolicyTest {
         )
         assertEquals(TransitBrief.line(bus, now), TransitBrief.lines(listOf(CommuteTrips(CommuteMode.OUTBOUND), bus), now))
         assertNull(TransitBrief.lines(emptyList(), now))
+    }
+
+    @Test
+    fun `a brief set for the afternoon reads the way home`() {
+        val home = CommuteTrips(CommuteMode.INBOUND, inbound = listOf(option(leg(line = "R1", dep = t(5, 7, 42)))))
+        assertEquals(UiText.Res(R.string.transit_brief, listOf("R1", "07:42", UiText.Res(R.string.transit_on_time))), TransitBrief.line(home, now))
     }
 }

@@ -80,7 +80,7 @@ object TransitPolicy {
      * 限制把提醒留给用户可能马上要坐的车，而不是全天每一次异常。
      */
     fun isAlertable(option: TripOption, now: ZonedDateTime): Boolean =
-        RoutinePolicy.isDaytime(now) && option.departure - now.toInstant().toEpochMilli() <= ALERT_AHEAD.toMillis()
+        RoutinePolicy.isDaytime(now) && (option.departure - now.toInstant().toEpochMilli()).let { it >= 0 && it <= ALERT_AHEAD.toMillis() }
 
     /**
      * Options not yet departed, at most [limit]; a cancelled first leg still shows, so the user sees why it is missing.

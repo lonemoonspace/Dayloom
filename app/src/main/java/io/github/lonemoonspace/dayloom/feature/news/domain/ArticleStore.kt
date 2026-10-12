@@ -9,6 +9,18 @@ import kotlinx.coroutines.flow.Flow
 interface ArticleStore {
     suspend fun all(): List<StoredArticle>
 
+    /** Only the articles with a change not yet sent, without their text. / 只取有未发送修改的文章，不带正文。 */
+    suspend fun pending(): List<StoredArticle>
+
+    /** The same numbers as [observeSummary], once. / 与 [observeSummary] 相同的数字，取一次。 */
+    suspend fun summary(): SyncSummary
+
+    /** Drops every article, e.g. when they came from another server. / 删除全部文章，比如它们来自另一台服务器时。 */
+    suspend fun clear()
+
+    /** Records a full-text attempt, see [StoredArticle.fullTextTriedAt]. / 记录一次抓全文的结果，见 [StoredArticle.fullTextTriedAt]。 */
+    suspend fun markFullTextTried(id: Long, at: Long)
+
     suspend fun apply(result: MergeResult)
 
     fun observe(filter: ArticleFilter): Flow<List<StoredArticle>>
@@ -27,4 +39,17 @@ interface ArticleStore {
 
     /** Replaces an article's text with its full text. / 用全文替换文章正文。 */
     suspend fun saveContent(id: Long, html: String)
+}
+
+/**
+ * The Miniflux server the stored articles came from. Entry ids are per server, so rows and pending changes must never meet
+ * another server: a pending read would mark an unrelated article there.
+ * 本地文章来自哪台 Miniflux 服务器。条目 id 按服务器各自编号，所以本地行与待发送修改绝不能碰到另一台服务器：待发送的已读会把那边
+ * 一篇无关的文章标为已读。
+ */
+interface ArticleOwner {
+    /** Base URL, or blank before the first sync that recorded one. / 基础地址；第一次记录它的同步之前为空。 */
+    suspend fun get(): String
+
+    suspend fun set(baseUrl: String)
 }

@@ -47,6 +47,14 @@ data class AppNotification(
     val title: UiText,
     val body: UiText,
     val deepLink: String,
+    /**
+     * True when this notification only updates the one already shown under [id] (kick-off → final score) and must not ring
+     * again. False for a new event that reuses its id, such as a reminder's next stage, which would otherwise replace the
+     * earlier one silently while it is still in the shade.
+     * 为 true 表示它只是更新 [id] 下已显示的通知（开赛 → 终场），不再响铃。复用 id 的新事件（如提醒的下一档）为 false，
+     * 否则前一条还留在通知栏时会被静默替换。
+     */
+    val alertOnce: Boolean = true,
 )
 
 /** Rule state storage; keys are `<moduleId>.<rule>`. / 规则状态存储；键为 `<模块id>.<规则>`。 */
@@ -57,4 +65,10 @@ interface NotificationStateStore {
 
 interface Notifier {
     fun send(notification: AppNotification)
+
+    /**
+     * Removes a shown notification, e.g. when the thing it is about was deleted. No-op when nothing is shown under [id].
+     * 撤下已显示的通知，比如它所说的东西已被删除。[id] 下没有通知时什么也不做。
+     */
+    fun cancel(id: Int)
 }

@@ -166,19 +166,20 @@ class RefreshCoordinator(
         val attempts = if (throttleFailures) lock.withLock { lastAttempt.toMap() } else emptyMap()
         val due = ids.filterTo(mutableSetOf()) { id ->
             val source = sources.getValue(id)
-            val last = listOfNotNull(lastFetchedAt(source), attempts[id]).maxOrNull()
-            RefreshCadencePolicy.isDue(source.cadence, daytime, last, now)
+            val (fetchedAt, cadence) = schedule(source)
+            val last = listOfNotNull(fetchedAt, attempts[id]).maxOrNull()
+            RefreshCadencePolicy.isDue(cadence, daytime, last, now)
         }
         return refresh(due, trigger)
     }
 
     /** An unreadable snapshot or input counts as never fetched, so it is retried. / 读不出快照或输入时视同从未抓取，于是会重试。 */
-    private suspend fun lastFetchedAt(source: CachedSource<*, *>): Instant? = try {
-        source.current()?.let { Instant.ofEpochMilli(it.fetchedAt) }
+    private suspend fun schedule(source: CachedSource<*, *>): Pair<Instant?, RefreshCadence> = try {
+        source.schedule()
     } catch (e: CancellationException) {
         throw e
     } catch (_: Exception) {
-        null
+        null to source.cadence
     }
 
     /**

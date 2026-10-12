@@ -37,10 +37,7 @@ class DisruptionRule(
     override suspend fun evaluate(input: RuleInput, previous: String?): RuleDecision<String?> {
         if (!refreshed(input.report)) return RuleDecision(previous)
         val snapshot = trips() ?: return RuleDecision(previous)
-        val next = when (snapshot.mode) {
-            CommuteMode.OUTBOUND -> TransitPolicy.visibleOptions(snapshot.outbound, input.now, 1).firstOrNull()
-            CommuteMode.INBOUND -> TransitPolicy.visibleOptions(snapshot.inbound, input.now, 1).firstOrNull()
-        }
+        val next = TransitPolicy.visibleOptions(snapshot.current, input.now, 1).firstOrNull()
         // A trip that is not alertable yet counts as no trip; once it comes within reach it is told once.
         // 还不该提醒的班次视同没有；进入范围后提醒一次。
         val option = next?.takeIf { TransitPolicy.isAlertable(it, input.now) }
@@ -58,7 +55,9 @@ class DisruptionRule(
         val title = UiText.Res(if (snapshot.mode == CommuteMode.OUTBOUND) R.string.transit_notify_to_work else R.string.transit_notify_back_home)
         return RuleDecision(
             decision.newFingerprint,
-            listOf(AppNotification(id = notificationId, channelId = channelId, title = title, body = body, deepLink = deepLink)),
+            // A new fingerprint is a new disruption (another trip, or a delay that grew), so it rings even over the last one.
+            // 新指纹就是新的异常（另一班车，或延误加重），即使上一条还在也要响铃。
+            listOf(AppNotification(id = notificationId, channelId = channelId, title = title, body = body, deepLink = deepLink, alertOnce = false)),
         )
     }
 

@@ -22,10 +22,11 @@ import kotlinx.serialization.Serializable
 data class AnnouncedMatches(val ids: Set<Long> = emptySet(), val kickoffs: Map<Long, Long> = emptyMap())
 
 /**
- * Where the football notifications go; both rules share one id, so the final score replaces the kick-off reminder.
- * 足球通知的去向；两条规则共用一个 id，终场比分会替换掉开赛提醒。
+ * Where the football notifications go. The id follows the match ([FootballPolicy.notificationSlot]): its final score
+ * replaces its own kick-off reminder, while another match's reminder in the same round keeps its own place.
+ * 足球通知的去向。id 跟着比赛走（[FootballPolicy.notificationSlot]）：终场比分替换同一场的开赛提醒，同一轮里另一场的提醒保留自己的位置。
  */
-data class FootballNotifyTarget(val channelId: String, val deepLink: String, val notificationId: Int)
+data class FootballNotifyTarget(val channelId: String, val deepLink: String, val notificationId: (matchId: Long) -> Int)
 
 /** "Real Madrid – Barcelona", home team first as on every fixture list. / 「皇马 – 巴萨」，与所有赛程表一样主队在前。 */
 internal fun fixture(match: Match): UiText = UiText.Res(R.string.football_fixture, listOf(match.home.label, match.away.label))
@@ -49,7 +50,7 @@ class KickoffRule(
         val match = FootballPolicy.kickoffDue(matches().orEmpty(), input.now, previous.kickoffs) ?: return RuleDecision(previous)
         val at = Instant.ofEpochMilli(match.kickoff).atZone(input.now.zone).format(TIME)
         val body = UiText.Res(R.string.football_notify_kickoff_body, listOf(fixture(match), at, match.competition))
-        val notification = AppNotification(target.notificationId, target.channelId, UiText.Res(R.string.football_notify_kickoff), body, target.deepLink)
+        val notification = AppNotification(target.notificationId(match.id), target.channelId, UiText.Res(R.string.football_notify_kickoff), body, target.deepLink)
         return RuleDecision(previous.copy(kickoffs = FootballPolicy.rememberKickoff(previous.kickoffs, match)), listOf(notification))
     }
 }
@@ -80,8 +81,9 @@ class ResultRule(
             Outcome.LOSS -> R.string.football_notify_loss
             null -> R.string.football_notify_result
         }
-        val notification = AppNotification(target.notificationId, target.channelId, UiText.Res(title), resultText(match), target.deepLink)
-        return RuleDecision(AnnouncedMatches(FootballPolicy.remember(previous.ids, match.id)), listOf(notification))
+        val notification = AppNotification(target.notificationId(match.id), target.channelId, UiText.Res(title), resultText(match), target.deepLink)
+        // copy, not a new value: the state type also carries kick-offs, which this rule must not wipe. / 用 copy 而不是新建：状态类型还带着开赛记录，本规则不能清掉。
+        return RuleDecision(previous.copy(ids = FootballPolicy.remember(previous.ids, match.id)), listOf(notification))
     }
 }
 

@@ -70,10 +70,10 @@ JDK 17; use the Gradle wrapper. / JDK 17，用仓库自带的 Gradle wrapper。
 ```
 
 - If a global `~/.gradle/gradle.properties` caps Metaspace at 320m, lint/KSP may hit `OutOfMemoryError: Metaspace`; pass `"-Dorg.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=2g -Dfile.encoding=UTF-8"`.
-- Unit tests run on the Debug variant only. CI (`.github/workflows/ci.yml`) runs the same checks on every push.
+- Unit tests run on the Debug variant only. CI (`.github/workflows/ci.yml`) runs `:app:verifyRelease` on every push: `verify` plus the release R8 pass.
 
 - 若全局 `~/.gradle/gradle.properties` 把 Metaspace 限在 320m，lint/KSP 可能报 `OutOfMemoryError: Metaspace`；命令加上 `"-Dorg.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=2g -Dfile.encoding=UTF-8"`。
-- 单元测试只跑 Debug 变体。CI（`.github/workflows/ci.yml`）对每次 push 运行同样的检查。
+- 单元测试只跑 Debug 变体。CI（`.github/workflows/ci.yml`）对每次 push 运行 `:app:verifyRelease`：`verify` 再加 Release 的 R8 处理。
 
 ## Frozen from v1.0.0 / 从 v1.0.0 起冻结
 

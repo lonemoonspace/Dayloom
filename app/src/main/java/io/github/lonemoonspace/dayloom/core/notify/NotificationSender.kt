@@ -41,11 +41,14 @@ class NotificationSender(private val context: Context) : Notifier {
             .setContentTitle(notification.title.resolve(resources))
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-            // Updating the same id (kick-off → final score) should not ring again. / 同一 id 更新（开赛 → 终场）时不再重复响铃。
-            .setOnlyAlertOnce(true)
+            // Only an update of the same event stays silent (kick-off → final score); see [AppNotification.alertOnce].
+            // 只有同一件事的更新不再响铃（开赛 → 终场）；见 [AppNotification.alertOnce]。
+            .setOnlyAlertOnce(notification.alertOnce)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
         NotificationManagerCompat.from(context).notify(notification.id, built)
     }
+
+    override fun cancel(id: Int) = NotificationManagerCompat.from(context).cancel(id)
 }

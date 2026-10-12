@@ -81,7 +81,14 @@ data class CommuteTrips(
     val mode: CommuteMode = CommuteMode.OUTBOUND,
     val outbound: List<TripOption> = emptyList(),
     val inbound: List<TripOption> = emptyList(),
-)
+) {
+    /** The options of [mode]; a fetch fills only that direction. / [mode] 方向的方案；每次抓取只填这一个方向。 */
+    val current: List<TripOption>
+        get() = when (mode) {
+            CommuteMode.OUTBOUND -> outbound
+            CommuteMode.INBOUND -> inbound
+        }
+}
 
 /**
  * A favourite stop with optional filters: only these lines, only towards these destinations. Empty means everything.

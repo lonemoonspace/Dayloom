@@ -170,6 +170,8 @@ class EnturProviderTest {
     fun `graphql errors, http errors and garbage become AppErrors`() = runTest {
         server.enqueue(MockResponse().setBody("""{"errors":[{"message":"bad place"}]}"""))
         assertTrue(runCatching { provider().planTrips(a, b, now, 1, CommuteKind.TRAIN) }.exceptionOrNull() is AppError.BadData)
+        server.enqueue(MockResponse().setBody("""{"errors":[{"message":"stop1 failed"}],"data":{"stop0":{"estimatedCalls":[]},"stop1":null}}"""))
+        assertEquals("partial data survives an error", setOf("NSR:StopPlace:1"), provider().departures(listOf("NSR:StopPlace:1", "NSR:StopPlace:9"), now).keys)
         server.enqueue(MockResponse().setResponseCode(503))
         assertEquals(503, (runCatching { provider().planTrips(a, b, now, 1, CommuteKind.TRAIN) }.exceptionOrNull() as AppError.Http).code)
         server.enqueue(MockResponse().setBody("<html>"))

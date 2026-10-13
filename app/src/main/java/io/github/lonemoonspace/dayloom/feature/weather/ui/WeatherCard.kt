@@ -102,8 +102,10 @@ internal fun WeatherCard(
         return
     }
     val outlook = remember(forecast, now) { DayOutlookPolicy.outlook(forecast.points, now) }
+    // Today and tomorrow may both be ahead of the strip (in the evening the hero shows tomorrow), so two extra days keep it full.
+    // 今天和明天都可能排在横排之前（傍晚时上方显示的是明天），所以多取两天，保证横排始终排满。
     val days = remember(forecast, now.toLocalDate(), now.zone) {
-        DailyForecastBuilder.build(forecast.points, now.toLocalDate(), now.zone)
+        DailyForecastBuilder.build(forecast.points, now.toLocalDate(), now.zone, days = STRIP_DAYS + 2)
     }
     val colors = heroColors()
     CompositionLocalProvider(LocalContentColor provides colors.content) {
@@ -129,9 +131,10 @@ internal fun WeatherCard(
             val strip = days.filter { it.date > (outlook?.date ?: now.toLocalDate()) }.take(STRIP_DAYS)
             if (strip.isNotEmpty()) {
                 Divider()
+                // If the series runs short, the days that remain still share the full width rather than leaving a gap on the right.
+                // 数据不足时，剩下的几天仍平分整行，而不是在右侧留空。
                 Row {
                     strip.forEach { DayCell(it, Modifier.weight(1f)) }
-                    repeat(STRIP_DAYS - strip.size) { Spacer(Modifier.weight(1f)) }
                 }
                 Spacer(Modifier.height(2.dp))
             }

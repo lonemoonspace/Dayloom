@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -63,7 +64,13 @@ internal fun CalendarHeader(showLunar: Boolean, countries: Set<HolidayCountry>, 
                 color = MaterialTheme.colorScheme.primary,
             )
             Spacer(Modifier.weight(1f))
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            // Sized to the widest pill so the stacked pills share one width and one right edge.
+            // 宽度取最宽的胶囊，上下几个胶囊等宽且右侧对齐。
+            Column(
+                modifier = Modifier.width(IntrinsicSize.Max),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 if (countries.isNotEmpty()) HolidayPills(date, countries, lunar, solarTermsShown = showLunar)
                 if (day != null) SolarTermText(date, lunar)
             }
@@ -132,7 +139,9 @@ private fun HeaderPill(text: String, color: Color) {
         fontWeight = FontWeight.SemiBold,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
+        textAlign = TextAlign.Center,
         modifier = Modifier
+            .fillMaxWidth()
             .background(color.copy(alpha = 0.12f), CircleShape)
             .padding(horizontal = 8.dp, vertical = 2.dp),
     )

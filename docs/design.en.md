@@ -158,7 +158,7 @@ interface ModuleInstance {
 ```kotlin
 // app/ModuleRegistry.kt — adding a module only changes this file
 val allModules: List<FeatureModule> = listOf(
-    CalendarModule, WeatherModule, TransitModule, TrafficModule,
+    CalendarModule, WeatherModule, TrainModule, BusModule, DeparturesModule, TrafficModule,
     RemindersModule, FootballModule, NewsModule,
 )
 ```
@@ -326,15 +326,17 @@ Module settings refer to these shared items — weather defaults to "Home", traf
 - **Ported**: `MetApi`, `WeatherPointPicker`, `DailyForecastBuilder`, weather icons (the original project's own `ic_wx_*` vector drawables).
 - **Note**: MET requires contact information in the User-Agent; it becomes `Dayloom/<version> (+https://github.com/lonemoonspace/dayloom)`. The UI must credit the data source (CC BY 4.0).
 
-### 11.2 Public transport `transit` (the largest piece of the first version)
+### 11.2 Public transport: `train`, `bus`, `departures` (the largest piece of the first version)
+
+Three modules in one package (`feature/transit`), each with its own switch. They were one `transit` module up to 0.2.0-rc.2; each declares `splitFrom = "transit"`, so until its switch is flipped it follows the old switch, and its settings and card positions start from the old ones.
 
 - **Features**
   1. **Commute trips**, a **train** commute and a **bus** commute kept apart, each with its own stops, card, settings and disruption switch: origin stop → destination stop (any line of that kind; the Entur `trip` query is limited to `rail` plus rail replacement buses (the `railReplacementBus` submode of `bus`, the only service during track work; they keep the train's line code and only the submode identifies them, so the card adds a bus icon and "Replacement bus"), or to `bus` and `coach`). Shows the outbound trips before 12:00 and the return trips from 12:00. Lists the next N options: departure/arrival times, number of transfers and transfer stops, real-time status of each leg (on time / N min late / cancelled).
   2. **Favourite stop departure boards**: real-time departures from any stop, filterable by line, destination and direction (e.g. at one stop, show only a given bus line heading to a given terminus — this reproduces the original project's "full-route buses only" behaviour).
 - **Data source**: Entur Journey Planner v3 (GraphQL) `trip` and `stopPlace.estimatedCalls`; stop search via the Entur Geocoder. Request header `ET-Client-Name: lonemoonspace-dayloom`.
 - **Pluggable**: `TransitProvider` interface (`searchStops`, `planTrips`, `departures`); the first version has only `EnturProvider`. If the saved place is outside Norway, settings say the region is not supported yet.
-- **Settings**: one card each for train, bus (origin stop, destination stop, number of options shown, disruption alerts) and favourite stops (stop + filters).
-- **Sources**: `transit.train`, `transit.bus`, `transit.boards`.
+- **Settings**: train and bus (origin stop, destination stop, number of options shown, disruption alerts) and departures (favourite stops + filters), each its own module card.
+- **Sources**: `train.commute`, `bus.commute`, `departures.boards`.
 - **Notifications**: alert when the next option leaves within 45 minutes and is cancelled or heavily delayed, never 22:00–06:00 (port the fingerprint de-duplication idea of `CommuteDisruptionPolicy`).
 - **Ported**: the request/parsing foundation of `EnturApi`, the generic parts of `StationMatcher` / `TransferMatcher`, the status-label rules (on time / late / cancelled / no real-time data).
 - **Not ported**: `L1Stations`, the L1/R14-specific transfer comparison, `UpcomingL1Policy`, `Bus280*`.

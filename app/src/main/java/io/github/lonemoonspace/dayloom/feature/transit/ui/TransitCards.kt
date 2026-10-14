@@ -233,8 +233,8 @@ private fun LineChip(line: String, replacementBus: Boolean = false) {
 }
 
 /**
- * The favourite stops: the next departures of each, filtered as configured, with a countdown.
- * 收藏站点：每个站点按设置过滤后的下几班，带倒计时。
+ * The favourite stops: the next departures of each, filtered as configured, with a countdown. Without one it asks for one.
+ * 收藏站点：每个站点按设置过滤后的下几班，带倒计时。一个都没有时提示去添加。
  */
 @Composable
 internal fun BoardsCard(
@@ -244,15 +244,20 @@ internal fun BoardsCard(
     favourites: List<FavouriteBoard>,
 ) {
     val now = rememberMinuteTick()
+    val usable = favourites.filter { it.stop.isSet }
     InfoCard(
         title = stringResource(R.string.transit_boards_title),
         icon = R.drawable.ic_transit,
-        meta = snapshot?.let { updatedAgo(it.fetchedAt, now) },
-        stale = snapshot?.let { isStale(it, now.toInstant()) } == true,
+        meta = if (usable.isEmpty()) null else snapshot?.let { updatedAgo(it.fetchedAt, now) },
+        stale = usable.isNotEmpty() && snapshot?.let { isStale(it, now.toInstant()) } == true,
     ) {
+        if (usable.isEmpty()) {
+            Hint(stringResource(R.string.transit_boards_prompt), maxLines = 3)
+            return@InfoCard
+        }
         val results = snapshot?.value?.boards.orEmpty().associateBy { it.boardId }
         if (snapshot == null && error == null) SkeletonLines()
-        favourites.filter { it.stop.isSet }.forEach { board ->
+        usable.forEach { board ->
             val result = results[board.id] ?: return@forEach
             Text(
                 text = board.stop.name,

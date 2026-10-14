@@ -48,7 +48,7 @@ class SettingsViewModel(
     private val languageChoice = MutableStateFlow(language.current())
 
     val state: StateFlow<SettingsState> = combine(settings.flow, zone, languageChoice) { s, z, lang ->
-        val infos = modules.map { ModulePolicy.ModuleInfo(it.id, it.defaultEnabled, it.notificationIds) }
+        val infos = modules.map { ModulePolicy.ModuleInfo(it.id, it.defaultEnabled, it.notificationIds, it.splitFrom) }
         val enabled = ModulePolicy.enabledIds(infos, s.moduleEnabled).toSet()
         SettingsState(
             language = lang,

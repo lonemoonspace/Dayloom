@@ -117,6 +117,10 @@ looks it up literally.
 - The weather card's four-day strip stays full in the evening, when the forecast above it has moved on to tomorrow; if the
   forecast runs short, the remaining days share the row. The holiday and solar-term countdown pills in the header share one
   width and one right edge.
+- Train, Bus and Departures are now separate modules, each with its own switch in Settings, instead of all three under one
+  Public transport switch. After the update each starts from the old switch and keeps its stops, favourites and place on
+  the home screen. A module switched on without stops or favourites shows a card asking for them; train and bus
+  disruptions have separate notification channels, and the morning brief gives each its own line.
 
 - 项目骨架（M0）：带注册表、宿主与命名空间存储的模块系统；从 PersonalAssistant 移植并泛化的刷新协调器与通知引擎；
   卡片可拖动排序的首页；语言、时区与模块开关设置；中英文资源；架构测试与字符串一致性测试；CI 与发版 workflow。
@@ -196,3 +200,6 @@ looks it up literally.
 - 状态胶囊（路况拥堵、公共交通状态、到期提醒）只显示文字，前面不再加「!」、对勾等符号。发车板的倒计时放在靠右的固定列，
   站台在它前面，各行、各站点的时刻上下对齐；到期提醒卡片的日期也同样对齐。
 - 天气卡片的四天横排在傍晚（上方已切到明天）时也保持排满；预报天数不够时，剩下的几天平分整行。页头的节日与节气倒计时胶囊等宽且右侧对齐。
+- 火车、公交与发车板拆成三个模块，在设置里各有自己的开关，不再共用一个「公共交通」开关。升级后三个开关都沿用原来的状态，
+  站点、收藏站点与首页卡片位置都保留。开启了但没设置站点或收藏站点时，卡片会提示去设置；火车与公交的异常通知分成两个渠道，
+  早间简报里也各占一行。

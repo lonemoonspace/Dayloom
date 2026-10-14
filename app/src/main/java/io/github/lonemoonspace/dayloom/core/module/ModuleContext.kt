@@ -37,6 +37,14 @@ interface ModuleContext {
     /** This module's settings; call once per module. / 本模块的设置；每个模块只调用一次。 */
     fun <T> settings(serializer: KSerializer<T>, default: T): ValueStore<T>
 
+    /**
+     * Like [settings], for a module with [FeatureModule.splitFrom]: until this module saves its own settings, they are read from
+     * the former module's entry (decoded with [formerSerializer], converted by [fromFormer]), so the user's choices carry over.
+     * 同 [settings]，用于有 [FeatureModule.splitFrom] 的模块：本模块第一次保存自己的设置之前，从原模块的条目读取
+     * （用 [formerSerializer] 解码，经 [fromFormer] 转换），用户原来的选择因此保留下来。
+     */
+    fun <T, F> settings(serializer: KSerializer<T>, default: T, formerSerializer: KSerializer<F>, fromFormer: (F) -> T): ValueStore<T>
+
     fun sourceId(name: String): SourceId = SourceId("$moduleId.$name")
 
     /** Snapshot store for [sourceId]; one per source. / [sourceId] 的快照存储；每个来源一个。 */

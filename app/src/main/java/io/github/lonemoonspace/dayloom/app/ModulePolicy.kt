@@ -10,7 +10,7 @@ import io.github.lonemoonspace.dayloom.core.notify.CoreNotifications
 object ModulePolicy {
 
     /** What the policy needs to know about a module. / Policy 需要知道的模块信息。 */
-    data class ModuleInfo(val id: String, val defaultEnabled: Boolean, val notificationIds: IntRange)
+    data class ModuleInfo(val id: String, val defaultEnabled: Boolean, val notificationIds: IntRange, val splitFrom: String? = null)
 
     // `app` and `core` would collide with storage keys and deep links the shell itself uses.
     // `app` 与 `core` 会和外壳自己使用的存储键、深链冲突。
@@ -27,6 +27,10 @@ object ModulePolicy {
             if (!ModuleIds.MODULE_ID.matches(m.id)) problems += "invalid module id: ${m.id}"
             if (m.id in RESERVED_IDS) problems += "reserved module id: ${m.id}"
         }
+        // The former module's entries are read-only history; a live module under that id would fight over them.
+        // 原模块的条目只是只读的历史；同 id 的现役模块会和它抢这些条目。
+        val ids = modules.mapTo(mutableSetOf()) { it.id }
+        modules.filter { it.splitFrom != null && it.splitFrom in ids }.forEach { problems += "${it.id} is split from ${it.splitFrom}, which is still registered" }
         val ranged = modules.filterNot { it.notificationIds.isEmpty() }
         val core = CoreNotifications.RESERVED_IDS
         ranged.filter { it.notificationIds.first <= core.last && core.first <= it.notificationIds.last }.forEach {
@@ -45,11 +49,12 @@ object ModulePolicy {
     }
 
     /**
-     * Ids of the enabled modules, in registry order. A module without an explicit choice uses its own default.
-     * 已开启模块的 id，按注册表顺序。没有显式选择的模块用它自己的默认值。
+     * Ids of the enabled modules, in registry order. A module without an explicit choice follows the module it was split from,
+     * else its own default.
+     * 已开启模块的 id，按注册表顺序。没有显式选择的模块沿用它拆分前那个模块的选择，再没有就用它自己的默认值。
      */
     fun enabledIds(modules: List<ModuleInfo>, overrides: Map<String, Boolean>): List<String> =
-        modules.filter { overrides[it.id] ?: it.defaultEnabled }.map { it.id }
+        modules.filter { overrides[it.id] ?: it.splitFrom?.let(overrides::get) ?: it.defaultEnabled }.map { it.id }
 
     /**
      * The [offset]-th notification id of a module's [range]. A module that declared no range gets a message saying so,

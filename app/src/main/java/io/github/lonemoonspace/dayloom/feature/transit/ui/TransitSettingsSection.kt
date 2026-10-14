@@ -37,7 +37,6 @@ import io.github.lonemoonspace.dayloom.core.error.AppError
 import io.github.lonemoonspace.dayloom.core.error.toAppError
 import io.github.lonemoonspace.dayloom.core.i18n.asString
 import io.github.lonemoonspace.dayloom.core.ui.userMessage
-import io.github.lonemoonspace.dayloom.feature.transit.TransitSettings
 import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteKind
 import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteRoute
 import io.github.lonemoonspace.dayloom.feature.transit.domain.FavouriteBoard
@@ -50,22 +49,20 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
 /**
- * One commute route's stops, number of options and disruption alerts. [update] runs in the app scope, set up by the module.
- * 一条通勤路线的站点、方案数量与异常提醒。[update] 在应用级作用域里执行，由模块提供。
+ * One commute route's stops, number of options and disruption alerts. [updateRoute] runs in the app scope, set up by the module.
+ * 一条通勤路线的站点、方案数量与异常提醒。[updateRoute] 在应用级作用域里执行，由模块提供。
  */
 @Composable
 internal fun RouteSettingsSection(
     kind: CommuteKind,
-    settings: Flow<TransitSettings>,
+    saved: Flow<CommuteRoute>,
     provider: TransitProvider,
     outsideNorway: Boolean,
     channelId: String,
-    update: ((TransitSettings) -> TransitSettings) -> Unit,
+    updateRoute: ((CommuteRoute) -> CommuteRoute) -> Unit,
 ) {
-    val saved by settings.collectAsStateWithLifecycle(initialValue = TransitSettings())
-    val route = saved.route(kind)
+    val route by saved.collectAsStateWithLifecycle(initialValue = CommuteRoute())
     var picking by rememberSaveable(kind) { mutableStateOf<String?>(null) }
-    fun updateRoute(transform: (CommuteRoute) -> CommuteRoute) = update { it.withRoute(kind, transform) }
 
     if (outsideNorway) Hint(stringResource(R.string.transit_region_note), color = MaterialTheme.colorScheme.error)
     Hint(stringResource(if (kind == CommuteKind.TRAIN) R.string.transit_train_note else R.string.transit_bus_note))
@@ -104,19 +101,21 @@ internal fun RouteSettingsSection(
 }
 
 /**
- * Favourite stops with their line and destination filters.
- * 收藏站点及其线路与终点过滤条件。
+ * Favourite stops with their line and destination filters. [update] runs in the app scope, set up by the module.
+ * 收藏站点及其线路与终点过滤条件。[update] 在应用级作用域里执行，由模块提供。
  */
 @Composable
 internal fun BoardsSettingsSection(
-    settings: Flow<TransitSettings>,
+    boards: Flow<List<FavouriteBoard>>,
     provider: TransitProvider,
-    update: ((TransitSettings) -> TransitSettings) -> Unit,
+    outsideNorway: Boolean,
+    update: ((List<FavouriteBoard>) -> List<FavouriteBoard>) -> Unit,
 ) {
-    val saved by settings.collectAsStateWithLifecycle(initialValue = TransitSettings())
+    val saved by boards.collectAsStateWithLifecycle(initialValue = emptyList())
     var editingBoard by rememberSaveable { mutableStateOf<String?>(null) }
 
-    saved.boards.forEach { board ->
+    if (outsideNorway) Hint(stringResource(R.string.transit_region_note), color = MaterialTheme.colorScheme.error)
+    saved.forEach { board ->
         Column(
             Modifier
                 .fillMaxWidth()
@@ -131,7 +130,7 @@ internal fun BoardsSettingsSection(
     Hint(stringResource(R.string.transit_attribution))
 
     editingBoard?.let { id ->
-        val existing = saved.boards.firstOrNull { it.id == id }
+        val existing = saved.firstOrNull { it.id == id }
         // Keyed by board, so the dialog's fields never carry over from another one. / 按收藏站点区分，对话框字段不会串到另一个。
         key(id) {
             BoardDialog(
@@ -140,16 +139,16 @@ internal fun BoardsSettingsSection(
                 onDismiss = { editingBoard = null },
                 onSave = { stop, lines, destinations ->
                     editingBoard = null
-                    update { s ->
-                        val board = (existing ?: FavouriteBoard(id = TransitPolicy.newBoardId(s.boards)))
+                    update { list ->
+                        val board = (existing ?: FavouriteBoard(id = TransitPolicy.newBoardId(list)))
                             .copy(stop = stop, lines = lines, destinations = destinations)
-                        s.copy(boards = s.boards.map { if (it.id == board.id) board else it }.let { list -> if (existing == null) list + board else list })
+                        list.map { if (it.id == board.id) board else it }.let { if (existing == null) it + board else it }
                     }
                 },
                 onDelete = existing?.let { board ->
                     {
                         editingBoard = null
-                        update { s -> s.copy(boards = s.boards.filterNot { it.id == board.id }) }
+                        update { list -> list.filterNot { it.id == board.id } }
                     }
                 },
             )

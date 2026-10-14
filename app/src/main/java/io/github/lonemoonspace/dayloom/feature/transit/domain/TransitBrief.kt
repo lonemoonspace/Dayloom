@@ -7,24 +7,11 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 /**
- * The transport line of the morning brief: the next trip to work, with the worst status of its legs, named by line when
+ * The morning-brief line of a commute (train or bus): the next trip to work, with the worst status of its legs, named by line when
  * that is not the first leg ("R1 at 07:42 · L2: 6 min late").
- * 早间简报里的公共交通一行：下一个去上班的方案，附各段中最差的状态；不是第一段时注明线路（「R1 07:42 · L2：晚 6 分」）。
+ * 早间简报里一条通勤（火车或公交）的一行：下一个去上班的方案，附各段中最差的状态；不是第一段时注明线路（「R1 07:42 · L2：晚 6 分」）。
  */
 object TransitBrief {
-
-    /**
-     * Train and bus each say their line when they have something, joined into the module's one line.
-     * 火车与公交有内容时各说一句，合成本模块的一行。
-     */
-    fun lines(trips: List<CommuteTrips>, now: ZonedDateTime): UiText? {
-        val parts = trips.mapNotNull { line(it, now) }
-        return when (parts.size) {
-            0 -> null
-            1 -> parts.single()
-            else -> UiText.Res(R.string.transit_brief_joined, parts.take(2))
-        }
-    }
 
     fun line(trips: CommuteTrips, now: ZonedDateTime): UiText? {
         // The direction the snapshot was fetched for: after noon that is the way home, and outbound is empty.

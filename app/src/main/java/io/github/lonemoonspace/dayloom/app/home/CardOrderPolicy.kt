@@ -6,16 +6,20 @@ package io.github.lonemoonspace.dayloom.app.home
  */
 object CardOrderPolicy {
 
-    data class Card(val key: String, val defaultOrder: Int, val pinnedToTop: Boolean = false)
+    /** [formerKey]: the key the card had before its module was split out. / [formerKey]：模块拆分前这张卡片的键。 */
+    data class Card(val key: String, val defaultOrder: Int, val pinnedToTop: Boolean = false, val formerKey: String? = null)
 
     /**
      * The user's order: saved keys that still exist first, then the remaining cards by default order. Cards of modules
-     * added later therefore appear at the end instead of disappearing.
+     * added later therefore appear at the end instead of disappearing. A card not saved under its own key takes the place
+     * saved under its former one.
      * 用户的顺序：仍然存在的已保存键在前，其余卡片按默认顺序排在后面。以后新增模块的卡片因此出现在末尾，而不是消失。
+     * 自己的键没保存过的卡片，占用它原来的键保存的位置。
      */
     fun userOrder(cards: List<Card>, saved: List<String>): List<String> {
         val known = cards.mapTo(mutableSetOf()) { it.key }
-        val savedKnown = saved.filter { it in known }.distinct()
+        val renamed = cards.filter { it.formerKey != null && it.key !in saved }.associate { it.formerKey to it.key }
+        val savedKnown = saved.map { renamed[it] ?: it }.filter { it in known }.distinct()
         val rest = cards.filter { it.key !in savedKnown }
             .sortedWith(compareBy<Card>({ it.defaultOrder }, { it.key }))
             .map { it.key }

@@ -18,7 +18,7 @@ class AppPoliciesTest {
 
     @Test
     fun `the real registry is valid`() {
-        val infos = ModuleRegistry.modules.map { info(it.id, it.defaultEnabled, it.notificationIds) }
+        val infos = ModuleRegistry.modules.map { ModulePolicy.ModuleInfo(it.id, it.defaultEnabled, it.notificationIds, it.splitFrom) }
         assertEquals(emptyList<String>(), ModulePolicy.problems(infos))
     }
 
@@ -52,6 +52,24 @@ class AppPoliciesTest {
     }
 
     @Test
+    fun `a split-out module follows the former module's switch until its own is flipped`() {
+        val modules = listOf(
+            ModulePolicy.ModuleInfo("train", false, IntRange.EMPTY, splitFrom = "transit"),
+            ModulePolicy.ModuleInfo("bus", false, IntRange.EMPTY, splitFrom = "transit"),
+        )
+        assertEquals(emptyList<String>(), ModulePolicy.enabledIds(modules, emptyMap()))
+        assertEquals(listOf("train", "bus"), ModulePolicy.enabledIds(modules, mapOf("transit" to true)))
+        assertEquals(listOf("train"), ModulePolicy.enabledIds(modules, mapOf("transit" to true, "bus" to false)))
+        assertEquals(listOf("bus"), ModulePolicy.enabledIds(modules, mapOf("transit" to false, "bus" to true)))
+    }
+
+    @Test
+    fun `a module cannot be split from one that is still registered`() {
+        val problems = ModulePolicy.problems(listOf(info("transit"), ModulePolicy.ModuleInfo("train", false, IntRange.EMPTY, splitFrom = "transit")))
+        assertEquals(listOf("train is split from transit, which is still registered"), problems)
+    }
+
+    @Test
     fun `notification ids are offsets into the module's range`() {
         assertEquals(5_000, ModulePolicy.notificationId("weather", 5_000..5_099, 0))
         assertEquals(5_099, ModulePolicy.notificationId("weather", 5_000..5_099, 99))
@@ -68,6 +86,20 @@ class AppPoliciesTest {
     }
 
     // ---- Card order / 卡片顺序 ----
+
+    @Test
+    fun `a split-out card takes the place saved under its former key until it has its own`() {
+        val cards = listOf(Card("w.a", 10), Card("train.commute", 20, formerKey = "transit.train"), Card("bus.commute", 30, formerKey = "transit.bus"))
+        assertEquals(
+            listOf("bus.commute", "w.a", "train.commute"),
+            CardOrderPolicy.userOrder(cards, saved = listOf("transit.bus", "w.a", "transit.train")),
+        )
+        assertEquals(
+            "a card saved under its own key ignores its former one",
+            listOf("train.commute", "bus.commute", "w.a"),
+            CardOrderPolicy.userOrder(cards, saved = listOf("train.commute", "transit.bus", "w.a", "transit.train")),
+        )
+    }
 
     @Test
     fun `saved order first, then the rest by default order, unknown keys dropped`() {

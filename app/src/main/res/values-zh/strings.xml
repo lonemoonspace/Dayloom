@@ -289,17 +289,18 @@
     <string name="traffic_brief">开车去%1$s：%2$s · %3$s</string>
     <string name="traffic_brief_plain">开车去%1$s：%2$s</string>
 
-    <string name="transit_title">公共交通</string>
-    <string name="transit_summary">挪威的火车、公交通勤方案与实时发车，数据来自 Entur</string>
     <string name="transit_train_title">火车</string>
     <string name="transit_bus_title">公交</string>
+    <string name="transit_train_summary">挪威两个车站之间的火车通勤方案，数据来自 Entur</string>
+    <string name="transit_bus_summary">挪威两个站点之间的公交通勤方案，数据来自 Entur</string>
+    <string name="transit_boards_summary">挪威收藏站点的实时发车，数据来自 Entur</string>
     <string name="transit_setup_prompt">请在「设置 → 火车 / 公交」里选择通勤的站点。</string>
     <string name="transit_train_note">只坐火车，可在火车之间换乘。选择通勤的两个车站。</string>
     <string name="transit_bus_note">只坐公交与长途大巴，可在它们之间换乘。选择通勤的两个站点。</string>
-    <string name="transit_brief_joined">%1$s；%2$s</string>
     <string name="transit_boards_title">发车板</string>
     <string name="transit_setup_commute">火车或公交站点</string>
     <string name="transit_setup_boards">收藏站点</string>
+    <string name="transit_boards_prompt">请在「设置 → 发车板」里添加收藏站点。</string>
     <string name="transit_to_work">上班 · %1$s → %2$s</string>
     <string name="transit_back_home">回家 · %1$s → %2$s</string>
     <string name="transit_no_options">目前查不到出行方案。</string>
@@ -342,7 +343,8 @@
     <string name="transit_search_hint">站点名称</string>
     <string name="transit_search">搜索</string>
     <string name="transit_search_none">没有找到站点。</string>
-    <string name="transit_channel">通勤异常</string>
+    <string name="transit_train_channel">火车异常</string>
+    <string name="transit_bus_channel">公交异常</string>
     <string name="transit_channel_description">通勤的下一班被取消或严重延误时</string>
     <string name="transit_notify_switch">异常提醒</string>
     <string name="transit_notify_switch_summary">45 分钟内的下一班被取消或晚点 5 分钟以上时提醒；上午看去程，下午看返程，22:00–06:00 不提醒</string>

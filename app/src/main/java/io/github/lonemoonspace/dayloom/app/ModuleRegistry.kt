@@ -6,7 +6,9 @@ import io.github.lonemoonspace.dayloom.feature.football.FootballModule
 import io.github.lonemoonspace.dayloom.feature.news.NewsModule
 import io.github.lonemoonspace.dayloom.feature.reminders.RemindersModule
 import io.github.lonemoonspace.dayloom.feature.traffic.TrafficModule
-import io.github.lonemoonspace.dayloom.feature.transit.TransitModule
+import io.github.lonemoonspace.dayloom.feature.transit.BusModule
+import io.github.lonemoonspace.dayloom.feature.transit.DeparturesModule
+import io.github.lonemoonspace.dayloom.feature.transit.TrainModule
 import io.github.lonemoonspace.dayloom.feature.weather.WeatherModule
 
 /**
@@ -19,7 +21,9 @@ object ModuleRegistry {
     val modules: List<FeatureModule> = listOf<FeatureModule>(
         CalendarModule,
         WeatherModule,
-        TransitModule,
+        TrainModule,
+        BusModule,
+        DeparturesModule,
         TrafficModule,
         RemindersModule,
         FootballModule,

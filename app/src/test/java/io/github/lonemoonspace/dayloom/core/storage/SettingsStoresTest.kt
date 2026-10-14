@@ -80,6 +80,37 @@ class SettingsStoresTest {
         assertEquals(WeatherSettings(place = "Bergen"), weather.get())
     }
 
+    @Serializable
+    data class FormerSettings(val train: String = "", val bus: String = "")
+
+    @Test
+    fun `a split-out module reads its former module's entry until it saves its own`() = runBlocking {
+        prefs.edit { it[stringPreferencesKey("transit")] = """{"train":"Oslo S","bus":"Majorstuen"}""" }
+        val store = ModuleSettingsStore(prefs)
+        val former = ModuleSettingsStore.Former.of("transit", FormerSettings.serializer()) { WeatherSettings(place = it.bus) }
+        val bus = store.forModule("bus", WeatherSettings.serializer(), WeatherSettings(), former)
+
+        assertEquals(WeatherSettings(place = "Majorstuen"), bus.get())
+        bus.update { it.copy(hours = 3) }
+        prefs.edit { it[stringPreferencesKey("transit")] = """{"bus":"Ignored now"}""" }
+
+        assertEquals(WeatherSettings(place = "Majorstuen", hours = 3), bus.get())
+        assertEquals("""{"place":"Majorstuen","hours":3}""", prefs.data.first()[stringPreferencesKey("bus")])
+    }
+
+    @Test
+    fun `a broken or missing former entry falls back to the defaults`() = runBlocking {
+        val errors = mutableListOf<String>()
+        val store = ModuleSettingsStore(prefs) { id, _ -> errors += id }
+        val former = ModuleSettingsStore.Former.of("transit", FormerSettings.serializer()) { WeatherSettings(place = it.bus) }
+        val bus = store.forModule("bus", WeatherSettings.serializer(), WeatherSettings(), former)
+        assertEquals(WeatherSettings(), bus.get())
+
+        prefs.edit { it[stringPreferencesKey("transit")] = "{ broken" }
+        assertEquals(WeatherSettings(), bus.get())
+        assertEquals(listOf("bus"), errors)
+    }
+
     @Test
     fun `app settings decode from older JSON and fall back to defaults when corrupt`() = runBlocking {
         val good = File(tmp.root, "app_settings").apply { writeText("""{"timeZoneOverride":"Asia/Shanghai"}""") }

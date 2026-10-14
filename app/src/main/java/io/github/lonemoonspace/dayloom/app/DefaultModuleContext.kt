@@ -62,6 +62,13 @@ class DefaultModuleContext(
         return moduleSettings.forModule(moduleId, serializer, default)
     }
 
+    override fun <T, F> settings(serializer: KSerializer<T>, default: T, formerSerializer: KSerializer<F>, fromFormer: (F) -> T): ValueStore<T> {
+        val former = requireNotNull(module.splitFrom) { "module $moduleId has no splitFrom to take settings from" }
+        check(!settingsCreated) { "settings() of module $moduleId requested twice" }
+        settingsCreated = true
+        return moduleSettings.forModule(moduleId, serializer, default, ModuleSettingsStore.Former.of(former, formerSerializer, fromFormer))
+    }
+
     override fun <T> snapshots(sourceId: SourceId, serializer: KSerializer<T>): SnapshotStore<T> {
         require(sourceId.moduleId == moduleId) { "module $moduleId cannot use source $sourceId" }
         return snapshotFactory.create(sourceId, serializer)

@@ -38,6 +38,15 @@ interface FeatureModule {
      */
     val notificationIds: IntRange get() = IntRange.EMPTY
 
+    /**
+     * Id of the module this one was split out of, if any. Until the user flips this module's own switch it follows that
+     * module's saved on/off choice; its settings and home-card positions can start from that module's too
+     * ([ModuleContext.settings], [HomeCard.formerKey]), so a split changes nothing on screen.
+     * 本模块是从哪个模块拆出来的（如有）。在用户拨动本模块自己的开关之前，沿用那个模块保存的开关状态；
+     * 设置与首页卡片位置也可以从那个模块接过来（[ModuleContext.settings]、[HomeCard.formerKey]），拆分后界面上什么都不变。
+     */
+    val splitFrom: String? get() = null
+
     fun create(ctx: ModuleContext): ModuleInstance
 }
 
@@ -87,13 +96,16 @@ enum class CardPlacement { NORMAL, TOP }
 
 /**
  * A home-screen card. [key] is local; the stored key is `<moduleId>.<key>`. [defaultOrder] places it before the user reorders.
+ * [formerKey] is the card's local key under [FeatureModule.splitFrom], so it keeps the place the user gave it there.
  * 首页卡片。[key] 是本地键，存储时为 `<模块id>.<键>`。[defaultOrder] 决定用户排序之前的位置。
+ * [formerKey] 是这张卡片在 [FeatureModule.splitFrom] 那个模块里的本地键，卡片因此留在用户原来给它排的位置。
  */
 class HomeCard(
     val key: String,
     @param:StringRes val title: Int,
     val defaultOrder: Int,
     val placement: Flow<CardPlacement> = flowOf(CardPlacement.NORMAL),
+    val formerKey: String? = null,
     val content: @Composable () -> Unit,
 )
 

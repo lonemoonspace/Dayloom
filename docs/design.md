@@ -157,7 +157,7 @@ interface ModuleInstance {
 ```kotlin
 // app/ModuleRegistry.kt —— 加模块只改这一个文件
 val allModules: List<FeatureModule> = listOf(
-    CalendarModule, WeatherModule, TransitModule, TrafficModule,
+    CalendarModule, WeatherModule, TrainModule, BusModule, DeparturesModule, TrafficModule,
     RemindersModule, FootballModule, NewsModule,
 )
 ```
@@ -325,15 +325,17 @@ val allModules: List<FeatureModule> = listOf(
 - **移植**：`MetApi`、`WeatherPointPicker`、`DailyForecastBuilder`、天气图标（原项目自绘的 `ic_wx_*` 矢量图）。
 - **注意**：MET 要求 User-Agent 带联系方式，改为 `Dayloom/<版本> (+https://github.com/lonemoonspace/dayloom)`；界面需注明数据来源（CC BY 4.0）。
 
-### 11.2 公共交通 `transit`（第一版最大的一块）
+### 11.2 公共交通：`train`、`bus`、`departures`（第一版最大的一块）
+
+同一个包（`feature/transit`）里的三个模块，各有自己的开关。到 0.2.0-rc.2 为止它们是一个 `transit` 模块；三个模块都声明 `splitFrom = "transit"`，在用户拨动自己的开关之前沿用旧开关，设置与卡片位置也从旧模块接过来。
 
 - **功能**
   1. **通勤行程**，**火车**通勤与**公交**通勤分开，各有自己的站点、卡片、设置与异常开关：起点站 → 终点站（该类车辆的任意线路；Entur `trip` 查询限定为 `rail` 加铁路替代巴士（`bus` 的 `railReplacementBus` 子类型，线路施工时只有它在跑；替代巴士沿用火车线路号，只能靠子类型认出，卡片上加巴士图标与「替代巴士」），或 `bus` 与 `coach`），中午 12:00 前显示去程，12:00 起显示返程。列出接下来 N 个方案：出发/到达时间、换乘次数与换乘站、每段的实时状态（准点/晚点 N 分/取消）。
   2. **收藏站点发车板**：任意站点的实时发车，可按线路、终点、方向筛选（例：某站只看某条公交线路、开往某个终点的班次，可还原原项目「只显示全程车」的效果）。
 - **数据源**：Entur Journey Planner v3（GraphQL）`trip` 与 `stopPlace.estimatedCalls`；站点搜索用 Entur Geocoder。请求头 `ET-Client-Name: lonemoonspace-dayloom`。
 - **可插拔**：`TransitProvider` 接口（`searchStops`、`planTrips`、`departures`），第一版只有 `EnturProvider`。设置里地点不在挪威时提示「暂不支持该地区」。
-- **设置**：火车、公交（起点站、终点站、显示方案数、异常提醒）与收藏站点（站点 + 筛选条件）各一张卡片。
-- **来源**：`transit.train`、`transit.bus`、`transit.boards`。
+- **设置**：火车、公交（起点站、终点站、显示方案数、异常提醒）与发车板（收藏站点 + 筛选条件）各是一张模块卡片。
+- **来源**：`train.commute`、`bus.commute`、`departures.boards`。
 - **通知**：下一班在 45 分钟内发车且被取消或大晚点时提醒，22:00–06:00 不提醒（移植 `CommuteDisruptionPolicy` 的指纹去重思路）。
 - **移植**：`EnturApi` 的请求与解析基础、`StationMatcher`/`TransferMatcher` 中通用的部分、状态标签的判定规则（准点/晚点/取消/实时未知）。
 - **不移植**：`L1Stations`、L1/R14 专用的换乘对比、`UpcomingL1Policy`、`Bus280*`。

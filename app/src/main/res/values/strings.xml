@@ -300,17 +300,18 @@
     <string name="traffic_brief">Drive to %1$s: %2$s · %3$s</string>
     <string name="traffic_brief_plain">Drive to %1$s: %2$s</string>
 
-    <string name="transit_title">Public transport</string>
-    <string name="transit_summary">Train and bus commutes and live departures in Norway, from Entur</string>
     <string name="transit_train_title">Train</string>
     <string name="transit_bus_title">Bus</string>
+    <string name="transit_train_summary">Train options for your commute between two stations in Norway, from Entur</string>
+    <string name="transit_bus_summary">Bus options for your commute between two stops in Norway, from Entur</string>
+    <string name="transit_boards_summary">Live departures from your favourite stops in Norway, from Entur</string>
     <string name="transit_setup_prompt">Choose the stops of your train or bus commute under Settings → Train / Bus.</string>
     <string name="transit_train_note">Trains only, with changes between trains. Pick the two stations of your commute.</string>
     <string name="transit_bus_note">Buses and coaches only, with changes between them. Pick the two stops of your commute.</string>
-    <string name="transit_brief_joined">%1$s; %2$s</string>
     <string name="transit_boards_title">Departures</string>
     <string name="transit_setup_commute">Train or bus stops</string>
     <string name="transit_setup_boards">A favourite stop</string>
+    <string name="transit_boards_prompt">Add a favourite stop under Settings → Departures.</string>
     <string name="transit_to_work">To work · %1$s → %2$s</string>
     <string name="transit_back_home">Home · %1$s → %2$s</string>
     <string name="transit_no_options">No trips found right now.</string>
@@ -356,7 +357,8 @@
     <string name="transit_search_hint">Stop name</string>
     <string name="transit_search">Search</string>
     <string name="transit_search_none">No stops found.</string>
-    <string name="transit_channel">Commute disruptions</string>
+    <string name="transit_train_channel">Train disruptions</string>
+    <string name="transit_bus_channel">Bus disruptions</string>
     <string name="transit_channel_description">When the next departure on your commute is cancelled or heavily delayed</string>
     <string name="transit_notify_switch">Disruption alerts</string>
     <string name="transit_notify_switch_summary">When the next departure, within 45 minutes, is cancelled or at least 5 minutes late; mornings to work, afternoons home, never 22:00–06:00</string>

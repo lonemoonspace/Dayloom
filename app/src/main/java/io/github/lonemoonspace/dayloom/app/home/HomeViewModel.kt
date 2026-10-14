@@ -28,8 +28,11 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-/** A card with its stored key `<moduleId>.<key>`. / 卡片及其存储键 `<模块id>.<键>`。 */
-class HomeCardEntry(val key: String, val card: HomeCard)
+/**
+ * A card with its stored key `<moduleId>.<key>`, and the key it had before its module was split out.
+ * 卡片及其存储键 `<模块id>.<键>`，以及模块拆分前它的键。
+ */
+class HomeCardEntry(val key: String, val card: HomeCard, val formerKey: String? = null)
 
 data class HomeState(
     /** False until the enabled modules are known. / 已开启模块确定之前为 false。 */
@@ -55,7 +58,12 @@ class HomeViewModel(
         when {
             modules == null -> flowOf(null)
             else -> {
-                val entries = modules.flatMap { a -> a.instance.homeCards.map { HomeCardEntry("${a.module.id}.${it.key}", it) } }
+                val entries = modules.flatMap { a ->
+                    a.instance.homeCards.map { card ->
+                        val former = a.module.splitFrom?.let { from -> card.formerKey?.let { "$from.$it" } }
+                        HomeCardEntry("${a.module.id}.${card.key}", card, former)
+                    }
+                }
                 if (entries.isEmpty()) {
                     flowOf(emptyList())
                 } else {
@@ -74,7 +82,7 @@ class HomeViewModel(
         if (placed == null) return@combine HomeState(refreshing = busy)
         val byKey = placed.associate { (entry, _) -> entry.key to entry }
         val cards = placed.map { (entry, placement) ->
-            CardOrderPolicy.Card(entry.key, entry.card.defaultOrder, pinnedToTop = placement == CardPlacement.TOP)
+            CardOrderPolicy.Card(entry.key, entry.card.defaultOrder, pinnedToTop = placement == CardPlacement.TOP, formerKey = entry.formerKey)
         }
         HomeState(
             loaded = true,

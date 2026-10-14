@@ -75,7 +75,7 @@ enum class CommuteMode {
     INBOUND,
 }
 
-/** The snapshot of `transit.train` and `transit.bus`. / `transit.train` 与 `transit.bus` 的快照。 */
+/** The snapshot of `train.commute` and `bus.commute`. / `train.commute` 与 `bus.commute` 的快照。 */
 @Serializable
 data class CommuteTrips(
     val mode: CommuteMode = CommuteMode.OUTBOUND,
@@ -121,6 +121,6 @@ data class BoardDeparture(
 @Serializable
 data class BoardResult(val boardId: String = "", val stopName: String = "", val departures: List<BoardDeparture> = emptyList())
 
-/** The snapshot of `transit.boards`. / `transit.boards` 的快照。 */
+/** The snapshot of `departures.boards`. / `departures.boards` 的快照。 */
 @Serializable
 data class Boards(val boards: List<BoardResult> = emptyList())

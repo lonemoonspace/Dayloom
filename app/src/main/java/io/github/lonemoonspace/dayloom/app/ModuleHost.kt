@@ -37,7 +37,7 @@ class ModuleHost(
     private val coordinator: RefreshCoordinator,
     scope: CoroutineScope,
 ) {
-    private val infos = modules.map { ModulePolicy.ModuleInfo(it.id, it.defaultEnabled, it.notificationIds) }
+    private val infos = modules.map { ModulePolicy.ModuleInfo(it.id, it.defaultEnabled, it.notificationIds, it.splitFrom) }
 
     init {
         val problems = ModulePolicy.problems(infos)

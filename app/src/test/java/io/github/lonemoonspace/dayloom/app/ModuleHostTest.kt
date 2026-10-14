@@ -146,6 +146,8 @@ class ModuleHostTest {
         override val connectivity = FakeNetworkStatus()
         override val places = PlaceBook(InMemoryValueStore(SharedData()))
         override fun <T> settings(serializer: KSerializer<T>, default: T): ValueStore<T> = InMemoryValueStore(default)
+        override fun <T, F> settings(serializer: KSerializer<T>, default: T, formerSerializer: KSerializer<F>, fromFormer: (F) -> T): ValueStore<T> =
+            InMemoryValueStore(default)
         override fun <T> snapshots(sourceId: SourceId, serializer: KSerializer<T>): SnapshotStore<T> = InMemorySnapshotStore()
         override fun secret(name: String) = object : ModuleSecret {
             override fun observe() = flowOf(SecretState.EMPTY)

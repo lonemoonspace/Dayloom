@@ -28,9 +28,9 @@ import kotlinx.coroutines.flow.map
 data class CommuteParams(val mode: CommuteMode, val origin: TransitStop, val destination: TransitStop, val options: Int)
 
 /**
- * `transit.train` / `transit.bus`: trip options between one route's two stops on that kind of vehicle, towards the
+ * `train.commute` / `bus.commute`: trip options between one route's two stops on that kind of vehicle, towards the
  * destination before noon and back from noon on ([TransitPolicy.commuteMode]).
- * `transit.train` / `transit.bus`：一条路线两个站点之间、只坐该类车辆的出行方案，中午前去程、中午起回程（[TransitPolicy.commuteMode]）。
+ * `train.commute` / `bus.commute`：一条路线两个站点之间、只坐该类车辆的出行方案，中午前去程、中午起回程（[TransitPolicy.commuteMode]）。
  */
 class CommuteSource(
     id: SourceId,
@@ -79,8 +79,8 @@ class CommuteSource(
 }
 
 /**
- * `transit.boards`: upcoming departures of every favourite stop, filtered by its lines and destinations, in one request.
- * `transit.boards`：所有收藏站点的后续班次，按各自的线路与终点过滤，一次请求取回。
+ * `departures.boards`: upcoming departures of every favourite stop, filtered by its lines and destinations, in one request.
+ * `departures.boards`：所有收藏站点的后续班次，按各自的线路与终点过滤，一次请求取回。
  */
 class BoardsSource(
     id: SourceId,

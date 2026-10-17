@@ -79,12 +79,14 @@ class MinifluxApi(private val http: OkHttpClient, private val io: CoroutineConte
             val page = page(baseUrl, token, filter, offset, limit)
             page.entries.forEach { all.putIfAbsent(it.id, it.toRemote()) }
             offset += page.entries.size
-            if (page.total > 0 && offset >= page.total) return RemoteList(all.values.toList(), complete = true)
-            // A short page ends the list. Without `total` it is taken as the end; with a larger `total` something cut the page
-            // short (a proxy, a server limit), so the list counts as incomplete rather than letting the rest look read.
-            // 不满一页就停下。没有 `total` 时视为到头；`total` 更大时说明这一页被截断了（代理、服务端限制），列表算作不完整，
-            // 不能让其余文章看起来已读。
-            if (page.entries.size < limit) return RemoteList(all.values.toList(), complete = page.total <= 0)
+            // A short page or reaching `total` only means there is no next page. The list is complete only when the distinct
+            // entries add up to `total`: entries shifting between pages, or a page cut short by a proxy, would otherwise let
+            // missing articles look read. Without `total`, a short page is taken as the end.
+            // 不满一页或到达 `total` 只说明没有下一页了。只有去重后的条数够 `total` 才算完整：翻页时条目移动、或代理截断了一页，
+            // 否则会让缺的文章看起来已读。没有 `total` 时，不满一页就视为到头。
+            if (page.entries.size < limit || (page.total > 0 && offset >= page.total)) {
+                return RemoteList(all.values.toList(), complete = page.total <= 0 || all.size >= page.total)
+            }
         }
         return RemoteList(all.values.toList(), complete = false)
     }

@@ -296,6 +296,17 @@ class NewsApiTest {
     }
 
     @Test
+    fun `a list whose distinct entries fall short of the total is incomplete`() = runTest {
+        // 203 entries; while paging, the second page comes back short and repeats two, under a total that grew to 204.
+        // 共 203 条；翻页期间第二页不满一页、重复两条，而 total 涨到了 204。
+        server.enqueue(MockResponse().setBody(entries(*(1L..200L).toList().toLongArray()).replaceFirst("\"total\":200", "\"total\":203")))
+        server.enqueue(MockResponse().setBody(entries(199, 200, 201, 202).replaceFirst("\"total\":4", "\"total\":204")))
+        val list = MinifluxApi(OkHttpClient()).unread(base, "tok")
+        assertEquals(202, list.entries.size)
+        assertFalse(list.complete)
+    }
+
+    @Test
     fun `a list cut off at the limit is incomplete even when a repeated entry leaves it short`() = runTest {
         val size = NewsSyncPolicy.PAGE_SIZE.toLong()
         val pages = (NewsSyncPolicy.FETCH_LIMIT / NewsSyncPolicy.PAGE_SIZE)

@@ -60,7 +60,8 @@ class NewsApiTest {
         val request = server.takeRequest()
         assertEquals("tok", request.getHeader("X-Auth-Token"))
         assertEquals("/reader/v1/entries?status=unread&limit=200&order=published_at&direction=desc", request.path)
-        val entry = list.single()
+        assertTrue(list.complete)
+        val entry = list.entries.single()
         assertEquals("Feed", entry.feedTitle)
         assertEquals(4, entry.readingMinutes)
         assertEquals(java.time.Instant.parse("2026-10-09T06:00:00Z").toEpochMilli(), entry.publishedAt)
@@ -272,13 +273,27 @@ class NewsApiTest {
         // A new entry shifted the second page by one, so its first entry repeats. / 新条目让第二页错开一条，第一条重复出现。
         server.enqueue(MockResponse().setBody(page(NewsSyncPolicy.PAGE_SIZE.toLong()..total.toLong())))
         val list = MinifluxApi(OkHttpClient()).unread(base, "tok")
-        assertEquals((1L..total).toList(), list.map { it.id })
+        assertEquals((1L..total).toList(), list.entries.map { it.id })
+        assertTrue(list.complete)
         server.takeRequest()
         assertEquals(
             "/reader/v1/entries?status=unread&limit=${NewsSyncPolicy.PAGE_SIZE}&offset=${NewsSyncPolicy.PAGE_SIZE}&order=published_at&direction=desc",
             server.takeRequest().path,
         )
         assertEquals("stops once the server has no more", 2, server.requestCount)
+    }
+
+    @Test
+    fun `a list cut off at the limit is incomplete even when a repeated entry leaves it short`() = runTest {
+        val size = NewsSyncPolicy.PAGE_SIZE.toLong()
+        val pages = (NewsSyncPolicy.FETCH_LIMIT / NewsSyncPolicy.PAGE_SIZE)
+        fun page(ids: LongRange) = entries(*ids.toList().toLongArray()).replaceFirst("\"total\":${ids.count()}", "\"total\":${NewsSyncPolicy.FETCH_LIMIT + 50}")
+        // Every page after the first starts with the previous page's last entry. / 第一页之后每页都以前一页的最后一条开头。
+        for (i in 0 until pages) server.enqueue(MockResponse().setBody(page(i * (size - 1) + 1..i * (size - 1) + size)))
+        val list = MinifluxApi(OkHttpClient()).unread(base, "tok")
+        assertEquals(NewsSyncPolicy.FETCH_LIMIT - (pages - 1), list.entries.size)
+        assertFalse("the server has more, so nothing may be taken as read elsewhere", list.complete)
+        assertEquals(pages, server.requestCount)
     }
 
     @Test

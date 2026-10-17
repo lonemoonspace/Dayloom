@@ -3,6 +3,15 @@ package io.github.lonemoonspace.dayloom.feature.news.domain
 import kotlinx.serialization.Serializable
 
 /**
+ * One of the server's lists (unread, starred). [complete] is false when it was cut off at [NewsSyncPolicy.FETCH_LIMIT]:
+ * then an article missing from it says nothing about that article's state. Not derived from the size, because the same
+ * entry can turn up on two pages and be kept once.
+ * 服务器的一个列表（未读、收藏）。在 [NewsSyncPolicy.FETCH_LIMIT] 处被截断时 [complete] 为 false：此时某篇文章不在列表里，
+ * 并不能说明它的状态。不按条数推断，因为同一条目可能出现在两页、只保留一次。
+ */
+data class RemoteList(val entries: List<RemoteEntry> = emptyList(), val complete: Boolean = true)
+
+/**
  * An article as Miniflux sends it. / Miniflux 发来的一篇文章。
  */
 data class RemoteEntry(

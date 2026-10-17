@@ -83,14 +83,15 @@ internal object Routes {
 
 /**
  * Shows the onboarding until it has been finished once, then the app. Nothing is drawn before the settings are read, so a
- * returning user never sees the onboarding flash by.
- * 首次启动引导完成之前显示引导，之后显示 App。设置读出来之前什么都不画，老用户不会看到引导一闪而过。
+ * returning user never sees the onboarding flash by ([StartupWait] speaks up only if reading keeps failing).
+ * 首次启动引导完成之前显示引导，之后显示 App。设置读出来之前什么都不画，老用户不会看到引导一闪而过（只有一直读不出来时
+ * [StartupWait] 才出声）。
  */
 @Composable
 fun AppRoot(graph: AppGraph, pendingIntent: Intent?) {
     val settings by graph.appSettings.flow.collectAsStateWithLifecycle(initialValue = null)
     when (settings?.onboardingDone) {
-        null -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+        null -> StartupWait()
         false -> {
             val vm = settingsViewModel(graph)
             val sharedVm = sharedDataViewModel(graph)

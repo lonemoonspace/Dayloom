@@ -2,6 +2,7 @@ package io.github.lonemoonspace.dayloom.feature.news
 
 import io.github.lonemoonspace.dayloom.feature.news.domain.NewsSyncPolicy
 import io.github.lonemoonspace.dayloom.feature.news.domain.RemoteEntry
+import io.github.lonemoonspace.dayloom.feature.news.domain.RemoteList
 import io.github.lonemoonspace.dayloom.feature.news.domain.StoredArticle
 import java.time.Duration
 import org.junit.Assert.assertEquals
@@ -18,6 +19,9 @@ class NewsSyncPolicyTest {
     private fun remote(id: Long, read: Boolean = false, starred: Boolean = false, age: Long = day) =
         RemoteEntry(id, "Feed", "Title $id", "https://example.org/$id", "", "<p>Body $id</p>", now - age, read, starred, 3)
 
+    /** A server list that was fetched in full. / 完整取到的服务器列表。 */
+    private fun whole(vararg entries: RemoteEntry) = RemoteList(entries.toList(), complete = true)
+
     private fun stored(id: Long, read: Boolean = false, starred: Boolean = false, age: Long = day, pendingRead: Boolean? = null, pendingStarred: Boolean? = null, summary: String = "") =
         StoredArticle(id, "Feed", "Title $id", publishedAt = now - age, read = read, starred = starred, pendingRead = pendingRead, pendingStarred = pendingStarred, summary = summary)
 
@@ -31,7 +35,7 @@ class NewsSyncPolicyTest {
             stored(5),
             stored(6, pendingStarred = false),
         )
-        val plan = NewsSyncPolicy.pushPlan(local, unread = listOf(remote(6, starred = true)), starred = listOf(remote(4, starred = true)))
+        val plan = NewsSyncPolicy.pushPlan(local, unread = whole(remote(6, starred = true)), starred = whole(remote(4, starred = true)))
         assertEquals(listOf(1L), plan.markRead)
         assertEquals(listOf(2L), plan.markUnread)
         assertEquals("4 is starred on the server already; 6 is listed as starred among the unread", listOf(3L, 6L), plan.toggleStar.sorted())
@@ -41,8 +45,8 @@ class NewsSyncPolicyTest {
 
     @Test
     fun `a star whose server state is unknown waits`() {
-        val full = (1L..NewsSyncPolicy.FETCH_LIMIT).map { remote(it + 1000, starred = true) }
-        val plan = NewsSyncPolicy.pushPlan(listOf(stored(1, pendingStarred = true)), unread = emptyList(), starred = full)
+        val full = (1L..3L).map { remote(it + 1000, starred = true) }
+        val plan = NewsSyncPolicy.pushPlan(listOf(stored(1, pendingStarred = true)), unread = whole(), starred = RemoteList(full, complete = false))
         assertTrue(plan.toggleStar.isEmpty())
         assertTrue("not sent, so it stays pending", plan.sentStarred.isEmpty())
     }
@@ -50,7 +54,7 @@ class NewsSyncPolicyTest {
     @Test
     fun `remote entries refresh the text but keep the summary, and pending changes win`() {
         val local = listOf(stored(1, summary = "Short", pendingRead = true))
-        val result = NewsSyncPolicy.merge(local, unread = listOf(remote(1)), starred = emptyList(), sentRead = emptyMap(), sentStarred = emptyMap(), nowMillis = now)
+        val result = NewsSyncPolicy.merge(local, unread = whole(remote(1)), starred = whole(), sentRead = emptyMap(), sentStarred = emptyMap(), nowMillis = now)
         val row = result.upsert.single()
         assertEquals("<p>Body 1</p>", row.contentHtml)
         assertEquals("Short", row.summary)
@@ -58,7 +62,7 @@ class NewsSyncPolicyTest {
         assertEquals(true, row.pendingRead)
         assertEquals("read now", now, row.readAt)
 
-        val pushed = NewsSyncPolicy.merge(local, listOf(remote(1)), emptyList(), sentRead = mapOf(1L to true), sentStarred = emptyMap(), nowMillis = now).upsert.single()
+        val pushed = NewsSyncPolicy.merge(local, whole(remote(1)), whole(), sentRead = mapOf(1L to true), sentStarred = emptyMap(), nowMillis = now).upsert.single()
         assertTrue(pushed.read)
         assertNull("confirmed by the push", pushed.pendingRead)
     }
@@ -67,29 +71,29 @@ class NewsSyncPolicyTest {
     fun `a change made during the sync survives it`() {
         // The plan sent "read"; meanwhile the user marked it unread again. / 计划发的是「已读」；其间用户又标回了未读。
         val local = listOf(stored(1, pendingRead = false))
-        val row = NewsSyncPolicy.merge(local, listOf(remote(1, read = true)), emptyList(), sentRead = mapOf(1L to true), sentStarred = emptyMap(), nowMillis = now).upsert.single()
+        val row = NewsSyncPolicy.merge(local, whole(remote(1, read = true)), whole(), sentRead = mapOf(1L to true), sentStarred = emptyMap(), nowMillis = now).upsert.single()
         assertEquals(false, row.read)
         assertEquals(false, row.pendingRead)
     }
 
     @Test
     fun `stars come from the entry itself, not only from the capped starred list`() {
-        val row = NewsSyncPolicy.merge(emptyList(), listOf(remote(1, starred = true)), emptyList(), emptyMap(), emptyMap(), now).upsert.single()
+        val row = NewsSyncPolicy.merge(emptyList(), whole(remote(1, starred = true)), whole(), emptyMap(), emptyMap(), now).upsert.single()
         assertTrue(row.starred)
     }
 
     @Test
     fun `an article that left a complete unread list was read elsewhere`() {
         val local = listOf(stored(1), stored(2, pendingRead = false))
-        val result = NewsSyncPolicy.merge(local, unread = emptyList(), starred = emptyList(), sentRead = emptyMap(), sentStarred = emptyMap(), nowMillis = now)
+        val result = NewsSyncPolicy.merge(local, unread = whole(), starred = whole(), sentRead = emptyMap(), sentStarred = emptyMap(), nowMillis = now)
         assertEquals(listOf(1L), result.upsert.filter { it.read }.map { it.id })
         assertTrue("the local 'unread' still waits to be sent", result.upsert.none { it.id == 2L })
     }
 
     @Test
     fun `a truncated list proves nothing about the rest`() {
-        val full = (1L..NewsSyncPolicy.FETCH_LIMIT).map { remote(it + 1000) }
-        val result = NewsSyncPolicy.merge(listOf(stored(1)), unread = full, starred = emptyList(), sentRead = emptyMap(), sentStarred = emptyMap(), nowMillis = now)
+        val full = (1L..3L).map { remote(it + 1000) }
+        val result = NewsSyncPolicy.merge(listOf(stored(1)), unread = RemoteList(full, complete = false), starred = whole(), sentRead = emptyMap(), sentStarred = emptyMap(), nowMillis = now)
         assertTrue(result.upsert.none { it.id == 1L })
     }
 
@@ -102,10 +106,10 @@ class NewsSyncPolicyTest {
             stored(3, read = true, age = old).copy(readAt = now - day),
             stored(4, read = true, age = old, pendingStarred = false).copy(readAt = now - 20 * day),
         )
-        val result = NewsSyncPolicy.merge(local, unread = emptyList(), starred = listOf(remote(2, read = true, starred = true, age = old)), sentRead = emptyMap(), sentStarred = emptyMap(), nowMillis = now)
+        val result = NewsSyncPolicy.merge(local, unread = whole(), starred = whole(remote(2, read = true, starred = true, age = old)), sentRead = emptyMap(), sentStarred = emptyMap(), nowMillis = now)
         assertEquals(listOf(1L), result.delete)
         // An old article read just now is kept. / 刚读过的旧文章保留。
-        val fresh = NewsSyncPolicy.merge(listOf(stored(5, age = old)), emptyList(), emptyList(), emptyMap(), emptyMap(), now)
+        val fresh = NewsSyncPolicy.merge(listOf(stored(5, age = old)), whole(), whole(), emptyMap(), emptyMap(), now)
         assertTrue(fresh.delete.isEmpty())
         assertEquals(now, fresh.upsert.single().readAt)
     }
@@ -164,12 +168,14 @@ class NewsSyncPolicyTest {
     }
 
     @Test
-    fun `opening an excerpt fetches its full text unless the server said it is that short`() {
+    fun `opening an excerpt fetches its full text unless the server said it is that short or it just failed`() {
         val excerpt = stored(1)
-        assertTrue(NewsSyncPolicy.fetchOnOpen(excerpt))
-        assertTrue("a failure is retried on opening", NewsSyncPolicy.fetchOnOpen(excerpt.copy(fullTextTriedAt = now)))
-        assertFalse(NewsSyncPolicy.fetchOnOpen(excerpt.copy(fullTextTriedAt = NewsSyncPolicy.FULL_TEXT_SHORT)))
-        assertFalse(NewsSyncPolicy.fetchOnOpen(excerpt.copy(contentHtml = "<p>" + "word ".repeat(40) + "</p>")))
+        val retry = NewsSyncPolicy.FULL_TEXT_RETRY.toMillis()
+        assertTrue(NewsSyncPolicy.fetchOnOpen(excerpt, now))
+        assertFalse("a fresh failure waits", NewsSyncPolicy.fetchOnOpen(excerpt.copy(fullTextTriedAt = now - retry + 1), now))
+        assertTrue("an old failure is retried", NewsSyncPolicy.fetchOnOpen(excerpt.copy(fullTextTriedAt = now - retry), now))
+        assertFalse(NewsSyncPolicy.fetchOnOpen(excerpt.copy(fullTextTriedAt = NewsSyncPolicy.FULL_TEXT_SHORT), now))
+        assertFalse(NewsSyncPolicy.fetchOnOpen(excerpt.copy(contentHtml = "<p>" + "word ".repeat(40) + "</p>"), now))
     }
 
     @Test
@@ -190,9 +196,9 @@ class NewsSyncPolicyTest {
     fun `a sync keeps full text fetched here when the feed sends only an excerpt`() {
         val long = "<p>" + "word ".repeat(40) + "</p>"
         val local = listOf(stored(1).copy(contentHtml = long))
-        val kept = NewsSyncPolicy.merge(local, listOf(remote(1)), emptyList(), emptyMap(), emptyMap(), now).upsert.single()
+        val kept = NewsSyncPolicy.merge(local, whole(remote(1)), whole(), emptyMap(), emptyMap(), now).upsert.single()
         assertEquals(long, kept.contentHtml)
         val longer = remote(1).copy(contentHtml = "<p>" + "new ".repeat(40) + "</p>")
-        assertEquals(longer.contentHtml, NewsSyncPolicy.merge(local, listOf(longer), emptyList(), emptyMap(), emptyMap(), now).upsert.single().contentHtml)
+        assertEquals(longer.contentHtml, NewsSyncPolicy.merge(local, whole(longer), whole(), emptyMap(), emptyMap(), now).upsert.single().contentHtml)
     }
 }

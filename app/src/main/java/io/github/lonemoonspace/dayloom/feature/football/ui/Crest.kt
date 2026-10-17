@@ -72,10 +72,15 @@ class CrestLoader(private val http: OkHttpClient) {
             return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)?.asImageBitmap()
         }
 
-        /** The largest power of two that keeps both sides at least [maxSide], as BitmapFactory expects. / 让两边都不小于 [maxSide] 的最大 2 的幂，符合 BitmapFactory 的要求。 */
+        /**
+         * The largest power of two (as BitmapFactory expects) that keeps the longer side at least [maxSide]. Going by the
+         * longer side keeps a very wide or tall image from decoding at full size because its short side is already small.
+         * 让较长边不小于 [maxSide] 的最大 2 的幂（BitmapFactory 的要求）。按较长边算，极宽或极高的图不会因为短边本来就小而按原尺寸解码。
+         */
         internal fun sampleSize(width: Int, height: Int, maxSide: Int): Int {
+            val longer = maxOf(width, height)
             var sample = 1
-            while (width / (sample * 2) >= maxSide && height / (sample * 2) >= maxSide) sample *= 2
+            while (longer / (sample * 2) >= maxSide) sample *= 2
             return sample
         }
 

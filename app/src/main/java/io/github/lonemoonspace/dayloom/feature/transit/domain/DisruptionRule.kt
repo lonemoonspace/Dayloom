@@ -41,6 +41,13 @@ class DisruptionRule(
         // A trip that is not alertable yet counts as no trip; once it comes within reach it is told once.
         // 还不该提醒的班次视同没有；进入范围后提醒一次。
         val option = next?.takeIf { TransitPolicy.isAlertable(it, input.now) }
+        if (option == null && previous != null) {
+            val upcoming = TransitPolicy.visibleOptions(snapshot.current, input.now, Int.MAX_VALUE)
+            // Nothing to decide, but the trip told about may have left: then its alert is withdrawn and the state cleared.
+            // 没有可判定的方案，但提醒过的那班车可能已经开走：那就撤回通知并清空状态。
+            return if (DisruptionPolicy.stillAhead(upcoming, input.now.zone, previous)) RuleDecision(previous)
+            else RuleDecision(null, cancel = listOf(notificationId))
+        }
         val decision = DisruptionPolicy.evaluate(option, input.now.zone, previous)
         // The notification stays one line, so it names the worst leg: a cancelled connection matters more than an earlier
         // leg's delay, which may also be the part the user was already told about.

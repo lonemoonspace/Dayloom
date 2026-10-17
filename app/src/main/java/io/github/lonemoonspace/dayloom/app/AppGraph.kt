@@ -173,6 +173,7 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
         },
         coordinator = coordinator,
         scope = appScope,
+        cancelNotifications = notifier::cancelShown,
     )
 
     val backgroundRound = BackgroundRound(

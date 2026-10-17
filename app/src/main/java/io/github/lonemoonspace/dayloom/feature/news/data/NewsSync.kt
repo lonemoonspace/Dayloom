@@ -28,10 +28,10 @@ import kotlinx.coroutines.sync.withLock
 /**
  * Two-way sync with Miniflux. Network calls run outside the lock, so a tap is never held up by a slow server; every read
  * and write of the stored articles runs inside it, and the merge only clears a pending change whose value was the one sent.
- * The stored articles belong to one server ([owner]); a sync with another one drops them first, and nothing stored is ever
- * sent to a server it did not come from.
+ * The stored articles belong to one server ([owner]); a sync with another one drops them once that server has answered, and
+ * nothing stored is ever sent to a server it did not come from.
  * 与 Miniflux 的双向同步。网络调用在锁外进行，服务器慢时点按也不会卡住；对本地文章的每次读写都在锁内，合并时只清除值与已发送值
- * 相同的待发送修改。本地文章属于一台服务器（[owner]）；与另一台同步时先清空，本地的东西绝不会发给它不是来自的服务器。
+ * 相同的待发送修改。本地文章属于一台服务器（[owner]）；与另一台同步时，等那台服务器成功应答后才清空，本地的东西绝不会发给它不是来自的服务器。
  */
 class NewsSync(private val store: ArticleStore, private val api: MinifluxApi, private val owner: ArticleOwner) {
     private val lock = Mutex()
@@ -43,12 +43,13 @@ class NewsSync(private val store: ArticleStore, private val api: MinifluxApi, pr
     private val sentSinceSync = ConcurrentHashMap<Long, Boolean>()
 
     suspend fun sync(baseUrl: String, token: String, nowMillis: Long): SyncSummary {
-        lock.withLock { adopt(baseUrl) }
+        // Download before adopting: a mistyped address, a refused token or a page that is not Miniflux throws here and must
+        // not cost the articles of the server before, which could not all be downloaded again.
+        // 先下载再接管：地址打错、令牌被拒或对方不是 Miniflux 会在这里抛出，不能因此丢掉上一台服务器的文章，那些文章没法全部重新下载。
         val unread = api.unread(baseUrl, token)
         val starred = api.starred(baseUrl, token)
         val plan = lock.withLock {
-            // The server may have changed while downloading; then the next sync starts over. / 下载期间服务器可能换了；那就等下一次同步重来。
-            if (!owns(baseUrl)) return store.summary()
+            adopt(baseUrl)
             NewsSyncPolicy.pushPlan(store.pending(), unread, starred)
         }
         // A failed push keeps the changes pending for the next sync; the download still lands. / 推送失败时修改保留待发送，下载的内容照样写入。
@@ -80,10 +81,13 @@ class NewsSync(private val store: ArticleStore, private val api: MinifluxApi, pr
     }
 
     /**
-     * Makes [baseUrl] the owner of the stored articles, dropping those of any other server. A blank owner (articles stored
-     * before the owner was recorded) is taken to be this server, so an update keeps them.
+     * Makes [baseUrl] the owner of the stored articles, dropping those of any other server; called only once [baseUrl] has
+     * answered. A blank owner (articles stored before the owner was recorded) is taken to be this server, so an update keeps
+     * them. The articles go before the owner changes: dying in between leaves an empty store under the old owner, never old
+     * articles under the new one.
      * Caller holds [lock].
-     * 让 [baseUrl] 成为本地文章的归属，删除其他服务器的文章。归属为空（记录归属之前存下的文章）时视为就是这台服务器，升级后不会丢。
+     * 让 [baseUrl] 成为本地文章的归属，删除其他服务器的文章；只在 [baseUrl] 已经成功应答后调用。归属为空（记录归属之前存下的文章）时
+     * 视为就是这台服务器，升级后不会丢。先删文章再改归属：中途被杀只会留下归属旧服务器的空表，不会让旧文章挂在新服务器名下。
      * 调用方需持有 [lock]。
      */
     private suspend fun adopt(baseUrl: String) {

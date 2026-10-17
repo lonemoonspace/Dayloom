@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import io.github.lonemoonspace.dayloom.core.storage.retryOnReadError
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -22,6 +23,7 @@ class DataStoreSecretStore(
     // 先按原文去重再解密：其他键的写入不会再触发一次（不便宜的）Keystore 调用。
     override fun observe(id: String): Flow<SecretState> =
         store.data
+            .retryOnReadError()
             .map { it[stringPreferencesKey(id)].orEmpty() }
             .distinctUntilChanged()
             .map { SecretField.read(it, cipher::decrypt) }

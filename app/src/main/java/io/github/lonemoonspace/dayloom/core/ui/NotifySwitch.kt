@@ -42,6 +42,8 @@ fun NotifySwitch(label: String, summary: String, checked: Boolean, channelId: St
     var refused by remember { mutableStateOf(false) }
     LifecycleResumeEffect(channelId) {
         granted = hasPermission(context)
+        // Granted in the system settings after a refusal: the refusal no longer holds. / 拒绝后又在系统设置里授权：拒绝已不成立。
+        if (granted) refused = false
         channelOff = NotificationChannels.isChannelDisabled(context, channelId)
         onPauseOrDispose {}
     }

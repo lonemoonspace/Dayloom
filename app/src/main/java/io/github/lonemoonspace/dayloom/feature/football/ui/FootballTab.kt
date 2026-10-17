@@ -388,7 +388,7 @@ private fun NextMatchHero(match: Match, teamId: Int, now: ZonedDateTime, crests:
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                MatchStatusChip(match)
+                MatchStatusChip(match, now)
             }
         }
     }
@@ -445,7 +445,7 @@ private fun FixtureCard(match: Match, teamId: Int, now: ZonedDateTime, crests: C
                 if (match.status.isUpcoming) {
                     Text(stringResource(R.string.football_not_started), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
-                    MatchStatusChip(match)
+                    MatchStatusChip(match, now)
                 }
             }
         }
@@ -513,7 +513,7 @@ private fun ResultCard(match: Match, teamId: Int, now: ZonedDateTime, crests: Cr
                         maxLines = 1,
                     )
                     Spacer(Modifier.width(8.dp))
-                    if (outcome != null) OutcomePill(outcome) else MatchStatusChip(match)
+                    if (outcome != null) OutcomePill(outcome) else MatchStatusChip(match, now)
                 }
                 Spacer(Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {

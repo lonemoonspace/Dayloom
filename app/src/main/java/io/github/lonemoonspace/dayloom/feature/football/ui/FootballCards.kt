@@ -26,6 +26,7 @@ import io.github.lonemoonspace.dayloom.core.ui.rememberPatternFormatter
 import io.github.lonemoonspace.dayloom.core.ui.rememberTimeFormatter
 import io.github.lonemoonspace.dayloom.core.ui.theme.statusColors
 import io.github.lonemoonspace.dayloom.core.ui.userMessage
+import io.github.lonemoonspace.dayloom.feature.football.domain.FootballPolicy
 import io.github.lonemoonspace.dayloom.feature.football.domain.Match
 import io.github.lonemoonspace.dayloom.feature.football.domain.MatchStatus
 import io.github.lonemoonspace.dayloom.feature.football.domain.Outcome
@@ -58,7 +59,7 @@ internal fun Scoreboard(match: Match, now: ZonedDateTime, crests: CrestLoader) {
                 Text(kickoffDay(match, now), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
             Spacer(Modifier.padding(top = 2.dp))
-            MatchStatusChip(match)
+            MatchStatusChip(match, now)
         }
         TeamSide(match.away, crests, Modifier.weight(1f), alignEnd = true)
     }
@@ -82,12 +83,14 @@ private fun TeamSide(team: TeamRef, crests: CrestLoader, modifier: Modifier, ali
 
 /**
  * Live in red with the minute, finished, postponed and the like in grey; nothing for a match that is simply scheduled,
- * whose time already says it all.
- * 进行中用红色并带分钟数，完场、延期等用灰色；只是排了期的比赛不加标签，时间已经说明一切。
+ * whose time already says it all. A live status long past the match's end is an old snapshot, so it shows no LIVE.
+ * 进行中用红色并带分钟数，完场、延期等用灰色；只是排了期的比赛不加标签，时间已经说明一切。比赛早该结束却仍是进行中，说明快照过时，
+ * 不显示「进行中」。
  */
 @Composable
-internal fun MatchStatusChip(match: Match) {
+internal fun MatchStatusChip(match: Match, now: ZonedDateTime) {
     val colors = MaterialTheme.statusColors
+    if (match.status.isLive && !FootballPolicy.isLiveNow(match, now.toInstant())) return
     when (match.status) {
         MatchStatus.IN_PLAY -> StatusChip(
             when {

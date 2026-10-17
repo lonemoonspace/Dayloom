@@ -22,8 +22,16 @@ data class MergeResult(val upsert: List<StoredArticle>, val delete: List<Long>)
  * 新闻同步的纯判定：要发送哪些本地修改，以及服务器的列表与本地记录如何合并。
  */
 object NewsSyncPolicy {
-    /** Unread and starred entries fetched per sync; Miniflux pages beyond this are left for later. / 每次同步取的未读与收藏条数；更多的留到以后。 */
-    const val FETCH_LIMIT = 200
+    /**
+     * Most unread (and most starred) entries fetched per sync, newest first. A list cut off here is marked incomplete
+     * ([RemoteList.complete]), so the older entries are neither shown nor taken as read elsewhere.
+     * 每次同步最多取的未读（与收藏）条数，新的在前。在这里被截断的列表标为不完整（[RemoteList.complete]），更早的条目既不显示，
+     * 也不会被当成已在别处读过。
+     */
+    const val FETCH_LIMIT = 1000
+
+    /** Entries per Miniflux request; [FETCH_LIMIT] takes a few pages. / 每次请求 Miniflux 取的条数；取满 [FETCH_LIMIT] 要翻几页。 */
+    const val PAGE_SIZE = 200
 
     /** Read, unstarred articles are kept this long after being read, so "All" still has something to show. / 已读且未收藏的文章在读过之后保留这么久，「全部」里才有东西看。 */
     val KEEP_READ: Duration = Duration.ofDays(14)
@@ -35,9 +43,9 @@ object NewsSyncPolicy {
      * 已读状态按原样发送。Miniflux 的收藏接口是切换式的，所以只有确知服务器状态且与想要的不同时才发送：服务器列出了该条目就看
      * 条目本身，否则看完整的收藏列表；服务器状态未知的收藏留到以后的同步。
      */
-    fun pushPlan(local: List<StoredArticle>, unread: List<RemoteEntry>, starred: List<RemoteEntry>): PushPlan {
-        val remote = (unread + starred).associate { it.id to it.starred }
-        val starredComplete = starred.size < FETCH_LIMIT
+    fun pushPlan(local: List<StoredArticle>, unread: RemoteList, starred: RemoteList): PushPlan {
+        val remote = (unread.entries + starred.entries).associate { it.id to it.starred }
+        val starredComplete = starred.complete
         val reads = local.mapNotNull { a -> a.pendingRead?.let { a.id to it } }.toMap()
         val stars = local.mapNotNull { a ->
             val wanted = a.pendingStarred ?: return@mapNotNull null
@@ -62,16 +70,16 @@ object NewsSyncPolicy {
      */
     fun merge(
         local: List<StoredArticle>,
-        unread: List<RemoteEntry>,
-        starred: List<RemoteEntry>,
+        unread: RemoteList,
+        starred: RemoteList,
         sentRead: Map<Long, Boolean>,
         sentStarred: Map<Long, Boolean>,
         nowMillis: Long,
     ): MergeResult {
         val byId = local.associateBy { it.id }
-        val remote = (unread + starred).associateBy { it.id }
-        val unreadComplete = unread.size < FETCH_LIMIT
-        val starredComplete = starred.size < FETCH_LIMIT
+        val remote = (unread.entries + starred.entries).associateBy { it.id }
+        val unreadComplete = unread.complete
+        val starredComplete = starred.complete
         val upsert = mutableListOf<StoredArticle>()
         val delete = mutableListOf<Long>()
 
@@ -194,6 +202,17 @@ object NewsSyncPolicy {
     fun isStub(html: String): Boolean = plainText(html, Int.MAX_VALUE).length < STUB_TEXT_CHARS
 
     /**
+     * Opening an excerpt asks for its full text, unless the server already said the article is that short or an attempt
+     * failed within the last [FULL_TEXT_RETRY]: reopening a page whose server is down must not ask again each time.
+     * 打开只有摘要的文章时请求全文，除非服务器已经表明文章本来就这么短，或最近 [FULL_TEXT_RETRY] 内刚失败过：服务器挂了时反复
+     * 打开同一篇，不能每次都再请求。
+     */
+    fun fetchOnOpen(article: StoredArticle, nowMillis: Long): Boolean = retryDue(article, nowMillis) && isStub(article.contentHtml)
+
+    private fun retryDue(article: StoredArticle, nowMillis: Long): Boolean = article.fullTextTriedAt != FULL_TEXT_SHORT &&
+        (article.fullTextTriedAt == 0L || nowMillis - article.fullTextTriedAt >= FULL_TEXT_RETRY.toMillis())
+
+    /**
      * Excerpt-only articles worth fetching in full: unread or starred, not known to be short, not tried in the last
      * [FULL_TEXT_RETRY], newest first.
      * 值得抓取全文的只有摘要的文章：未读或已收藏、不是已知的短文、最近 [FULL_TEXT_RETRY] 内没试过的，最新的在前。
@@ -201,7 +220,7 @@ object NewsSyncPolicy {
     fun fullTextDue(articles: List<StoredArticle>, nowMillis: Long, limit: Int = FULL_TEXT_PER_SYNC): List<StoredArticle> =
         articles.asSequence()
             .filter { !it.read || it.starred }
-            .filter { it.fullTextTriedAt != FULL_TEXT_SHORT && (it.fullTextTriedAt == 0L || nowMillis - it.fullTextTriedAt >= FULL_TEXT_RETRY.toMillis()) }
+            .filter { retryDue(it, nowMillis) }
             .sortedByDescending { it.publishedAt }
             .filter { isStub(it.contentHtml) }
             .take(limit)

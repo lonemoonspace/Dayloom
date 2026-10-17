@@ -284,7 +284,7 @@
     <string name="traffic_from">From</string>
     <string name="traffic_to">To</string>
     <string name="traffic_key">Google Maps API key</string>
-    <string name="traffic_key_note">Enable the Routes API for this key in Google Cloud. It is the same key as for place search under Places. Requests beyond the free monthly quota are billed to your Google account. The key stays on this phone.</string>
+    <string name="traffic_key_note">Enable the Routes API for this key in Google Cloud. It is the same key as for place search under Places. Background refresh asks for the route about 2,200 times a month (every 15 minutes by day, hourly at night), plus each time you refresh by hand. That stays within Google\'s free monthly calls only while this key is used for nothing else and Google keeps its current free tier; you can check usage in Google Cloud. Requests beyond the free monthly quota are billed to your Google account. The key stays on this phone.</string>
     <string name="traffic_open_maps">Open the route in a maps app</string>
     <string name="traffic_free_flow">Without traffic %1$s</string>
     <string name="traffic_slower">%1$s slower than usual</string>
@@ -372,6 +372,9 @@
 
     <string name="nav_home">Home</string>
     <string name="nav_settings">Settings</string>
+    <!-- Shown only when the saved settings keep failing to load at start. / 只在启动时一直读不出已保存的设置时显示。 -->
+    <string name="startup_read_failed">Dayloom can\'t read its saved data right now and keeps trying. If this lasts, check that the phone has free storage, or force stop the app and open it again.</string>
+    <string name="startup_app_info">Open app info</string>
 
     <string name="home_refresh">Refresh</string>
     <string name="home_edit_order">Reorder cards</string>

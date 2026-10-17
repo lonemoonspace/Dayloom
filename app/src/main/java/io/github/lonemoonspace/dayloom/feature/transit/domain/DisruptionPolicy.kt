@@ -36,6 +36,18 @@ object DisruptionPolicy {
     }
 
     /**
+     * Whether the disruption behind [fingerprint] is still ahead in [upcoming]. When no option is alertable (the trip left
+     * and the next one is beyond the window, no more trips today, or night), the alert may only stay while the trip it
+     * describes, with the same disruption, has not left yet.
+     * [fingerprint] 对应的异常是否仍在 [upcoming] 里、尚未发车。没有可提醒的方案时（那班车已开走而下一班超出提醒范围、
+     * 今天没车了、或到了夜间），通知只能在它说的那班车、同样的异常还没开走时留着。
+     */
+    fun stillAhead(upcoming: List<TripOption>, zone: ZoneId, fingerprint: String): Boolean = upcoming.any { option ->
+        val disrupted = option.legs.filter(::isDisrupted)
+        disrupted.isNotEmpty() && fingerprintOf(disrupted, zone) == fingerprint
+    }
+
+    /**
      * Cancelled, or a known delay of at least [TransitPolicy.DISRUPTION_DELAY_MINUTES]. Without real-time data the delay is
      * unknown, so only a cancellation counts: better to stay quiet than to alarm on unreliable data.
      * 已取消，或已知延误至少 [TransitPolicy.DISRUPTION_DELAY_MINUTES] 分钟。没有实时数据时延误未知，只看取消：宁可不说，

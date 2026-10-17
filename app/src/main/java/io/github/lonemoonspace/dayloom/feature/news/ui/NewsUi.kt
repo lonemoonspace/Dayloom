@@ -57,6 +57,7 @@ import io.github.lonemoonspace.dayloom.R
 import io.github.lonemoonspace.dayloom.core.error.AppError
 import io.github.lonemoonspace.dayloom.core.error.toAppError
 import io.github.lonemoonspace.dayloom.core.i18n.asString
+import io.github.lonemoonspace.dayloom.core.ui.LocalAppClock
 import io.github.lonemoonspace.dayloom.core.ui.InfoCard
 import io.github.lonemoonspace.dayloom.core.ui.SkeletonLines
 import io.github.lonemoonspace.dayloom.core.ui.currentLocale
@@ -339,7 +340,8 @@ private fun ArticleDetail(article: StoredArticle, now: ZonedDateTime, onClose: (
     var summaryError by remember(article.id) { mutableStateOf<AppError?>(null) }
     val content = remember(article.contentHtml) { AnnotatedString.fromHtml(article.contentHtml) }
     // An excerpt asks for the full text once when opened; the text updates as soon as it is saved. / 只有摘要的文章打开时请求一次全文，保存后正文随即更新。
-    LaunchedEffect(article.id) { if (NewsSyncPolicy.isStub(article.contentHtml)) actions.fetchFullText(article) }
+    val clock = LocalAppClock.current
+    LaunchedEffect(article.id) { if (NewsSyncPolicy.fetchOnOpen(article, clock.now().toInstant().toEpochMilli())) actions.fetchFullText(article) }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp).plusBars(top = true),

@@ -35,7 +35,15 @@ interface NotificationRule<S> {
  */
 data class RuleInput(val report: RefreshReport, val now: ZonedDateTime)
 
-data class RuleDecision<S>(val newState: S, val notifications: List<AppNotification> = emptyList())
+/**
+ * [cancel] lists ids whose notification no longer holds (the delay is over), taken down before [notifications] go out.
+ * [cancel] 列出不再成立的通知 id（延误已经结束），在发送 [notifications] 之前撤下。
+ */
+data class RuleDecision<S>(
+    val newState: S,
+    val notifications: List<AppNotification> = emptyList(),
+    val cancel: List<Int> = emptyList(),
+)
 
 /**
  * A notification ready to send. Text is [UiText] and resolved in the app language at send time.
@@ -71,4 +79,10 @@ interface Notifier {
      * 撤下已显示的通知，比如它所说的东西已被删除。[id] 下没有通知时什么也不做。
      */
     fun cancel(id: Int)
+
+    /**
+     * Removes every shown notification whose id is in [ids], e.g. a module's whole range when the module is turned off.
+     * 撤下 id 落在 [ids] 里的所有已显示通知，比如模块被关闭时撤下它的整个号段。
+     */
+    fun cancelShown(ids: IntRange)
 }

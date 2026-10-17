@@ -99,6 +99,7 @@ class TransitPolicyTest {
         val later = TripOption(listOf(leg(dep = now.plusMinutes(12))))
         val cancelled = TripOption(listOf(leg(dep = now.plusMinutes(5), cancelled = true)))
         assertEquals(listOf(soon, cancelled), TransitPolicy.visibleOptions(listOf(later, gone, cancelled, soon), now, 2))
+        assertEquals("a broken limit shows nothing instead of crashing", emptyList<TripOption>(), TransitPolicy.visibleOptions(listOf(soon), now, -1))
     }
 
     // Boards / 发车板
@@ -230,6 +231,58 @@ class TransitPolicyTest {
         val night = t(5, 22, 30)
         trips = CommuteTrips(CommuteMode.INBOUND, inbound = listOf(option(leg(line = "R5", dep = night.plusMinutes(10), cancelled = true))))
         assertTrue(rule.evaluate(RuleInput(fresh, night), null).notifications.isEmpty())
+
+        // Once the delay is over, the alert about it is taken down; with nothing told, nothing is.
+        // 延误结束后撤下关于它的通知；没提醒过的就什么都不撤。
+        trips = CommuteTrips(CommuteMode.OUTBOUND, outbound = listOf(option(leg(line = "R1"))))
+        val over = rule.evaluate(RuleInput(fresh, now), decision.newState)
+        assertEquals(listOf(2_000), over.cancel)
+        assertNull(over.newState)
+        assertTrue(rule.evaluate(RuleInput(fresh, now), null).cancel.isEmpty())
+    }
+
+    @Test
+    fun `an alert is withdrawn once its trip has left, even when no trip is alertable, but kept while it is still ahead`() = runTest {
+        val id = SourceId("transit.train")
+        val fresh = RefreshReport(mapOf(id to SourceResult.Success(Instant.EPOCH)), Instant.EPOCH)
+        val failed = RefreshReport(mapOf(id to SourceResult.Failed(io.github.lonemoonspace.dayloom.core.error.AppError.Offline())), Instant.EPOCH)
+        var trips = CommuteTrips(CommuteMode.OUTBOUND)
+        val rule = DisruptionRule(
+            name = "train_disruption",
+            enabled = { true },
+            refreshed = { it.succeeded(id) },
+            trips = { trips },
+            channelId = "transit.disruption",
+            deepLink = "dayloom://transit",
+            notificationId = 2_000,
+        )
+
+        // Leaves 07:52 instead of 07:40; the next train is more than 45 minutes after it.
+        // 计划 07:40、实际 07:52 发车；下一班在它 45 分钟之后。
+        val late = option(leg(line = "R1", delay = 12))
+        trips = CommuteTrips(CommuteMode.OUTBOUND, outbound = listOf(late, option(leg(line = "R1", dep = t(5, 8, 50)))))
+        val told = rule.evaluate(RuleInput(fresh, now), null).newState!!
+        val gone = t(5, 7, 55)
+        assertTrue("not on a failed refresh", rule.evaluate(RuleInput(failed, gone), told).cancel.isEmpty())
+        val left = rule.evaluate(RuleInput(fresh, gone), told)
+        assertEquals(listOf(2_000), left.cancel)
+        assertNull(left.newState)
+
+        // The last train of the day left: nothing upcoming, withdrawn too. / 末班车开走了，再没有车：同样撤回。
+        trips = CommuteTrips(CommuteMode.OUTBOUND, outbound = listOf(late))
+        assertEquals(listOf(2_000), rule.evaluate(RuleInput(fresh, gone), told).cancel)
+        // With nothing told there is nothing to take down. / 没提醒过就没什么可撤。
+        assertTrue(rule.evaluate(RuleInput(fresh, gone), null).cancel.isEmpty())
+
+        // Night falls while a late train is still ahead: the alert stays until it has left.
+        // 入夜时那班晚点的车还没开：通知保留，直到它开走。
+        val evening = option(leg(line = "R1", dep = t(5, 21, 55), delay = 12))
+        trips = CommuteTrips(CommuteMode.OUTBOUND, outbound = listOf(evening, option(leg(line = "R1", dep = t(5, 22, 40)))))
+        val toldEvening = rule.evaluate(RuleInput(fresh, t(5, 21, 50)), null).newState!!
+        val stillAhead = rule.evaluate(RuleInput(fresh, t(5, 22, 2)), toldEvening)
+        assertTrue(stillAhead.cancel.isEmpty())
+        assertEquals(toldEvening, stillAhead.newState)
+        assertEquals(listOf(2_000), rule.evaluate(RuleInput(fresh, t(5, 22, 15)), toldEvening).cancel)
     }
 
     // Morning brief / 早间简报

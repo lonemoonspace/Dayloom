@@ -55,7 +55,8 @@ fun HomeScreen(
 ) {
     when {
         !state.loaded -> HomeSkeleton()
-        state.cards.isEmpty() -> EmptyHome(onOpenSettings)
+        // userOrder, not cards: a module whose card is only hidden for now is not an empty home. / 看 userOrder 而不是 cards：卡片只是暂时隐藏的模块不算首页为空。
+        state.userOrder.isEmpty() -> EmptyHome(onOpenSettings)
         editing -> EditableCardList(state.userOrder, onSaveOrder)
         else -> CardList(state.cards)
     }

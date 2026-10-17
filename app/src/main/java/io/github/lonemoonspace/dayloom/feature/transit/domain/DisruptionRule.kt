@@ -41,11 +41,23 @@ class DisruptionRule(
         // A trip that is not alertable yet counts as no trip; once it comes within reach it is told once.
         // 还不该提醒的班次视同没有；进入范围后提醒一次。
         val option = next?.takeIf { TransitPolicy.isAlertable(it, input.now) }
+        if (option == null && previous != null) {
+            val upcoming = TransitPolicy.visibleOptions(snapshot.current, input.now, Int.MAX_VALUE)
+            // Nothing to decide, but the trip told about may have left: then its alert is withdrawn and the state cleared.
+            // 没有可判定的方案，但提醒过的那班车可能已经开走：那就撤回通知并清空状态。
+            return if (DisruptionPolicy.stillAhead(upcoming, input.now.zone, previous)) RuleDecision(previous)
+            else RuleDecision(null, cancel = listOf(notificationId))
+        }
         val decision = DisruptionPolicy.evaluate(option, input.now.zone, previous)
         // The notification stays one line, so it names the worst leg: a cancelled connection matters more than an earlier
         // leg's delay, which may also be the part the user was already told about.
         // 通知只有一行，所以说最严重的那一段：换乘段被取消比前一段的延误更要紧，而那个延误可能已经通知过了。
-        val (leg, status) = TransitPolicy.worst(TripOption(decision.disrupted)) ?: return RuleDecision(decision.newFingerprint)
+        val (leg, status) = TransitPolicy.worst(TripOption(decision.disrupted)) ?: return RuleDecision(
+            decision.newFingerprint,
+            // The disruption told about is over (or that trip has left and the next is fine): its alert must not linger.
+            // 提醒过的异常已经结束（或那班车已开走、下一班正常）：它的通知不能一直留着。
+            cancel = if (previous != null && decision.newFingerprint == null) listOf(notificationId) else emptyList(),
+        )
         val at = Instant.ofEpochMilli(leg.aimedDeparture).atZone(input.now.zone).format(TIME)
         val body = if (status.state == LegState.CANCELLED) {
             UiText.Res(R.string.transit_notify_cancelled, listOf(leg.line, at))

@@ -274,7 +274,7 @@
     <string name="traffic_from">起点</string>
     <string name="traffic_to">终点</string>
     <string name="traffic_key">Google Maps API Key</string>
-    <string name="traffic_key_note">需要在 Google Cloud 里为这个 Key 启用 Routes API。它和「地点」里地点搜索用的是同一个 Key。超出每月免费额度的请求会向你的 Google 账号计费。Key 只保存在本机。</string>
+    <string name="traffic_key_note">需要在 Google Cloud 里为这个 Key 启用 Routes API。它和「地点」里地点搜索用的是同一个 Key。织日每月最多查询约 2,200 次路线（白天每 15 分钟、夜里每小时一次）；只有这个 Key 不用在别处、且 Google 维持现在的免费额度时，才在每月免费次数之内，用量可以在 Google Cloud 里查看。超出每月免费额度的请求会向你的 Google 账号计费。Key 只保存在本机。</string>
     <string name="traffic_open_maps">在地图 App 中打开路线</string>
     <string name="traffic_free_flow">畅通时 %1$s</string>
     <string name="traffic_slower">比平时慢 %1$s</string>
@@ -357,6 +357,9 @@
 
     <string name="nav_home">首页</string>
     <string name="nav_settings">设置</string>
+    <!-- Shown only when the saved settings keep failing to load at start. / 只在启动时一直读不出已保存的设置时显示。 -->
+    <string name="startup_read_failed">织日暂时读不出已保存的数据，正在不断重试。如果一直这样，请检查手机存储空间是否充足，或强行停止后重新打开。</string>
+    <string name="startup_app_info">打开应用信息</string>
 
     <string name="home_refresh">刷新</string>
     <string name="home_edit_order">调整卡片顺序</string>

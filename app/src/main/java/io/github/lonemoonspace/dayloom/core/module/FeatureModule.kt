@@ -13,9 +13,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 
 /**
- * Static description of a feature module. Nothing is created while the module is disabled.
+ * Static description of a feature module. A disabled module gets no refreshes, notifications, cards or tab, but it may
+ * still be created so Settings can show its section.
  * Adding a module = implement this + one line in `app/ModuleRegistry.kt`; nothing else in the app changes.
- * 功能模块的静态描述。模块关闭时不会创建任何东西。
+ * 功能模块的静态描述。关闭的模块不刷新、不发通知、没有卡片和标签页，但仍可能被创建，以便设置页显示它的设置区。
  * 加一个模块 = 实现本接口 + 在 `app/ModuleRegistry.kt` 加一行；App 的其他部分都不用改。
  */
 interface FeatureModule {
@@ -47,6 +48,12 @@ interface FeatureModule {
      */
     val splitFrom: String? get() = null
 
+    /**
+     * Called once, also for a module that is off (see above), so creating it must stay cheap and quiet: wiring only, no
+     * network, no database queries, nothing running beyond reacting to the module's own settings.
+     * 只调用一次，关闭的模块也会调用（见上），所以创建必须便宜、安静：只做组装，不发网络请求、不查数据库，除了响应本模块自己的设置外
+     * 不运行任何东西。
+     */
     fun create(ctx: ModuleContext): ModuleInstance
 }
 
@@ -89,10 +96,12 @@ sealed interface ConfigState {
 }
 
 /**
- * Where a card wants to be. [TOP] overrides the user's order while it lasts (an item about to expire).
- * 卡片希望出现的位置。[TOP] 在持续期间优先于用户排好的顺序（快到期的条目）。
+ * Where a card wants to be. [TOP] overrides the user's order while it lasts (an item about to expire). [HIDDEN] leaves the
+ * card off the home screen with no gap (no match today); it keeps its place in the user's order.
+ * 卡片希望出现的位置。[TOP] 在持续期间优先于用户排好的顺序（快到期的条目）。[HIDDEN] 让卡片不出现在首页、也不留空隙（今天没有
+ * 比赛）；它在用户排好的顺序里的位置不变。
  */
-enum class CardPlacement { NORMAL, TOP }
+enum class CardPlacement { NORMAL, TOP, HIDDEN }
 
 /**
  * A home-screen card. [key] is local; the stored key is `<moduleId>.<key>`. [defaultOrder] places it before the user reorders.

@@ -160,9 +160,13 @@ class ModuleHostTest {
         override fun cancelNotification(offset: Int) {}
     }
 
-    private fun CoroutineScope.host(modules: List<FeatureModule>, settings: InMemoryValueStore<AppSettings>): Pair<ModuleHost, RefreshCoordinator> {
+    private fun CoroutineScope.host(
+        modules: List<FeatureModule>,
+        settings: InMemoryValueStore<AppSettings>,
+        cancelled: MutableList<IntRange> = mutableListOf(),
+    ): Pair<ModuleHost, RefreshCoordinator> {
         val coordinator = RefreshCoordinator(FakeNetworkStatus(), clock, this, watchInputs = false)
-        val host = ModuleHost(modules, settings, { TestContext(it.id, clock, coordinator, this) }, coordinator, this)
+        val host = ModuleHost(modules, settings, { TestContext(it.id, clock, coordinator, this) }, coordinator, this) { cancelled += it }
         return host to coordinator
     }
 
@@ -203,6 +207,23 @@ class ModuleHostTest {
     }
 
     @Test
+    fun `turning a module off takes down its notifications, once`() = runTest {
+        val module = SampleModule(defaultEnabled = false)
+        val other = SampleModule(id = "other", notificationIds = 6_000..6_099)
+        val settings = InMemoryValueStore(AppSettings())
+        val cancelled = mutableListOf<IntRange>()
+        backgroundScope.host(listOf(module, other), settings, cancelled)
+        testScheduler.runCurrent()
+        assertEquals("a module that was never on has nothing shown", emptyList<IntRange>(), cancelled)
+
+        settings.update { it.copy(moduleEnabled = mapOf("other" to false)) }
+        testScheduler.runCurrent()
+        settings.update { it.copy(moduleEnabled = mapOf("other" to false, "sample" to true)) }
+        testScheduler.runCurrent()
+        assertEquals(listOf(6_000..6_099), cancelled)
+    }
+
+    @Test
     fun `a module that is off by default is not created until turned on`() = runTest {
         val module = SampleModule(defaultEnabled = false)
         val settings = InMemoryValueStore(AppSettings())
@@ -234,6 +255,11 @@ class ModuleHostTest {
         vm.saveOrder(listOf("sample.card", "other.card"))
         testScheduler.runCurrent()
         assertEquals(listOf("sample.card", "other.card"), settings.state.value.cardOrder)
+
+        module.instance.placement.value = CardPlacement.HIDDEN
+        testScheduler.runCurrent()
+        assertEquals("a hidden card leaves no gap", listOf("other.card"), vm.state.value.cards.map { it.key })
+        assertEquals("but keeps its place in the order", listOf("sample.card", "other.card"), vm.state.value.userOrder.map { it.key })
     }
 
     private class MemoryState : NotificationStateStore {
@@ -251,6 +277,11 @@ class ModuleHostTest {
         }
 
         override fun cancel(id: Int) {}
+
+        val cancelledRanges = mutableListOf<IntRange>()
+        override fun cancelShown(ids: IntRange) {
+            cancelledRanges += ids
+        }
     }
 
     @Test

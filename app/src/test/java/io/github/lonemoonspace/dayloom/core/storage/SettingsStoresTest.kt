@@ -7,12 +7,17 @@ import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.Serializable
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -122,5 +127,19 @@ class SettingsStoresTest {
         val broken = AppStores.jsonValueStore(AppSettings.serializer(), AppSettings(), scope, { errors += it }) { bad }
         assertEquals(AppSettings(), broken.get())
         assertEquals(1, errors.size)
+    }
+
+    /** A failing read is retried instead of ending the flow, which would crash the app. / 读失败会重试，而不是让流结束、进而让 App 崩溃。 */
+    @Test
+    fun `observers survive a failing read and get the value once the file can be read`() = runBlocking {
+        // A directory at the path makes reads throw IOException; deleting it "recovers". / 路径上放目录让读取抛 IOException，删掉即恢复。
+        val f = File(tmp.root, "app_settings_io").also { it.mkdirs() }
+        val store = AppStores.jsonValueStore(AppSettings.serializer(), AppSettings(), scope, {}) { f }
+        val seen = async(Dispatchers.IO) { store.flow.first() }
+        delay(300)
+        assertFalse("no default stands in while the file is unreadable", seen.isCompleted)
+        assertTrue(f.delete())
+        f.writeText("""{"onboardingDone":true}""")
+        assertTrue(withTimeout(10_000) { seen.await() }.onboardingDone)
     }
 }

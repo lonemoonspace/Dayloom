@@ -247,7 +247,7 @@ class EnturProvider(
         internal val TRIP_QUERY = """
             query Trip(${'$'}from: String!, ${'$'}to: String!, ${'$'}at: DateTime, ${'$'}count: Int, ${'$'}window: Int, ${'$'}modes: [TransportModes]) {
               trip(from: { place: ${'$'}from }, to: { place: ${'$'}to }, dateTime: ${'$'}at, numTripPatterns: ${'$'}count,
-                   searchWindow: ${'$'}window, includeRealtimeCancellations: true,
+                   searchWindow: ${'$'}window, includePlannedCancellations: true, includeRealtimeCancellations: true,
                    modes: { accessMode: foot, egressMode: foot, transportModes: ${'$'}modes }) {
                 routingErrors { code }
                 tripPatterns {

@@ -37,6 +37,7 @@ class NotificationEngine(
         val previous = rule.codec.decode(stateStore.read(stateKey))
         val decision = rule.evaluate(input, previous)
         if (decision.newState != previous) stateStore.write(stateKey, rule.codec.encode(decision.newState))
+        decision.cancel.forEach(notifier::cancel)
         decision.notifications.forEach(notifier::send)
     }
 }

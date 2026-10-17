@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -36,6 +37,8 @@ class ModuleHost(
     private val contextFor: (FeatureModule) -> ModuleContext,
     private val coordinator: RefreshCoordinator,
     scope: CoroutineScope,
+    /** Takes down a turned-off module's notifications. / 撤下被关闭模块的通知。 */
+    private val cancelNotifications: (IntRange) -> Unit = {},
 ) {
     private val infos = modules.map { ModulePolicy.ModuleInfo(it.id, it.defaultEnabled, it.notificationIds, it.splitFrom) }
 
@@ -58,6 +61,17 @@ class ModuleHost(
         // Only enabled modules react to input changes; others may be created just to show their settings.
         // 只有已开启的模块会响应输入变化；其他模块可能只是为了显示设置才被创建。
         scope.launch { active.collect { coordinator.watchOnly(it?.let(::sourceIds).orEmpty()) } }
+        // A module turned off no longer runs its rules, so nothing would ever withdraw an alert it left behind (a delay
+        // long over). Only on the change from on to off: a module that stays off has nothing shown.
+        // 被关闭的模块不再运行规则，它留下的提醒（早已结束的延误）就再没人撤下。只在由开到关时撤：一直关着的模块没有通知可撤。
+        scope.launch {
+            var before = emptySet<String>()
+            active.filterNotNull().collect { now ->
+                val ids = now.mapTo(mutableSetOf()) { it.module.id }
+                modules.filter { it.id in before && it.id !in ids && !it.notificationIds.isEmpty() }.forEach { cancelNotifications(it.notificationIds) }
+                before = ids
+            }
+        }
     }
 
     fun instanceOf(module: FeatureModule): ModuleInstance = synchronized(lock) {

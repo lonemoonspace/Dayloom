@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import io.github.lonemoonspace.dayloom.core.json.AppJson
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.KSerializer
 
@@ -45,11 +46,15 @@ class ModuleSettingsStore(
         private val formerKey = former?.let { stringPreferencesKey(it.moduleId) }
 
         override val flow: Flow<T> = dataStore.data
+            .retryOnReadError()
             .map { it[key] to formerKey?.let(it::get) }
             // Decode only when this module's entry changed, not on every write to another module.
             // 只在本模块的条目变化时解码，其他模块写入时不重复解码。
             .distinctUntilChanged()
             .map { (raw, formerRaw) -> decode(raw, formerRaw) }
+
+        // A one-off read fails instead of waiting out a broken file; only observers wait. / 单次读取直接失败，不去等坏掉的文件；只有观察者等待。
+        override suspend fun get(): T = dataStore.data.first().let { decode(it[key], formerKey?.let(it::get)) }
 
         override suspend fun update(transform: (T) -> T) {
             dataStore.edit { prefs ->

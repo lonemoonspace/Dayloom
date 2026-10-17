@@ -22,8 +22,15 @@ data class MergeResult(val upsert: List<StoredArticle>, val delete: List<Long>)
  * 新闻同步的纯判定：要发送哪些本地修改，以及服务器的列表与本地记录如何合并。
  */
 object NewsSyncPolicy {
-    /** Unread and starred entries fetched per sync; Miniflux pages beyond this are left for later. / 每次同步取的未读与收藏条数；更多的留到以后。 */
-    const val FETCH_LIMIT = 200
+    /**
+     * Most unread (and most starred) entries fetched per sync, newest first. A list that reaches it counts as cut off, so the
+     * older entries are neither shown nor taken as read elsewhere.
+     * 每次同步最多取的未读（与收藏）条数，新的在前。达到这个数的列表视为被截断，更早的条目既不显示，也不会被当成已在别处读过。
+     */
+    const val FETCH_LIMIT = 1000
+
+    /** Entries per Miniflux request; [FETCH_LIMIT] takes a few pages. / 每次请求 Miniflux 取的条数；取满 [FETCH_LIMIT] 要翻几页。 */
+    const val PAGE_SIZE = 200
 
     /** Read, unstarred articles are kept this long after being read, so "All" still has something to show. / 已读且未收藏的文章在读过之后保留这么久，「全部」里才有东西看。 */
     val KEEP_READ: Duration = Duration.ofDays(14)
@@ -192,6 +199,14 @@ object NewsSyncPolicy {
     const val FULL_TEXT_SHORT = Long.MAX_VALUE
 
     fun isStub(html: String): Boolean = plainText(html, Int.MAX_VALUE).length < STUB_TEXT_CHARS
+
+    /**
+     * Opening an excerpt asks for its full text, unless the server already said the article is that short. A failed attempt
+     * is tried again on opening, without the [FULL_TEXT_RETRY] wait: the user is asking for this article now.
+     * 打开只有摘要的文章时请求全文，除非服务器已经表明文章本来就这么短。失败过的照样在打开时再试，不等 [FULL_TEXT_RETRY]：用户此刻
+     * 就要看这篇。
+     */
+    fun fetchOnOpen(article: StoredArticle): Boolean = article.fullTextTriedAt != FULL_TEXT_SHORT && isStub(article.contentHtml)
 
     /**
      * Excerpt-only articles worth fetching in full: unread or starred, not known to be short, not tried in the last

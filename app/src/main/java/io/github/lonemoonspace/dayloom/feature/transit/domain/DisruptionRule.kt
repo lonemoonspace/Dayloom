@@ -45,7 +45,12 @@ class DisruptionRule(
         // The notification stays one line, so it names the worst leg: a cancelled connection matters more than an earlier
         // leg's delay, which may also be the part the user was already told about.
         // 通知只有一行，所以说最严重的那一段：换乘段被取消比前一段的延误更要紧，而那个延误可能已经通知过了。
-        val (leg, status) = TransitPolicy.worst(TripOption(decision.disrupted)) ?: return RuleDecision(decision.newFingerprint)
+        val (leg, status) = TransitPolicy.worst(TripOption(decision.disrupted)) ?: return RuleDecision(
+            decision.newFingerprint,
+            // The disruption told about is over (or that trip has left and the next is fine): its alert must not linger.
+            // 提醒过的异常已经结束（或那班车已开走、下一班正常）：它的通知不能一直留着。
+            cancel = if (previous != null && decision.newFingerprint == null) listOf(notificationId) else emptyList(),
+        )
         val at = Instant.ofEpochMilli(leg.aimedDeparture).atZone(input.now.zone).format(TIME)
         val body = if (status.state == LegState.CANCELLED) {
             UiText.Res(R.string.transit_notify_cancelled, listOf(leg.line, at))

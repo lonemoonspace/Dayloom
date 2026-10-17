@@ -37,7 +37,7 @@ class HomeCardEntry(val key: String, val card: HomeCard, val formerKey: String? 
 data class HomeState(
     /** False until the enabled modules are known. / 已开启模块确定之前为 false。 */
     val loaded: Boolean = false,
-    /** In display order (pinned cards first). / 按显示顺序（置顶的在前）。 */
+    /** The cards to show, in display order (pinned cards first). / 要显示的卡片，按显示顺序（置顶的在前）。 */
     val cards: List<HomeCardEntry> = emptyList(),
     /** In the user's order, for edit mode. / 按用户顺序，供编辑模式使用。 */
     val userOrder: List<HomeCardEntry> = emptyList(),
@@ -81,12 +81,15 @@ class HomeViewModel(
     val state: StateFlow<HomeState> = combine(placedCards, settings.flow, refreshing) { placed, s, busy ->
         if (placed == null) return@combine HomeState(refreshing = busy)
         val byKey = placed.associate { (entry, _) -> entry.key to entry }
+        val hidden = placed.filter { (_, placement) -> placement == CardPlacement.HIDDEN }.mapTo(mutableSetOf()) { (entry, _) -> entry.key }
         val cards = placed.map { (entry, placement) ->
             CardOrderPolicy.Card(entry.key, entry.card.defaultOrder, pinnedToTop = placement == CardPlacement.TOP, formerKey = entry.formerKey)
         }
         HomeState(
             loaded = true,
-            cards = CardOrderPolicy.displayOrder(cards, s.cardOrder).map(byKey::getValue),
+            // A hidden card still has its place in the order being edited, so reordering never loses it.
+            // 隐藏的卡片在编辑顺序时照样在列，重新排序不会把它弄丢。
+            cards = CardOrderPolicy.displayOrder(cards, s.cardOrder).filterNot { it in hidden }.map(byKey::getValue),
             userOrder = CardOrderPolicy.userOrder(cards, s.cardOrder).map(byKey::getValue),
             refreshing = busy,
         )
@@ -94,7 +97,9 @@ class HomeViewModel(
 
     fun refresh(trigger: Trigger = Trigger.USER) {
         viewModelScope.launch {
-            val ids = active.value?.let(ModuleHost::sourceIds).orEmpty()
+            // Like the polling: a pull on a cold start waits for the enabled modules instead of refreshing nothing.
+            // 与轮询一样：冷启动时下拉刷新会等已开启的模块确定，而不是什么都不刷。
+            val ids = ModuleHost.sourceIds(active.filterNotNull().first())
             try {
                 coordinator.refresh(ids, trigger)
             } catch (e: CancellationException) {

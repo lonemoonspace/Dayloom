@@ -51,4 +51,10 @@ class NotificationSender(private val context: Context) : Notifier {
     }
 
     override fun cancel(id: Int) = NotificationManagerCompat.from(context).cancel(id)
+
+    // Only what is shown, so a range of a thousand ids costs a few calls, not a thousand. / 只撤已显示的，千个 id 的号段也只需几次调用。
+    override fun cancelShown(ids: IntRange) {
+        val manager = NotificationManagerCompat.from(context)
+        manager.activeNotifications.filter { it.id in ids }.forEach { manager.cancel(it.id) }
+    }
 }

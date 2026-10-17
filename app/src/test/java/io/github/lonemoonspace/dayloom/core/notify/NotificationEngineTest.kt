@@ -43,11 +43,17 @@ class NotificationEngineTest {
 
     private class RecordingNotifier : Notifier {
         val sent = mutableListOf<AppNotification>()
+        val events = mutableListOf<String>()
         override fun send(notification: AppNotification) {
             sent += notification
+            events += "send ${notification.id}"
         }
 
-        override fun cancel(id: Int) {}
+        override fun cancel(id: Int) {
+            events += "cancel $id"
+        }
+
+        override fun cancelShown(ids: IntRange) {}
     }
 
     private fun note(id: Int) = AppNotification(id, "m.ch", UiText.Raw("t$id"), UiText.Raw("b$id"), "dayloom://home")
@@ -75,6 +81,16 @@ class NotificationEngineTest {
     }
 
     @Test
+    fun `notifications that no longer hold are taken down before new ones go out`() = runTest {
+        val notifier = RecordingNotifier()
+        val rule = FakeRule("a") { RuleDecision(1, listOf(note(2)), cancel = listOf(1)) }
+
+        NotificationEngine(FakeStateStore(), notifier).run(listOf(scoped(rule)), input)
+
+        assertEquals(listOf("cancel 1", "send 2"), notifier.events)
+    }
+
+    @Test
     fun `an exception while sending is isolated per rule`() = runTest {
         val sent = mutableListOf<Int>()
         val notifier = object : Notifier {
@@ -84,6 +100,8 @@ class NotificationEngineTest {
             }
 
             override fun cancel(id: Int) {}
+
+            override fun cancelShown(ids: IntRange) {}
         }
         val first = FakeRule("a") { RuleDecision(1, listOf(note(1))) }
         val second = FakeRule("b") { RuleDecision(1, listOf(note(2))) }

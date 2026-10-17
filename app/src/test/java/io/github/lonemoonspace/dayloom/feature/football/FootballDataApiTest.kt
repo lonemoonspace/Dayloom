@@ -135,6 +135,10 @@ class FootballDataApiTest {
         assertEquals("https://crests.example/86.png", CrestLoader.pngOf("https://crests.example/86.svg"))
         assertEquals("https://crests.example/86.png", CrestLoader.pngOf("https://crests.example/86.png"))
         assertNull(CrestLoader.pngOf(""))
+        // Decoded near the shown size: 1024 px halves twice to 256, a small crest is kept as it is.
+        // 按接近显示的尺寸解码：1024 像素减半两次到 256，小队徽保持原样。
+        assertEquals(4, CrestLoader.sampleSize(1024, 1024, 192))
+        assertEquals(1, CrestLoader.sampleSize(120, 120, 192))
         assertNull(CrestLoader.pngOf("file:///etc/passwd"))
     }
 }

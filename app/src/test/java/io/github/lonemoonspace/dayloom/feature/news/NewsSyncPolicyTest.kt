@@ -164,6 +164,15 @@ class NewsSyncPolicyTest {
     }
 
     @Test
+    fun `opening an excerpt fetches its full text unless the server said it is that short`() {
+        val excerpt = stored(1)
+        assertTrue(NewsSyncPolicy.fetchOnOpen(excerpt))
+        assertTrue("a failure is retried on opening", NewsSyncPolicy.fetchOnOpen(excerpt.copy(fullTextTriedAt = now)))
+        assertFalse(NewsSyncPolicy.fetchOnOpen(excerpt.copy(fullTextTriedAt = NewsSyncPolicy.FULL_TEXT_SHORT)))
+        assertFalse(NewsSyncPolicy.fetchOnOpen(excerpt.copy(contentHtml = "<p>" + "word ".repeat(40) + "</p>")))
+    }
+
+    @Test
     fun `list items carry a one-line preview and whether the full text is here, and search covers title, source and text`() {
         val excerpt = NewsSyncPolicy.listItem(stored(1).copy(contentHtml = "<p>Short</p>"))
         val full = NewsSyncPolicy.listItem(stored(2).copy(feedTitle = "Tech Site", contentHtml = "<p>First line</p><p>" + "Rocket launch. ".repeat(10) + "</p>"))

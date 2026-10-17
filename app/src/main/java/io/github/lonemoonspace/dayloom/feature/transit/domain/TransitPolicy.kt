@@ -88,7 +88,8 @@ object TransitPolicy {
      */
     fun visibleOptions(options: List<TripOption>, now: ZonedDateTime, limit: Int): List<TripOption> {
         val nowMillis = now.toInstant().toEpochMilli()
-        return options.filter { it.legs.isNotEmpty() && it.departure >= nowMillis }.sortedBy { it.departure }.take(limit)
+        // A limit from a damaged settings file must not crash the card. / 设置文件损坏得来的上限不能让卡片崩溃。
+        return options.filter { it.legs.isNotEmpty() && it.departure >= nowMillis }.sortedBy { it.departure }.take(limit.coerceAtLeast(0))
     }
 
     fun visibleDepartures(departures: List<BoardDeparture>, now: ZonedDateTime, limit: Int = BOARD_VISIBLE): List<BoardDeparture> {

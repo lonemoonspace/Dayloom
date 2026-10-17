@@ -244,6 +244,44 @@ class NewsApiTest {
     }
 
     @Test
+    fun `a server that does not answer keeps the articles of the one before`() = runTest {
+        val store = MemoryStore()
+        val owner = MemoryOwner()
+        val sync = NewsSync(store, MinifluxApi(OkHttpClient()), owner)
+        server.enqueue(MockResponse().setBody(entries(1, 2)))
+        server.enqueue(MockResponse().setBody(entries()))
+        sync.sync(base, "tok", nowMillis = 0)
+        sync.markRead(1, true, nowMillis = 5)
+
+        val other = server.url("/other").toString().trimEnd('/')
+        server.enqueue(MockResponse().setResponseCode(401))
+        assertTrue(runCatching { sync.sync(other, "bad", nowMillis = 10) }.exceptionOrNull() is AppError.Http)
+        server.enqueue(MockResponse().setBody("<html>Not Miniflux</html>"))
+        assertTrue(runCatching { sync.sync(other, "tok", nowMillis = 20) }.exceptionOrNull() is AppError.BadData)
+
+        assertEquals(base, owner.value)
+        assertEquals(setOf(1L, 2L), store.rows.value.keys)
+        assertEquals("the unsent change survives too", true, store.rows.value.getValue(1).pendingRead)
+    }
+
+    @Test
+    fun `entries are fetched page by page up to the limit, each entry once`() = runTest {
+        val total = NewsSyncPolicy.PAGE_SIZE + 3
+        fun page(ids: LongRange) = entries(*ids.toList().toLongArray()).replaceFirst("\"total\":${ids.count()}", "\"total\":$total")
+        server.enqueue(MockResponse().setBody(page(1L..NewsSyncPolicy.PAGE_SIZE)))
+        // A new entry shifted the second page by one, so its first entry repeats. / 新条目让第二页错开一条，第一条重复出现。
+        server.enqueue(MockResponse().setBody(page(NewsSyncPolicy.PAGE_SIZE.toLong()..total.toLong())))
+        val list = MinifluxApi(OkHttpClient()).unread(base, "tok")
+        assertEquals((1L..total).toList(), list.map { it.id })
+        server.takeRequest()
+        assertEquals(
+            "/reader/v1/entries?status=unread&limit=${NewsSyncPolicy.PAGE_SIZE}&offset=${NewsSyncPolicy.PAGE_SIZE}&order=published_at&direction=desc",
+            server.takeRequest().path,
+        )
+        assertEquals("stops once the server has no more", 2, server.requestCount)
+    }
+
+    @Test
     fun `a refused push is reported and the change stays pending`() = runTest {
         val store = MemoryStore()
         val sync = NewsSync(store, MinifluxApi(OkHttpClient()), MemoryOwner())

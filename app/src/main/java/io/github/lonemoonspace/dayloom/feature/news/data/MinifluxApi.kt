@@ -63,10 +63,29 @@ class MinifluxApi(private val http: OkHttpClient, private val io: CoroutineConte
         }
     }
 
-    private suspend fun entries(baseUrl: String, token: String, filter: Pair<String, String>): List<RemoteEntry> = withContext(io) {
+    /**
+     * Pages through the entries until the server has none left or [NewsSyncPolicy.FETCH_LIMIT] is reached. An entry published
+     * while paging shifts the pages by one, so the same entry may come twice; it is kept once.
+     * 逐页取条目，直到服务器没有更多或达到 [NewsSyncPolicy.FETCH_LIMIT]。翻页期间新发布的条目会让后面的页错开一条，同一条目可能出现
+     * 两次，只保留一次。
+     */
+    private suspend fun entries(baseUrl: String, token: String, filter: Pair<String, String>): List<RemoteEntry> {
+        val all = LinkedHashMap<Long, RemoteEntry>()
+        var offset = 0
+        while (offset < NewsSyncPolicy.FETCH_LIMIT) {
+            val page = page(baseUrl, token, filter, offset, minOf(NewsSyncPolicy.PAGE_SIZE, NewsSyncPolicy.FETCH_LIMIT - offset))
+            page.entries.forEach { all.putIfAbsent(it.id, it.toRemote()) }
+            offset += page.entries.size
+            if (page.entries.isEmpty() || offset >= page.total) break
+        }
+        return all.values.take(NewsSyncPolicy.FETCH_LIMIT)
+    }
+
+    private suspend fun page(baseUrl: String, token: String, filter: Pair<String, String>, offset: Int, limit: Int): EntriesDto = withContext(io) {
         val url = url(baseUrl, "v1/entries").newBuilder()
             .addQueryParameter(filter.first, filter.second)
-            .addQueryParameter("limit", NewsSyncPolicy.FETCH_LIMIT.toString())
+            .addQueryParameter("limit", limit.toString())
+            .apply { if (offset > 0) addQueryParameter("offset", offset.toString()) }
             .addQueryParameter("order", "published_at")
             .addQueryParameter("direction", "desc")
             .build()
@@ -75,7 +94,6 @@ class MinifluxApi(private val http: OkHttpClient, private val io: CoroutineConte
             val body = response.body.string()
             if (!response.isSuccessful) throw AppError.Http(SERVICE, response.code, body.take(200))
             decodeOrBadData(SERVICE, "entries response") { AppJson.standard.decodeFromString(EntriesDto.serializer(), body) }
-                .entries.map { it.toRemote() }
         }
     }
 

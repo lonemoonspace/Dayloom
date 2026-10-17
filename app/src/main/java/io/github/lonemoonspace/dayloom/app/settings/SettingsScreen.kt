@@ -40,6 +40,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -144,7 +145,13 @@ private fun TimeZoneCard(override: String, effective: String, onSave: (String) -
                 },
                 modifier = Modifier.fillMaxWidth(),
             )
-            TextButton(onClick = { invalid = !onSave(input) }) { Text(stringResource(R.string.common_save)) }
+            TextButton(
+                onClick = {
+                    invalid = !onSave(input)
+                    // A blank zone means following the device, so the switch says so. / 空白时区就是跟随设备，开关要如实显示。
+                    if (!invalid && input.isBlank()) followDevice = true
+                },
+            ) { Text(stringResource(R.string.common_save)) }
         }
         Text(
             text = stringResource(R.string.settings_time_zone_current, effective),
@@ -257,15 +264,21 @@ private fun ModuleSettingsCard(toggle: ModuleToggle, onToggle: (String, Boolean)
 }
 
 /**
- * Dims the settings of a module that is off and swallows touches before any control sees them; screen readers skip the
- * controls and hear that they are unavailable.
- * 让关闭模块的设置变灰，并在任何控件收到之前吞掉触摸；读屏软件跳过这些控件，并读出它们不可用。
+ * Dims the settings of a module that is off and swallows presses before any control sees them; screen readers skip the
+ * controls and hear that they are unavailable. Only the press: controls need an unconsumed press to react, while the list
+ * needs unconsumed moves to scroll and an unconsumed release to fling, so a swipe that starts here still scrolls the page.
+ * 让关闭模块的设置变灰，并在任何控件收到之前吞掉按下；读屏软件跳过这些控件，并读出它们不可用。只吞按下：控件要收到未被消费的
+ * 按下才会响应，而列表要靠未被消费的移动来滚动、靠未被消费的抬起来惯性滑动，所以从这里开始的滑动照样能滚动页面。
  */
 private fun Modifier.lockedSettings(): Modifier = this
     .alpha(0.38f)
     .pointerInput(Unit) {
         awaitPointerEventScope {
-            while (true) awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+            while (true) {
+                awaitPointerEvent(PointerEventPass.Initial).changes
+                    .filter { it.changedToDownIgnoreConsumed() }
+                    .forEach { it.consume() }
+            }
         }
     }
     .clearAndSetSemantics { disabled() }

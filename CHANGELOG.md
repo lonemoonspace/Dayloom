@@ -121,6 +121,23 @@ looks it up literally.
   Public transport switch. After the update each starts from the old switch and keeps its stops, favourites and place on
   the home screen. A module switched on without stops or favourites shows a card asking for them; train and bus
   disruptions have separate notification channels, and the morning brief gives each its own line.
+- Fixes from the independent review of 0.2.0-rc.3:
+  - News: a mistyped server address, a refused token or a page that is not Miniflux no longer deletes the articles of the
+    server before; they are dropped only once the new server has answered. Unread and starred lists are fetched page by
+    page, up to 1,000 each instead of the newest 200. An article that is short on the server too is not fetched again
+    when opened.
+  - Storage: a damaged settings, keys or notification-state file starts over empty instead of crashing the app on every
+    start, and a failing file read is retried instead of crashing it.
+  - Notifications: a commute disruption alert is taken down once the delay is over or that trip has left, and a module's
+    alerts are taken down when the module is switched off.
+  - Settings: a swipe that starts on the dimmed settings of a module that is off scrolls the page again. The notification
+    switch drops its "permission denied" note once permission is granted in the system settings. Saving an empty time zone
+    turns "Follow device" back on.
+  - Home: the football card leaves no gap when there is no match to show, and an old snapshot no longer shows a match as
+    live hours after it ended. Pulling to refresh right after start-up refreshes instead of doing nothing.
+  - Public transport: trips cancelled in the timetable itself are shown struck through, like real-time cancellations.
+  - Smaller: team crests are decoded at the size they are shown; a damaged "options" setting no longer crashes the
+    commute card; the traffic refresh comment states the real pace and request count.
 
 - 项目骨架（M0）：带注册表、宿主与命名空间存储的模块系统；从 PersonalAssistant 移植并泛化的刷新协调器与通知引擎；
   卡片可拖动排序的首页；语言、时区与模块开关设置；中英文资源；架构测试与字符串一致性测试；CI 与发版 workflow。
@@ -203,3 +220,14 @@ looks it up literally.
 - 火车、公交与发车板拆成三个模块，在设置里各有自己的开关，不再共用一个「公共交通」开关。升级后三个开关都沿用原来的状态，
   站点、收藏站点与首页卡片位置都保留。开启了但没设置站点或收藏站点时，卡片会提示去设置；火车与公交的异常通知分成两个渠道，
   早间简报里也各占一行。
+- 0.2.0-rc.3 独立审查后的修正：
+  - 新闻：服务器地址打错、令牌被拒或对方不是 Miniflux 时，不再删掉上一台服务器的文章；只在新服务器成功应答后才清空。未读与收藏
+    列表分页获取，各最多 1,000 条，不再只取最新的 200 条。服务器上也一样短的文章，打开时不再重复请求全文。
+  - 存储：设置、Key 或通知状态文件损坏时清空重来，而不是每次启动都崩溃；读文件失败会重试，而不是让 App 崩溃。
+  - 通知：延误结束或那班车已开走后，通勤异常通知会被撤下；关闭模块时撤下它的通知。
+  - 设置：从关闭模块的灰色设置区开始滑动，页面又能滚动了。在系统设置里授予通知权限后，开关下的「权限被拒绝」提示会消失。
+    保存空白时区时，「跟随设备」开关会重新打开。
+  - 首页：没有比赛可显示时，足球卡片不再留下空隙；过时的快照不会在比赛结束几小时后仍显示「进行中」。刚启动时下拉刷新会真正刷新，
+    而不是什么都不做。
+  - 公共交通：时刻表里就已停运的班次也会划线显示，与实时取消一样。
+  - 其他：队徽按显示尺寸解码；损坏的「方案数」设置不再让通勤卡片崩溃；路况刷新的注释写明实际节奏与请求次数。

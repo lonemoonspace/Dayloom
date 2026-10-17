@@ -163,9 +163,15 @@ private class FootballInstance(private val ctx: ModuleContext) : ModuleInstance 
             key = "match",
             title = R.string.football_title,
             defaultOrder = 250,
-            // A live match moves above the user's order while it lasts. / 比赛进行期间卡片排到最前。
+            // A live match moves above the user's order while it lasts; with no match to show the card is left out.
+            // 比赛进行期间卡片排到最前；没有比赛可显示时卡片不出现。
             placement = combine(teamMatches, ctx.clock.minuteTicks()) { list, now ->
-                if (list.orEmpty().any { FootballPolicy.isLiveNow(it, now.toInstant()) }) CardPlacement.TOP else CardPlacement.NORMAL
+                val matches = list.orEmpty()
+                when {
+                    matches.any { FootballPolicy.isLiveNow(it, now.toInstant()) } -> CardPlacement.TOP
+                    FootballPolicy.homeMatch(matches, now.toInstant()) == null -> CardPlacement.HIDDEN
+                    else -> CardPlacement.NORMAL
+                }
             }.distinctUntilChanged(),
         ) { HomeMatchCard() },
     )

@@ -99,6 +99,7 @@ class TransitPolicyTest {
         val later = TripOption(listOf(leg(dep = now.plusMinutes(12))))
         val cancelled = TripOption(listOf(leg(dep = now.plusMinutes(5), cancelled = true)))
         assertEquals(listOf(soon, cancelled), TransitPolicy.visibleOptions(listOf(later, gone, cancelled, soon), now, 2))
+        assertEquals("a broken limit shows nothing instead of crashing", emptyList<TripOption>(), TransitPolicy.visibleOptions(listOf(soon), now, -1))
     }
 
     // Boards / 发车板
@@ -230,6 +231,14 @@ class TransitPolicyTest {
         val night = t(5, 22, 30)
         trips = CommuteTrips(CommuteMode.INBOUND, inbound = listOf(option(leg(line = "R5", dep = night.plusMinutes(10), cancelled = true))))
         assertTrue(rule.evaluate(RuleInput(fresh, night), null).notifications.isEmpty())
+
+        // Once the delay is over, the alert about it is taken down; with nothing told, nothing is.
+        // 延误结束后撤下关于它的通知；没提醒过的就什么都不撤。
+        trips = CommuteTrips(CommuteMode.OUTBOUND, outbound = listOf(option(leg(line = "R1"))))
+        val over = rule.evaluate(RuleInput(fresh, now), decision.newState)
+        assertEquals(listOf(2_000), over.cancel)
+        assertNull(over.newState)
+        assertTrue(rule.evaluate(RuleInput(fresh, now), null).cancel.isEmpty())
     }
 
     // Morning brief / 早间简报

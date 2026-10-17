@@ -44,9 +44,11 @@ class TrafficSource(
 
     override val maxAge: Duration = Duration.ofHours(2)
 
-    // Every request may cost the user money beyond Google's free tier, so it refreshes hourly and only more often around the
-    // commute.
-    // 每次请求超出 Google 免费额度后都可能让用户付费，所以平时每小时刷新一次，只在通勤时段更频繁。
+    // Every request may cost the user money beyond Google's free tier: every 15 minutes in the daytime (06:00–22:00) and
+    // hourly at night is at most about 72 requests a day, some 2,200 a month, inside the monthly free calls of TRAFFIC_AWARE
+    // routing as long as the key is not used elsewhere too.
+    // 每次请求超出 Google 免费额度后都可能让用户付费：白天（06:00–22:00）每 15 分钟、夜里每小时一次，一天最多约 72 次、一个月约
+    // 2,200 次，只要这个 Key 不同时用在别处，就在 TRAFFIC_AWARE 路线的每月免费次数之内。
     override val cadence = RefreshCadence(
         interval = Duration.ofMinutes(60),
         busyInterval = Duration.ofMinutes(15),

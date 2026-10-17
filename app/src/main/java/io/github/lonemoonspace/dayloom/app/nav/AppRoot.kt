@@ -192,7 +192,7 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?) {
             topBar = {
                 when (route) {
                     Routes.HOME -> CompactTopBar(title = stringResource(R.string.app_name)) {
-                        if (homeState.cards.isNotEmpty()) {
+                        if (homeState.userOrder.isNotEmpty()) {
                             IconButton(onClick = { editing = !editing }) {
                                 Icon(
                                     imageVector = if (editing) Icons.Default.Check else Icons.Default.Edit,
@@ -249,7 +249,7 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?) {
                                 homeVm.startPolling()
                                 onStopOrDispose { homeVm.stopPolling() }
                             }
-                            val reordering = editing && homeState.cards.isNotEmpty()
+                            val reordering = editing && homeState.userOrder.isNotEmpty()
                             PullRefresh(refreshing = homeState.refreshing, onRefresh = { homeVm.refresh() }, enabled = !reordering) {
                                 HomeScreen(
                                     state = homeState,

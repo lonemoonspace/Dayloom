@@ -34,7 +34,10 @@ import okhttp3.Request
  * `.png`；任何失败都显示球队代码。
  */
 class CrestLoader(private val http: OkHttpClient) {
-    private val cache = LruCache<String, ImageBitmap>(CACHE_SIZE)
+    // Counted in bytes, not crests, so a few oversized images cannot fill the memory. / 按字节而不是按个数计，几张超大的图也撑不爆内存。
+    private val cache = object : LruCache<String, ImageBitmap>(CACHE_BYTES) {
+        override fun sizeOf(key: String, value: ImageBitmap) = value.width * value.height * 4
+    }
 
     suspend fun load(url: String): ImageBitmap? {
         val target = pngOf(url) ?: return null
@@ -42,13 +45,39 @@ class CrestLoader(private val http: OkHttpClient) {
         return withContext(Dispatchers.IO) {
             http.newCall(Request.Builder().url(target).build()).execute().use { response ->
                 if (!response.isSuccessful) return@withContext null
-                BitmapFactory.decodeStream(response.body.byteStream())?.asImageBitmap()
+                val source = response.body.source()
+                // True means more than the limit arrived; false means the whole body is buffered. / 为 true 表示超过上限；为 false 表示正文已全部读入。
+                if (source.request(MAX_DOWNLOAD_BYTES + 1)) return@withContext null
+                decode(source.buffer.readByteArray())
             }
         }?.also { cache.put(target, it) }
     }
 
     companion object {
-        private const val CACHE_SIZE = 64
+        /** Room for a few hundred crests at display size. / 够放几百个显示尺寸的队徽。 */
+        private const val CACHE_BYTES = 8 * 1024 * 1024
+
+        /** A crest is a few kilobytes; anything far larger is not one. / 队徽只有几 KB；大得多的就不是队徽。 */
+        private const val MAX_DOWNLOAD_BYTES = 2L * 1024 * 1024
+
+        /** The largest crest is 44 dp, about 176 px on the densest screens. / 最大的队徽 44 dp，在最高密度屏上约 176 像素。 */
+        private const val MAX_SIDE_PX = 192
+
+        /** Decoded at about the size it is shown, never at full resolution. / 按接近显示的尺寸解码，绝不按原图分辨率。 */
+        private fun decode(bytes: ByteArray): ImageBitmap? {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+            val options = BitmapFactory.Options().apply { inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight, MAX_SIDE_PX) }
+            return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)?.asImageBitmap()
+        }
+
+        /** The largest power of two that keeps both sides at least [maxSide], as BitmapFactory expects. / 让两边都不小于 [maxSide] 的最大 2 的幂，符合 BitmapFactory 的要求。 */
+        internal fun sampleSize(width: Int, height: Int, maxSide: Int): Int {
+            var sample = 1
+            while (width / (sample * 2) >= maxSide && height / (sample * 2) >= maxSide) sample *= 2
+            return sample
+        }
 
         /** Only http(s) crests; SVG swapped for PNG. / 只接受 http(s) 地址；SVG 换成 PNG。 */
         internal fun pngOf(url: String): String? {

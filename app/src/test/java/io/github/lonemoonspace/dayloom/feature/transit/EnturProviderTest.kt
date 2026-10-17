@@ -111,6 +111,7 @@ class EnturProviderTest {
         assertFalse(body.getValue("query").jsonPrimitive.content.contains("evil"))
         assertEquals(hostile.id, body.getValue("variables").jsonObject.getValue("from").jsonPrimitive.content)
         assertTrue(body.getValue("query").jsonPrimitive.content.contains("includeRealtimeCancellations: true"))
+        assertTrue(body.getValue("query").jsonPrimitive.content.contains("includePlannedCancellations: true"))
         // The bus commute asks for buses and coaches only. / 公交通勤只要公交与长途大巴。
         val modes = body.getValue("variables").jsonObject.getValue("modes").jsonArray
         assertEquals(listOf("bus", "coach"), modes.map { it.jsonObject.getValue("transportMode").jsonPrimitive.content })

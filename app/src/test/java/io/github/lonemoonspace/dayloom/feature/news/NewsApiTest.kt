@@ -284,6 +284,18 @@ class NewsApiTest {
     }
 
     @Test
+    fun `a short page that falls below the stated total leaves the list incomplete, without a total it ends the list`() = runTest {
+        server.enqueue(MockResponse().setBody(entries(1, 2, 3).replaceFirst("\"total\":3", "\"total\":500")))
+        val cut = MinifluxApi(OkHttpClient()).unread(base, "tok")
+        assertEquals(listOf(1L, 2L, 3L), cut.entries.map { it.id })
+        assertFalse(cut.complete)
+        assertEquals(1, server.requestCount)
+
+        server.enqueue(MockResponse().setBody(entries(1, 2, 3).replaceFirst("\"total\":3", "\"total\":0")))
+        assertTrue(MinifluxApi(OkHttpClient()).unread(base, "tok").complete)
+    }
+
+    @Test
     fun `a list cut off at the limit is incomplete even when a repeated entry leaves it short`() = runTest {
         val size = NewsSyncPolicy.PAGE_SIZE.toLong()
         val pages = (NewsSyncPolicy.FETCH_LIMIT / NewsSyncPolicy.PAGE_SIZE)

@@ -284,7 +284,7 @@
     <string name="traffic_from">From</string>
     <string name="traffic_to">To</string>
     <string name="traffic_key">Google Maps API key</string>
-    <string name="traffic_key_note">Enable the Routes API for this key in Google Cloud. It is the same key as for place search under Places. Dayloom asks for the route at most about 2,200 times a month (every 15 minutes by day, hourly at night), which stays within Google\'s free monthly calls only while this key is used for nothing else and Google keeps its current free tier; you can check usage in Google Cloud. Requests beyond the free monthly quota are billed to your Google account. The key stays on this phone.</string>
+    <string name="traffic_key_note">Enable the Routes API for this key in Google Cloud. It is the same key as for place search under Places. Background refresh asks for the route about 2,200 times a month (every 15 minutes by day, hourly at night), plus each time you refresh by hand. That stays within Google\'s free monthly calls only while this key is used for nothing else and Google keeps its current free tier; you can check usage in Google Cloud. Requests beyond the free monthly quota are billed to your Google account. The key stays on this phone.</string>
     <string name="traffic_open_maps">Open the route in a maps app</string>
     <string name="traffic_free_flow">Without traffic %1$s</string>
     <string name="traffic_slower">%1$s slower than usual</string>

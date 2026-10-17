@@ -140,8 +140,8 @@ looks it up literally.
     live hours after it ended. Pulling to refresh right after start-up refreshes instead of doing nothing.
   - Public transport: trips cancelled in the timetable itself are shown struck through, like real-time cancellations.
   - Smaller: team crests are decoded at the size they are shown, very wide or tall ones too; a damaged "options" setting
-    no longer crashes the commute card; the traffic key note says how many requests a month to expect and when that stays
-    free.
+    no longer crashes the commute card; the traffic key note says how many background requests a month to expect and when
+    that stays free.
 
 - 项目骨架（M0）：带注册表、宿主与命名空间存储的模块系统；从 PersonalAssistant 移植并泛化的刷新协调器与通知引擎；
   卡片可拖动排序的首页；语言、时区与模块开关设置；中英文资源；架构测试与字符串一致性测试；CI 与发版 workflow。
@@ -237,5 +237,5 @@ looks it up literally.
   - 首页：没有比赛可显示时，足球卡片不再留下空隙；过时的快照不会在比赛结束几小时后仍显示「进行中」。刚启动时下拉刷新会真正刷新，
     而不是什么都不做。
   - 公共交通：时刻表里就已停运的班次也会划线显示，与实时取消一样。
-  - 其他：队徽按显示尺寸解码，极宽或极高的也一样；损坏的「方案数」设置不再让通勤卡片崩溃；路况 Key 的说明写明每月大约多少次
+  - 其他：队徽按显示尺寸解码，极宽或极高的也一样；损坏的「方案数」设置不再让通勤卡片崩溃；路况 Key 的说明写明后台刷新每月大约多少次
     请求、什么情况下仍免费。

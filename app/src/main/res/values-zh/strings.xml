@@ -274,7 +274,7 @@
     <string name="traffic_from">起点</string>
     <string name="traffic_to">终点</string>
     <string name="traffic_key">Google Maps API Key</string>
-    <string name="traffic_key_note">需要在 Google Cloud 里为这个 Key 启用 Routes API。它和「地点」里地点搜索用的是同一个 Key。织日每月最多查询约 2,200 次路线（白天每 15 分钟、夜里每小时一次）；只有这个 Key 不用在别处、且 Google 维持现在的免费额度时，才在每月免费次数之内，用量可以在 Google Cloud 里查看。超出每月免费额度的请求会向你的 Google 账号计费。Key 只保存在本机。</string>
+    <string name="traffic_key_note">需要在 Google Cloud 里为这个 Key 启用 Routes API。它和「地点」里地点搜索用的是同一个 Key。后台刷新每月查询约 2,200 次路线（白天每 15 分钟、夜里每小时一次），手动刷新另算；只有这个 Key 不用在别处、且 Google 维持现在的免费额度时，才在每月免费次数之内，用量可以在 Google Cloud 里查看。超出每月免费额度的请求会向你的 Google 账号计费。Key 只保存在本机。</string>
     <string name="traffic_open_maps">在地图 App 中打开路线</string>
     <string name="traffic_free_flow">畅通时 %1$s</string>
     <string name="traffic_slower">比平时慢 %1$s</string>

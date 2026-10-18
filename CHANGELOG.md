@@ -4,7 +4,7 @@ Each version has an English section followed by a Chinese one. The heading must 
 looks it up literally.
 每个版本先写英文、再写中文。标题必须恰好是 `## X.Y.Z`：发版 workflow 按字面查找。
 
-## Unreleased
+## 0.2.0
 
 - Project skeleton (M0): module system with registry, host and namespaced storage; generic refresh coordinator and
   notification engine ported from PersonalAssistant; home screen with drag-to-reorder cards; settings for language,

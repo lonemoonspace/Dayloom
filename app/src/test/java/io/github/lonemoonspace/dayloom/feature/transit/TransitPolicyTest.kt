@@ -128,6 +128,8 @@ class TransitPolicyTest {
         assertEquals(21, TransitPolicy.minutesUntil(ms(now.plusMinutes(21)), now))
         assertEquals(59, TransitPolicy.minutesUntil(ms(now.plusMinutes(59).plusSeconds(59)), now))
         assertNull(TransitPolicy.minutesUntil(ms(now.plusMinutes(60)), now))
+        // A damaged time must not overflow into the countdown. / 损坏的时刻不能溢出成倒计时。
+        assertNull(TransitPolicy.minutesUntil(Long.MAX_VALUE, now))
     }
 
     @Test

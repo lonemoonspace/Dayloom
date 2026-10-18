@@ -98,7 +98,7 @@ object TransitPolicy {
      * 一小时内发车时返回还有几分钟，否则返回 null：更晚的班次只显示时刻。
      */
     fun minutesUntil(expected: Long, now: ZonedDateTime): Int? =
-        Duration.between(now.toInstant(), Instant.ofEpochMilli(expected)).toMinutes().toInt().coerceAtLeast(0).takeIf { it < 60 }
+        Duration.between(now.toInstant(), Instant.ofEpochMilli(expected)).toMinutes().coerceAtLeast(0).takeIf { it < 60 }?.toInt()
 
     fun visibleDepartures(departures: List<BoardDeparture>, now: ZonedDateTime, limit: Int = BOARD_VISIBLE): List<BoardDeparture> {
         val nowMillis = now.toInstant().toEpochMilli()

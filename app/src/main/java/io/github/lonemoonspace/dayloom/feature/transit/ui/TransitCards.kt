@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.background
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
@@ -137,6 +138,53 @@ private fun OptionRow(option: TripOption, now: ZonedDateTime, divider: Boolean) 
     val worst = TransitPolicy.worst(option)
     val cancelled = worst?.second?.state == LegState.CANCELLED
     val minutes = Duration.ofMillis(option.arrival - option.departure).toMinutes().toInt().coerceAtLeast(0)
+    TransitRow(
+        expected = option.departure,
+        aimed = first.aimedDeparture,
+        cancelled = cancelled,
+        now = now,
+        divider = divider,
+        badge = {
+            worst?.let { (leg, status) ->
+                // With several legs, name the line the status belongs to. / 多段时说明状态属于哪条线。
+                StatusBadge(status, prefix = leg.line.takeIf { option.legs.size > 1 && status.state != LegState.ON_TIME })
+            }
+        },
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            option.legs.forEach { LineChip(it.line, it.replacementBus) }
+            Text(
+                text = "→ ${at(option.arrival)} · " + pluralStringResource(R.plurals.transit_minutes, minutes, minutes),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (cancelled) MaterialTheme.colorScheme.outline else LocalContentColor.current,
+                textDecoration = if (cancelled) TextDecoration.LineThrough else null,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Hint(detailText(option))
+    }
+}
+
+/**
+ * The row shared by the train, bus and departure board cards, so the three stay identical: the expected time large on the
+ * left (the timetable time struck through under it when late), [content] in the middle, [badge] on the right, and a divider
+ * above every row but a group's first.
+ * 火车、公交与发车板共用的行，三张卡片才会始终一致：左边大字是预计时刻（晚点时下面划掉时刻表时间），中间是 [content]，
+ * 右边是 [badge]，除每组第一行外上方都有分隔线。
+ */
+@Composable
+private fun TransitRow(
+    expected: Long,
+    aimed: Long,
+    cancelled: Boolean,
+    now: ZonedDateTime,
+    divider: Boolean,
+    badge: @Composable () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val time = rememberTimeFormatter()
+    fun at(millis: Long) = Instant.ofEpochMilli(millis).atZone(now.zone).format(time)
     val faint = MaterialTheme.colorScheme.outline
     if (divider) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 5.dp)) {
@@ -144,7 +192,7 @@ private fun OptionRow(option: TripOption, now: ZonedDateTime, divider: Boolean) 
         // 时刻表时间放在预计时间下面，12 小时制时这一行也放得下。
         Column(Modifier.widthIn(min = 52.dp)) {
             Text(
-                text = at(option.departure),
+                text = at(expected),
                 fontSize = 17.sp,
                 lineHeight = 20.sp,
                 fontWeight = FontWeight.Bold,
@@ -152,30 +200,14 @@ private fun OptionRow(option: TripOption, now: ZonedDateTime, divider: Boolean) 
                 textDecoration = if (cancelled) TextDecoration.LineThrough else null,
                 maxLines = 1,
             )
-            if (!cancelled && first.expectedDeparture != first.aimedDeparture) {
-                Text(at(first.aimedDeparture), style = MaterialTheme.typography.labelSmall, color = faint, textDecoration = TextDecoration.LineThrough, maxLines = 1)
+            if (!cancelled && expected != aimed) {
+                Text(at(aimed), style = MaterialTheme.typography.labelSmall, color = faint, textDecoration = TextDecoration.LineThrough, maxLines = 1)
             }
         }
         Spacer(Modifier.width(8.dp))
-        Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                option.legs.forEach { LineChip(it.line, it.replacementBus) }
-                Text(
-                    text = "→ ${at(option.arrival)} · " + pluralStringResource(R.plurals.transit_minutes, minutes, minutes),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (cancelled) faint else LocalContentColor.current,
-                    textDecoration = if (cancelled) TextDecoration.LineThrough else null,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Hint(detailText(option))
-        }
-        worst?.let { (leg, status) ->
-            Spacer(Modifier.width(6.dp))
-            // With several legs, name the line the status belongs to. / 多段时说明状态属于哪条线。
-            StatusBadge(status, prefix = leg.line.takeIf { option.legs.size > 1 && status.state != LegState.ON_TIME })
-        }
+        Column(Modifier.weight(1f), content = content)
+        Spacer(Modifier.width(6.dp))
+        badge()
     }
 }
 
@@ -275,70 +307,51 @@ internal fun BoardsCard(
 }
 
 /**
- * One departure, laid out like [OptionRow]: the expected time large on the left (the timetable time struck through under
- * it when late), the line and destination with the countdown within the hour, the platform under them, the status pill on
- * the right.
- * 一班车，排法与 [OptionRow] 相同：左边大字是预计时刻（晚点时下面划掉时刻表时间），中间是线路与终点、一小时内再加倒计时，
- * 下面是站台，右边是状态胶囊。
+ * One departure in a [TransitRow]: the line and destination with the countdown within the hour, the platform under them.
+ * 一班车，用 [TransitRow] 排：线路与终点、一小时内再加倒计时，下面是站台。
  */
 @Composable
 private fun DepartureRow(departure: BoardDeparture, now: ZonedDateTime, divider: Boolean) {
-    val time = rememberTimeFormatter()
-    fun at(millis: Long) = Instant.ofEpochMilli(millis).atZone(now.zone).format(time)
     val status = TransitPolicy.legStatus(departure)
     val cancelled = status.state == LegState.CANCELLED
-    val faint = MaterialTheme.colorScheme.outline
-    if (divider) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 5.dp)) {
-        Column(Modifier.widthIn(min = 52.dp)) {
+    TransitRow(
+        expected = departure.expected,
+        aimed = departure.aimed,
+        cancelled = cancelled,
+        now = now,
+        divider = divider,
+        badge = { StatusBadge(status) },
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            LineChip(departure.line, departure.replacementBus)
+            val color = if (cancelled) MaterialTheme.colorScheme.outline else LocalContentColor.current
+            val decoration = if (cancelled) TextDecoration.LineThrough else null
+            // A long destination gives way first, so the countdown stays readable.
+            // 终点名太长时先省略它，倒计时始终看得见。
             Text(
-                text = at(departure.expected),
-                fontSize = 17.sp,
-                lineHeight = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (cancelled) faint else LocalContentColor.current,
-                textDecoration = if (cancelled) TextDecoration.LineThrough else null,
+                text = "→ ${departure.frontText}",
+                style = MaterialTheme.typography.bodySmall,
+                color = color,
+                textDecoration = decoration,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
             )
-            if (!cancelled && departure.expected != departure.aimed) {
-                Text(at(departure.aimed), style = MaterialTheme.typography.labelSmall, color = faint, textDecoration = TextDecoration.LineThrough, maxLines = 1)
-            }
-        }
-        Spacer(Modifier.width(8.dp))
-        Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                LineChip(departure.line, departure.replacementBus)
-                val color = if (cancelled) faint else LocalContentColor.current
-                val decoration = if (cancelled) TextDecoration.LineThrough else null
-                // A long destination gives way first, so the countdown stays readable.
-                // 终点名太长时先省略它，倒计时始终看得见。
+            TransitPolicy.minutesUntil(departure.expected, now)?.let { minutes ->
                 Text(
-                    text = "→ ${departure.frontText}",
+                    text = "· " + if (minutes < 1) stringResource(R.string.transit_now) else pluralStringResource(R.plurals.transit_minutes, minutes, minutes),
                     style = MaterialTheme.typography.bodySmall,
                     color = color,
                     textDecoration = decoration,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
                 )
-                TransitPolicy.minutesUntil(departure.expected, now)?.let { minutes ->
-                    Text(
-                        text = "· " + if (minutes < 1) stringResource(R.string.transit_now) else pluralStringResource(R.plurals.transit_minutes, minutes, minutes),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = color,
-                        textDecoration = decoration,
-                        maxLines = 1,
-                    )
-                }
             }
-            val detail = listOfNotNull(
-                stringResource(R.string.transit_replacement_bus).takeIf { departure.replacementBus },
-                departure.platform.takeIf { it.isNotEmpty() }?.let { stringResource(R.string.transit_platform, it) },
-            )
-            if (detail.isNotEmpty()) Hint(detail.joinToString(" · "))
         }
-        Spacer(Modifier.width(6.dp))
-        StatusBadge(status)
+        val detail = listOfNotNull(
+            stringResource(R.string.transit_replacement_bus).takeIf { departure.replacementBus },
+            departure.platform.takeIf { it.isNotEmpty() }?.let { stringResource(R.string.transit_platform, it) },
+        )
+        if (detail.isNotEmpty()) Hint(detail.joinToString(" · "))
     }
 }
 

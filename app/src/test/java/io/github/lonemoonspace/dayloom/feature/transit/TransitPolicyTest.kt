@@ -122,6 +122,15 @@ class TransitPolicyTest {
     }
 
     @Test
+    fun `board countdown only within the hour`() {
+        assertEquals(0, TransitPolicy.minutesUntil(ms(now.plusSeconds(30)), now))
+        assertEquals(0, TransitPolicy.minutesUntil(ms(now.minusMinutes(1)), now))
+        assertEquals(21, TransitPolicy.minutesUntil(ms(now.plusMinutes(21)), now))
+        assertEquals(59, TransitPolicy.minutesUntil(ms(now.plusMinutes(59).plusSeconds(59)), now))
+        assertNull(TransitPolicy.minutesUntil(ms(now.plusMinutes(60)), now))
+    }
+
+    @Test
     fun `destination matching tolerates station suffixes and via-text but is never a substring match`() {
         assertTrue(TransitPolicy.destinationMatches("Town C stasjon", "Town C"))
         assertTrue(TransitPolicy.destinationMatches("town c via Town E", "Town C"))

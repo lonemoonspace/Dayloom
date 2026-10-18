@@ -142,6 +142,9 @@ looks it up literally.
   - Smaller: team crests are decoded at the size they are shown, very wide or tall ones too; a damaged "options" setting
     no longer crashes the commute card; the traffic key note says how many background requests a month to expect and when
     that stays free.
+- Departure board rows now look like the train and bus cards: the departure time large on the left (the timetable time
+  struck through under it when late), the line and destination with the countdown within the hour, the platform under
+  them, a status pill on the right of every row (on time included), and dividers between rows.
 
 - 项目骨架（M0）：带注册表、宿主与命名空间存储的模块系统；从 PersonalAssistant 移植并泛化的刷新协调器与通知引擎；
   卡片可拖动排序的首页；语言、时区与模块开关设置；中英文资源；架构测试与字符串一致性测试；CI 与发版 workflow。
@@ -239,3 +242,5 @@ looks it up literally.
   - 公共交通：时刻表里就已停运的班次也会划线显示，与实时取消一样。
   - 其他：队徽按显示尺寸解码，极宽或极高的也一样；损坏的「方案数」设置不再让通勤卡片崩溃；路况 Key 的说明写明后台刷新每月大约多少次
     请求、什么情况下仍免费。
+- 发车板的每一行改成和火车、公交卡片一样：左边大字是发车时刻（晚点时下面划掉时刻表时间），中间是线路、终点与一小时内的倒计时，
+  下面是站台，右边每行都有状态胶囊（准点也显示），行与行之间有分隔线。

@@ -3,6 +3,7 @@ package io.github.lonemoonspace.dayloom.feature.transit.domain
 import io.github.lonemoonspace.dayloom.core.routine.CommuteDirection
 import io.github.lonemoonspace.dayloom.core.routine.RoutinePolicy
 import java.time.Duration
+import java.time.Instant
 import java.time.ZonedDateTime
 import java.util.Locale
 
@@ -91,6 +92,13 @@ object TransitPolicy {
         // A limit from a damaged settings file must not crash the card. / 设置文件损坏得来的上限不能让卡片崩溃。
         return options.filter { it.legs.isNotEmpty() && it.departure >= nowMillis }.sortedBy { it.departure }.take(limit.coerceAtLeast(0))
     }
+
+    /**
+     * Whole minutes until a board departure when it leaves within the hour, else null: later ones show only their clock time.
+     * 一小时内发车时返回还有几分钟，否则返回 null：更晚的班次只显示时刻。
+     */
+    fun minutesUntil(expected: Long, now: ZonedDateTime): Int? =
+        Duration.between(now.toInstant(), Instant.ofEpochMilli(expected)).toMinutes().toInt().coerceAtLeast(0).takeIf { it < 60 }
 
     fun visibleDepartures(departures: List<BoardDeparture>, now: ZonedDateTime, limit: Int = BOARD_VISIBLE): List<BoardDeparture> {
         val nowMillis = now.toInstant().toEpochMilli()

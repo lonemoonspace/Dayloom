@@ -317,9 +317,18 @@ class EnturProvider(
          * 仍然不返回搜索时间窗以外的方案。
          */
         internal val UNFILTERED_TRIP_QUERY = TRIP_QUERY
-            .replace("includeRealtimeCancellations: true,", "includeRealtimeCancellations: true, itineraryFilters: { debug: limitToSearchWindow },")
-            .replace("tripPatterns {", "tripPatterns {\n    systemNotices { tag }")
-            .also { check(it != TRIP_QUERY) }
+            .insertAfter("includeRealtimeCancellations: true,", " itineraryFilters: { debug: limitToSearchWindow },")
+            .insertAfter("tripPatterns {", "\n    systemNotices { tag }")
+
+        /**
+         * Each insertion must land: without the filter switch no option comes back, without the tags every hidden near-copy
+         * would show as an ordinary row.
+         * 每处插入都必须成功：少了过滤开关就拿不回任何方案，少了标签则每个被隐藏的近似重复都会显示成普通的一行。
+         */
+        private fun String.insertAfter(anchor: String, text: String): String {
+            check(split(anchor).size == 2) { "anchor must occur once: $anchor" }
+            return replace(anchor, anchor + text)
+        }
 
         /**
          * Three hours and 200 departures: lines are filtered on the client, so the departure count must not be a tighter

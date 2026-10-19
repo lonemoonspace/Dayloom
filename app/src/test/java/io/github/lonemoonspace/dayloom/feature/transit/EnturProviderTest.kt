@@ -203,7 +203,10 @@ class EnturProviderTest {
         val options = provider().planTrips(a, b, now, 3, CommuteKind.TRAIN)
 
         assertEquals(listOf("L1" to false, "R2" to true), options.map { it.legs.single().line to it.alternative })
-        assertTrue(queryOf(server.takeRequest()).contains("itineraryFilters: { debug: limitToSearchWindow }"))
+        val query = queryOf(server.takeRequest())
+        assertTrue(query.contains("itineraryFilters: { debug: limitToSearchWindow }"))
+        // Without the tags every hidden near-copy would come back as an ordinary row. / 没有标签，被隐藏的近似重复都会变成普通的一行。
+        assertTrue(query.contains("systemNotices { tag }"))
     }
 
     @Test
@@ -224,9 +227,14 @@ class EnturProviderTest {
         assertTrue(queryOf(server.takeRequest()).contains("itineraryFilters"))
         assertFalse(queryOf(server.takeRequest()).contains("itineraryFilters"))
 
+        server.enqueue(MockResponse().setResponseCode(400))
+        server.enqueue(MockResponse().setBody(tripBody))
+        assertEquals(1, provider().planTrips(a, b, now, 3, CommuteKind.TRAIN).size)
+        assertEquals(4, server.requestCount)
+
         server.enqueue(MockResponse().setResponseCode(503))
         assertEquals(503, (runCatching { provider().planTrips(a, b, now, 1, CommuteKind.TRAIN) }.exceptionOrNull() as AppError.Http).code)
-        assertEquals("no second request after a server failure", 3, server.requestCount)
+        assertEquals("no second request after a server failure", 5, server.requestCount)
     }
 
     @Test

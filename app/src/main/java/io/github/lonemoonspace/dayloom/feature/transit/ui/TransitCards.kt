@@ -128,7 +128,7 @@ private fun OptionList(all: List<TripOption>, limit: Int, now: ZonedDateTime) {
         Hint(stringResource(R.string.transit_no_options))
         return
     }
-    options.forEachIndexed { i, option -> OptionRow(option, TransitPolicy.transferGain(option, all), now, divider = i > 0) }
+    options.forEachIndexed { i, option -> OptionRow(option, TransitPolicy.transferGain(option, all, now), now, divider = i > 0) }
 }
 
 /**

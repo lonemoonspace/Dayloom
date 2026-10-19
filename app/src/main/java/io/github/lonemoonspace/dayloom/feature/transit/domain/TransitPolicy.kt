@@ -96,44 +96,50 @@ object TransitPolicy {
     fun visibleOptions(options: List<TripOption>, now: ZonedDateTime, limit: Int): List<TripOption> {
         val nowMillis = now.toInstant().toEpochMilli()
         // A limit from a damaged settings file must not crash the card. / 设置文件损坏得来的上限不能让卡片崩溃。
-        return withTransfers(options).filter { it.legs.isNotEmpty() && it.departure >= nowMillis }.sortedBy { it.departure }
+        return withTransfers(options, now).filter { it.legs.isNotEmpty() && it.departure >= nowMillis }.sortedBy { it.departure }
             .take(limit.coerceAtLeast(0))
     }
 
     /**
-     * Keeps an [TripOption.alternative] only when nothing else leaves at least as late and arrives at least as early, and it
-     * is not cancelled. A kept transfer that starts on the same ride as a direct option and arrives earlier replaces it:
-     * staying on board at the transfer stop is that direct option, so two rows would repeat the same train.
-     * 只有当没有别的方案出发不早于它、到达又不晚于它，且它没被取消时，才保留 [TripOption.alternative]。保留下来的换乘方案若和
-     * 某个直达方案第一段是同一班车、又到得更早，就取代那个直达：在换乘站不下车就是那个直达，两行会重复同一班车。
+     * Keeps an [TripOption.alternative] only when it has a [transferGain], is not cancelled, and nothing else leaves at least
+     * as late and arrives at least as early. A kept transfer that starts on the same ride as a direct option and arrives
+     * earlier replaces it: staying on board at the transfer stop is that direct option, so two rows would repeat the same
+     * train. Only direct, uncancelled options are replaced; anything else keeps its row.
+     * 只有当 [TripOption.alternative] 有 [transferGain]、没被取消、且没有别的方案出发不早于它又到达不晚于它时，才保留它。
+     * 保留下来的换乘方案若和某个直达方案第一段是同一班车、又到得更早，就取代那个直达：在换乘站不下车就是那个直达，两行会
+     * 重复同一班车。只取代未被取消的直达，其他方案都保留自己的一行。
      */
-    fun withTransfers(options: List<TripOption>): List<TripOption> {
+    fun withTransfers(options: List<TripOption>, now: ZonedDateTime): List<TripOption> {
         if (options.none { it.alternative }) return options
         val kept = options.withIndex().filter { (i, option) ->
-            option.alternative && !option.isCancelled() &&
+            option.alternative && !option.isCancelled() && transferGain(option, options, now) != null &&
                 options.withIndex().none { (j, other) -> j != i && beats(other, option, otherFirst = j < i) }
         }.map { it.value }
         return options.filter { option ->
-            if (option.alternative) {
-                kept.any { it === option }
-            } else {
-                kept.none { sameFirstRide(it, option) && it.arrival < option.arrival }
+            when {
+                option.alternative -> kept.any { it === option }
+                option.transfers > 0 || option.isCancelled() -> true
+                else -> kept.none { sameFirstRide(it, option) && it.arrival < option.arrival }
             }
         }
     }
 
     /**
-     * What [option] gains over the latest direct option it beats in [options] (the raw list, before [withTransfers]); null
-     * for ordinary options. Arriving earlier is named first; otherwise the same arrival with a later start.
-     * [option] 比 [options]（[withTransfers] 之前的原始列表）里它胜过的最晚出发的直达方案好在哪里；普通方案返回 null。
-     * 先看能否早到；否则是同时到、但可以晚走。
+     * What [option] gains over the latest ordinary option in [options] (the raw list, before [withTransfers]) that it beats
+     * and that has not left yet; null for ordinary options. Arriving earlier is named first; otherwise the same arrival with
+     * a later start. The baseline is any ordinary option, not only direct ones, so routes with no direct train benefit too.
+     * [option] 比 [options]（[withTransfers] 之前的原始列表）里它胜过、且还没开走的最晚出发的普通方案好在哪里；普通方案
+     * 返回 null。先看能否早到；否则是同时到、但可以晚走。比较对象是任何普通方案而不只是直达，没有直达车的线路也能受益。
      */
-    fun transferGain(option: TripOption, options: List<TripOption>): TransferGain? {
+    fun transferGain(option: TripOption, options: List<TripOption>, now: ZonedDateTime): TransferGain? {
         if (!option.alternative) return null
-        val direct = options.filter { !it.alternative && !it.isCancelled() && it.departure <= option.departure && it.arrival >= option.arrival }
-            .maxByOrNull { it.departure } ?: return null
-        val earlier = Duration.ofMillis(direct.arrival - option.arrival).toMinutes().toInt()
-        val later = Duration.ofMillis(option.departure - direct.departure).toMinutes().toInt()
+        val nowMillis = now.toInstant().toEpochMilli()
+        val baseline = options.filter {
+            !it.alternative && it.legs.isNotEmpty() && !it.isCancelled() && it.departure >= nowMillis &&
+                it.departure <= option.departure && it.arrival >= option.arrival
+        }.maxByOrNull { it.departure } ?: return null
+        val earlier = Duration.ofMillis(baseline.arrival - option.arrival).toMinutes().toInt()
+        val later = Duration.ofMillis(option.departure - baseline.departure).toMinutes().toInt()
         return when {
             earlier > 0 -> TransferGain(TransferGainKind.ARRIVE_EARLIER, earlier)
             later > 0 -> TransferGain(TransferGainKind.LEAVE_LATER, later)

@@ -170,13 +170,63 @@ class EnturProviderTest {
     @Test
     fun `graphql errors, http errors and garbage become AppErrors`() = runTest {
         server.enqueue(MockResponse().setBody("""{"errors":[{"message":"bad place"}]}"""))
-        assertTrue(runCatching { provider().planTrips(a, b, now, 1, CommuteKind.TRAIN) }.exceptionOrNull() is AppError.BadData)
+        assertTrue(runCatching { provider().planTrips(a, b, now, 1, CommuteKind.BUS) }.exceptionOrNull() is AppError.BadData)
         server.enqueue(MockResponse().setBody("""{"errors":[{"message":"stop1 failed"}],"data":{"stop0":{"estimatedCalls":[]},"stop1":null}}"""))
         assertEquals("partial data survives an error", setOf("NSR:StopPlace:1"), provider().departures(listOf("NSR:StopPlace:1", "NSR:StopPlace:9"), now).keys)
         server.enqueue(MockResponse().setResponseCode(503))
-        assertEquals(503, (runCatching { provider().planTrips(a, b, now, 1, CommuteKind.TRAIN) }.exceptionOrNull() as AppError.Http).code)
+        assertEquals(503, (runCatching { provider().planTrips(a, b, now, 1, CommuteKind.BUS) }.exceptionOrNull() as AppError.Http).code)
         server.enqueue(MockResponse().setBody("<html>"))
-        assertTrue(runCatching { provider().planTrips(a, b, now, 1, CommuteKind.TRAIN) }.exceptionOrNull() is AppError.BadData)
+        assertTrue(runCatching { provider().planTrips(a, b, now, 1, CommuteKind.BUS) }.exceptionOrNull() is AppError.BadData)
+    }
+
+    private fun queryOf(request: okhttp3.mockwebserver.RecordedRequest) =
+        AppJson.standard.parseToJsonElement(request.body.readUtf8()).jsonObject.getValue("query").jsonPrimitive.content
+
+    private fun pattern(tags: String, line: String) = """
+        {"systemNotices":[$tags],"legs":[{"mode":"rail","aimedStartTime":"2026-10-05T07:40:00+02:00",
+         "aimedEndTime":"2026-10-05T08:10:00+02:00","line":{"publicCode":"$line"},"fromPlace":{"name":"Stop A"},"toPlace":{"name":"Stop B"}}]}
+    """.trimIndent()
+
+    @Test
+    fun `train commutes get back hidden near-copies flagged as alternatives, and nothing else Entur drops`() = runTest {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"data":{"trip":{"tripPatterns":[
+                ${pattern("", "L1")},
+                ${pattern("""{"tag":"similar-legs-filter-85p-1x"}""", "R2")},
+                ${pattern("""{"tag":"number-of-itineraries-filter"}""", "R3")},
+                ${pattern("""{"tag":"similar-legs-filter-85p-1x"},{"tag":"outside-search-window"}""", "R4")}
+                ]}}}""",
+            ),
+        )
+
+        val options = provider().planTrips(a, b, now, 3, CommuteKind.TRAIN)
+
+        assertEquals(listOf("L1" to false, "R2" to true), options.map { it.legs.single().line to it.alternative })
+        assertTrue(queryOf(server.takeRequest()).contains("itineraryFilters: { debug: limitToSearchWindow }"))
+    }
+
+    @Test
+    fun `bus commutes keep Entur's filters`() = runTest {
+        server.enqueue(MockResponse().setBody("""{"data":{"trip":{"tripPatterns":[]}}}"""))
+
+        provider().planTrips(a, b, now, 3, CommuteKind.BUS)
+
+        assertFalse(queryOf(server.takeRequest()).contains("itineraryFilters"))
+    }
+
+    @Test
+    fun `a refused unfiltered query falls back to the plain one, an outage does not`() = runTest {
+        server.enqueue(MockResponse().setBody("""{"errors":[{"message":"not a valid 'ItineraryFilterDebugProfile'"}]}"""))
+        server.enqueue(MockResponse().setBody(tripBody))
+
+        assertEquals(1, provider().planTrips(a, b, now, 3, CommuteKind.TRAIN).size)
+        assertTrue(queryOf(server.takeRequest()).contains("itineraryFilters"))
+        assertFalse(queryOf(server.takeRequest()).contains("itineraryFilters"))
+
+        server.enqueue(MockResponse().setResponseCode(503))
+        assertEquals(503, (runCatching { provider().planTrips(a, b, now, 1, CommuteKind.TRAIN) }.exceptionOrNull() as AppError.Http).code)
+        assertEquals("no second request after a server failure", 3, server.requestCount)
     }
 
     @Test

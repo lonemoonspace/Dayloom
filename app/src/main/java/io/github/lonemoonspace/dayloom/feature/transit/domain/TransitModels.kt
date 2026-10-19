@@ -60,7 +60,16 @@ data class TransitLeg(
 
 /** One way to make the trip: its legs in order; transfers happen between consecutive legs. / 一种出行方案：按顺序的各段；换乘发生在相邻两段之间。 */
 @Serializable
-data class TripOption(val legs: List<TransitLeg> = emptyList()) {
+data class TripOption(
+    val legs: List<TransitLeg> = emptyList(),
+    /**
+     * The provider would have hidden this one as too similar to another option, usually a transfer onto a faster train
+     * that shares the first ride with a direct one. [TransitPolicy.withTransfers] decides whether it is shown.
+     * 提供方原本会把它当成和另一个方案太相似而隐藏，通常是和直达共用第一段、中途换更快的车的方案。
+     * 是否显示由 [TransitPolicy.withTransfers] 决定。
+     */
+    val alternative: Boolean = false,
+) {
     val departure: Long get() = legs.firstOrNull()?.expectedDeparture ?: 0
     val arrival: Long get() = legs.lastOrNull()?.expectedArrival ?: 0
     val transfers: Int get() = (legs.size - 1).coerceAtLeast(0)

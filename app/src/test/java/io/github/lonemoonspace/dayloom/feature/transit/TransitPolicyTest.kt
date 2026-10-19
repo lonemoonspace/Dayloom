@@ -13,6 +13,8 @@ import io.github.lonemoonspace.dayloom.feature.transit.domain.DisruptionPolicy
 import io.github.lonemoonspace.dayloom.feature.transit.domain.DisruptionRule
 import io.github.lonemoonspace.dayloom.feature.transit.domain.FavouriteBoard
 import io.github.lonemoonspace.dayloom.feature.transit.domain.LegState
+import io.github.lonemoonspace.dayloom.feature.transit.domain.TransferGain
+import io.github.lonemoonspace.dayloom.feature.transit.domain.TransferGainKind
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitBrief
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitLeg
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitPolicy
@@ -100,6 +102,66 @@ class TransitPolicyTest {
         val cancelled = TripOption(listOf(leg(dep = now.plusMinutes(5), cancelled = true)))
         assertEquals(listOf(soon, cancelled), TransitPolicy.visibleOptions(listOf(later, gone, cancelled, soon), now, 2))
         assertEquals("a broken limit shows nothing instead of crashing", emptyList<TripOption>(), TransitPolicy.visibleOptions(listOf(soon), now, -1))
+    }
+
+    // Transfers / 换乘
+
+    private fun ride(line: String, dep: ZonedDateTime, arr: ZonedDateTime, from: String, to: String, cancelled: Boolean = false) = TransitLeg(
+        mode = "rail", line = line, fromName = from, toName = to,
+        aimedDeparture = ms(dep), expectedDeparture = ms(dep), aimedArrival = ms(arr), expectedArrival = ms(arr),
+        realtime = true, cancelled = cancelled,
+    )
+
+    /** A local train from A to C, and a change at B onto a faster train. / A 到 C 的慢车，以及在 B 换更快的车。 */
+    private val direct1 = TripOption(listOf(ride("L1", t(5, 7, 40), t(5, 8, 14), "Stop A", "Stop C")))
+    private val direct2 = TripOption(listOf(ride("L1", t(5, 8, 10), t(5, 8, 44), "Stop A", "Stop C")))
+    private val faster1 = TripOption(
+        listOf(ride("L1", t(5, 7, 40), t(5, 7, 49), "Stop A", "Stop B"), ride("R1", t(5, 7, 55), t(5, 8, 6), "Stop B", "Stop C")),
+        alternative = true,
+    )
+    private val slower2 = TripOption(
+        listOf(ride("L1", t(5, 8, 10), t(5, 8, 19), "Stop A", "Stop B"), ride("R3", t(5, 8, 35), t(5, 8, 46), "Stop B", "Stop C")),
+        alternative = true,
+    )
+
+    @Test
+    fun `a faster transfer replaces the direct option on the same first train, a slower one is dropped`() {
+        val all = listOf(direct1, faster1, direct2, slower2)
+
+        assertEquals(listOf(faster1, direct2), TransitPolicy.visibleOptions(all, now, 5))
+        assertEquals(TransferGain(TransferGainKind.ARRIVE_EARLIER, 8), TransitPolicy.transferGain(faster1, all))
+        assertNull(TransitPolicy.transferGain(direct2, all))
+    }
+
+    @Test
+    fun `a later train that catches the same connection says how much later the user can leave`() {
+        val home = TripOption(listOf(ride("L1", t(5, 16, 21), t(5, 16, 54), "Stop C", "Stop A")))
+        val leaveLater = TripOption(
+            listOf(ride("R1", t(5, 16, 29), t(5, 16, 39), "Stop C", "Stop B"), ride("L1", t(5, 16, 46), t(5, 16, 54), "Stop B", "Stop A")),
+            alternative = true,
+        )
+        val all = listOf(home, leaveLater)
+
+        assertEquals(all, TransitPolicy.visibleOptions(all, t(5, 16, 0), 5))
+        assertEquals(TransferGain(TransferGainKind.LEAVE_LATER, 8), TransitPolicy.transferGain(leaveLater, all))
+    }
+
+    @Test
+    fun `cancelled transfers never show, and a cancelled direct option beats nothing`() {
+        val cancelledTransfer = faster1.copy(legs = faster1.legs.mapIndexed { i, l -> if (i == 1) l.copy(cancelled = true) else l })
+        assertEquals(listOf(direct1), TransitPolicy.visibleOptions(listOf(direct1, cancelledTransfer), now, 5))
+
+        val cancelledDirect = direct1.copy(legs = direct1.legs.map { it.copy(cancelled = true) })
+        val sameTimes = faster1.copy(legs = listOf(direct1.legs.single().copy(line = "R9")))
+        assertEquals(setOf(cancelledDirect, sameTimes), TransitPolicy.visibleOptions(listOf(cancelledDirect, sameTimes), now, 5).toSet())
+    }
+
+    @Test
+    fun `equal alternatives keep the first, and lists without alternatives pass through`() {
+        val copy = faster1.copy(legs = faster1.legs.map { it.copy(line = it.line + "x") })
+        assertEquals(listOf(faster1, direct2), TransitPolicy.visibleOptions(listOf(direct1, faster1, copy, direct2), now, 5))
+        val plain = listOf(direct1, direct2)
+        assertTrue(TransitPolicy.withTransfers(plain) === plain)
     }
 
     // Boards / 发车板

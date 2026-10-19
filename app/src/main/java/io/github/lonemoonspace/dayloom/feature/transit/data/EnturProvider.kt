@@ -15,6 +15,7 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import kotlin.coroutines.CoroutineContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
@@ -67,26 +68,65 @@ class EnturProvider(
 
     override suspend fun planTrips(from: TransitStop, to: TransitStop, at: ZonedDateTime, count: Int, kind: CommuteKind): List<TripOption> =
         withContext(io) {
-            val first = queryTrips(from, to, at, count, kind, window = null)
-            // Entur picks a search window of an hour or two by itself; on a quiet evening line the next train can be further
-            // away than that, so an empty answer for this reason is asked again with a long window.
-            // Entur 自己选一两个小时的搜索时间窗；晚上班次稀少的线路，下一班车可能比这还远，所以因此查空时用长时间窗再查一次。
-            val trip = if (first.tripPatterns.isEmpty() && first.routingErrors.any { it.code == NO_CONNECTION_IN_WINDOW }) {
-                queryTrips(from, to, at, count, kind, window = LONG_SEARCH_WINDOW_MINUTES)
+            // Entur hides a transfer onto a faster train as a near-copy of the direct train it starts on, so train commutes
+            // ask for the hidden options too. That switch is documented as for testing only; if Entur ever refuses it, the
+            // plain query still gives the card what it showed before.
+            // Entur 会把「中途换更快的车」当成同一班直达车的近似重复而隐藏，所以火车通勤连被隐藏的方案一起要。这个开关的文档写着
+            // 只供测试；哪天 Entur 不接受了，就用普通查询，卡片仍显示原来的内容。
+            val trip = if (kind == CommuteKind.TRAIN) {
+                try {
+                    searchTrips(from, to, at, count, kind, unfiltered = true)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: AppError) {
+                    if (!isRefusal(e)) throw e
+                    searchTrips(from, to, at, count, kind, unfiltered = false)
+                }
             } else {
-                first
+                searchTrips(from, to, at, count, kind, unfiltered = false)
             }
             trip.tripPatterns.mapNotNull { pattern ->
+                val tags = pattern.systemNotices.map { it.tag }
+                // Only options hidden as near-copies are wanted back; anything else Entur would drop stays dropped.
+                // 只要回被当成近似重复而隐藏的方案；Entur 因别的原因要丢掉的照样丢掉。
+                if (tags.any { !it.startsWith(SIMILAR_LEGS_TAG) }) return@mapNotNull null
                 // Walking legs only connect rides; a pattern with no ride at all is just a walk. / 步行段只是连接各段；一段车都不坐的方案只是步行。
                 val legs = pattern.legs.filter { it.mode != "foot" }.map(::toLeg)
                 // A ride without readable times drops the whole option: without it the line, transfers or arrival would be wrong.
                 // 某段车的时刻读不出来就丢掉整个方案：少了它，线路、换乘或到达时间都会是错的。
-                if (legs.isEmpty() || null in legs) null else TripOption(legs.filterNotNull())
+                if (legs.isEmpty() || null in legs) null else TripOption(legs.filterNotNull(), alternative = tags.isNotEmpty())
             }
         }
 
+    private fun searchTrips(from: TransitStop, to: TransitStop, at: ZonedDateTime, count: Int, kind: CommuteKind, unfiltered: Boolean): TripResponse.Trip {
+        val first = queryTrips(from, to, at, count, kind, window = null, unfiltered)
+        // Entur picks a search window of an hour or two by itself; on a quiet evening line the next train can be further
+        // away than that, so an empty answer for this reason is asked again with a long window.
+        // Entur 自己选一两个小时的搜索时间窗；晚上班次稀少的线路，下一班车可能比这还远，所以因此查空时用长时间窗再查一次。
+        return if (first.tripPatterns.isEmpty() && first.routingErrors.any { it.code == NO_CONNECTION_IN_WINDOW }) {
+            queryTrips(from, to, at, count, kind, window = LONG_SEARCH_WINDOW_MINUTES, unfiltered)
+        } else {
+            first
+        }
+    }
+
+    /**
+     * A rejected query rather than an outage: GraphQL errors without data, or a 4xx. Only these fall back to the plain query;
+     * a network or server failure would fail it too.
+     * 查询被拒绝而不是服务故障：只有错误没有数据，或 4xx。只有这些才退回普通查询；网络或服务器故障时普通查询同样会失败。
+     */
+    private fun isRefusal(e: AppError) = e is AppError.BadData || (e is AppError.Http && e.code in 400..499)
+
     /** One trip request; a null [window] leaves the search window to Entur. / 一次行程请求；[window] 为空时由 Entur 决定搜索时间窗。 */
-    private fun queryTrips(from: TransitStop, to: TransitStop, at: ZonedDateTime, count: Int, kind: CommuteKind, window: Int?): TripResponse.Trip {
+    private fun queryTrips(
+        from: TransitStop,
+        to: TransitStop,
+        at: ZonedDateTime,
+        count: Int,
+        kind: CommuteKind,
+        window: Int?,
+        unfiltered: Boolean,
+    ): TripResponse.Trip {
         val variables = buildJsonObject {
             put("from", from.id)
             put("to", to.id)
@@ -107,7 +147,7 @@ class EnturProvider(
                 },
             )
         }
-        val response = decode(TripResponse.serializer(), post(TRIP_QUERY, variables), "trip response")
+        val response = decode(TripResponse.serializer(), post(if (unfiltered) UNFILTERED_TRIP_QUERY else TRIP_QUERY, variables), "trip response")
         failOnErrors(response.errors, usable = response.data?.trip != null)
         return response.data?.trip ?: TripResponse.Trip()
     }
@@ -233,6 +273,12 @@ class EnturProvider(
         /** Entur's routing error for "nothing within the search window". / Entur 表示「搜索时间窗内没有车」的路由错误码。 */
         internal const val NO_CONNECTION_IN_WINDOW = "noTransitConnectionInSearchWindow"
 
+        /**
+         * The tag Entur puts on an option its similar-legs filter would hide, e.g. `similar-legs-filter-85p-1x`.
+         * Entur 给「相似行程」过滤器要隐藏的方案打的标签，例如 `similar-legs-filter-85p-1x`。
+         */
+        internal const val SIMILAR_LEGS_TAG = "similar-legs-filter"
+
         /** Six hours reach past an evening gap to the last trains of the day. / 六小时足以越过晚间的空档，找到当天最后几班车。 */
         internal const val LONG_SEARCH_WINDOW_MINUTES = 360
         const val CLIENT_HEADER = "ET-Client-Name"
@@ -263,6 +309,26 @@ class EnturProvider(
               }
             }
         """.trimIndent()
+
+        /**
+         * [TRIP_QUERY] with Entur's filters in debug mode: the options they would drop come back too, each tagged with the
+         * reason. `limitToSearchWindow` still leaves out what falls outside the search window.
+         * 让 Entur 的过滤器进入调试模式的 [TRIP_QUERY]：原本要丢掉的方案也一起返回，并标出原因。`limitToSearchWindow`
+         * 仍然不返回搜索时间窗以外的方案。
+         */
+        internal val UNFILTERED_TRIP_QUERY = TRIP_QUERY
+            .insertAfter("includeRealtimeCancellations: true,", " itineraryFilters: { debug: limitToSearchWindow },")
+            .insertAfter("tripPatterns {", "\n    systemNotices { tag }")
+
+        /**
+         * Each insertion must land: without the filter switch no option comes back, without the tags every hidden near-copy
+         * would show as an ordinary row.
+         * 每处插入都必须成功：少了过滤开关就拿不回任何方案，少了标签则每个被隐藏的近似重复都会显示成普通的一行。
+         */
+        private fun String.insertAfter(anchor: String, text: String): String {
+            check(split(anchor).size == 2) { "anchor must occur once: $anchor" }
+            return replace(anchor, anchor + text)
+        }
 
         /**
          * Three hours and 200 departures: lines are filtered on the client, so the departure count must not be a tighter
@@ -315,7 +381,10 @@ internal data class TripResponse(val data: Data? = null, val errors: List<GraphQ
     data class RoutingError(val code: String = "")
 
     @Serializable
-    data class Pattern(val legs: List<Leg> = emptyList())
+    data class Pattern(val legs: List<Leg> = emptyList(), val systemNotices: List<Notice> = emptyList())
+
+    @Serializable
+    data class Notice(val tag: String = "")
 }
 
 @Serializable

@@ -305,6 +305,12 @@
     <string name="transit_back_home">回家 · %1$s → %2$s</string>
     <string name="transit_no_options">目前查不到出行方案。</string>
     <string name="transit_no_departures">接下来几小时没有符合条件的班次。</string>
+    <plurals name="transit_arrive_earlier">
+        <item quantity="other">早到 %1$d 分钟</item>
+    </plurals>
+    <plurals name="transit_leave_later">
+        <item quantity="other">晚走 %1$d 分钟</item>
+    </plurals>
     <string name="transit_direct">直达</string>
     <plurals name="transit_transfers">
         <item quantity="other">在 %1$s 换乘</item>

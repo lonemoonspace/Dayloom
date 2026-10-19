@@ -4,6 +4,18 @@ Each version has an English section followed by a Chinese one. The heading must 
 looks it up literally.
 每个版本先写英文、再写中文。标题必须恰好是 `## X.Y.Z`：发版 workflow 按字面查找。
 
+## Unreleased
+
+- Train card: transfers onto a faster train now show. Entur hides a change at a bigger station (for example a local train
+  to a hub, then an express) as a near-copy of the direct train, so train commutes ask for those hidden options too and
+  keep one only when it arrives earlier, or lets the user leave later and still arrive at the same time. The row says
+  "Change at X · 8 min earlier" (or "Leave 8 min later"); a faster transfer replaces the direct row of the same first
+  train. Entur documents that switch as for testing only, so if it is ever refused the card falls back to the plain query.
+
+- 火车卡片：现在会显示换乘更快的车的方案。Entur 会把在大站换乘（比如先坐慢车到枢纽站，再换快车）当成直达车的近似重复
+  而隐藏，所以火车通勤连这些被隐藏的方案一起要，只留下能早到、或能晚走又同时到的那些。这一行写「在 X 换乘 · 早到 8 分钟」
+  （或「晚走 8 分钟」）；更快的换乘方案取代同一班首车的直达行。Entur 的文档写明这个开关只供测试，哪天被拒绝了卡片就退回普通查询。
+
 ## 0.2.0
 
 - Project skeleton (M0): module system with registry, host and namespaced storage; generic refresh coordinator and

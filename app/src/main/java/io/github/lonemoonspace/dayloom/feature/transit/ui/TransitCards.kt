@@ -26,7 +26,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.lonemoonspace.dayloom.R
@@ -50,6 +54,8 @@ import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteTrips
 import io.github.lonemoonspace.dayloom.feature.transit.domain.FavouriteBoard
 import io.github.lonemoonspace.dayloom.feature.transit.domain.LegState
 import io.github.lonemoonspace.dayloom.feature.transit.domain.LegStatus
+import io.github.lonemoonspace.dayloom.feature.transit.domain.TransferGain
+import io.github.lonemoonspace.dayloom.feature.transit.domain.TransferGainKind
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitPolicy
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TripOption
 import java.time.Duration
@@ -94,8 +100,8 @@ internal fun CommuteCard(
         }
         when (trips?.mode) {
             null -> if (error == null) SkeletonLines()
-            CommuteMode.OUTBOUND -> OptionList(TransitPolicy.visibleOptions(trips.outbound, now, route.options), now)
-            CommuteMode.INBOUND -> OptionList(TransitPolicy.visibleOptions(trips.inbound, now, route.options), now)
+            CommuteMode.OUTBOUND -> OptionList(trips.outbound, route.options, now)
+            CommuteMode.INBOUND -> OptionList(trips.inbound, route.options, now)
         }
         if (error != null) ErrorLine(error)
         Attribution()
@@ -114,13 +120,15 @@ private fun kindIcon(kind: CommuteKind): Int = when (kind) {
     CommuteKind.BUS -> R.drawable.ic_bus
 }
 
+/** [all] is the snapshot's list: a transfer's gain is measured against direct options it may have replaced. / [all] 是快照里的列表：换乘的收益要和可能被它取代的直达方案比。 */
 @Composable
-private fun OptionList(options: List<TripOption>, now: ZonedDateTime) {
+private fun OptionList(all: List<TripOption>, limit: Int, now: ZonedDateTime) {
+    val options = TransitPolicy.visibleOptions(all, now, limit)
     if (options.isEmpty()) {
         Hint(stringResource(R.string.transit_no_options))
         return
     }
-    options.forEachIndexed { i, option -> OptionRow(option, now, divider = i > 0) }
+    options.forEachIndexed { i, option -> OptionRow(option, TransitPolicy.transferGain(option, all, now), now, divider = i > 0) }
 }
 
 /**
@@ -131,7 +139,7 @@ private fun OptionList(options: List<TripOption>, now: ZonedDateTime) {
  * 被取消的方案保留并划掉，用户才知道它为什么没了。
  */
 @Composable
-private fun OptionRow(option: TripOption, now: ZonedDateTime, divider: Boolean) {
+private fun OptionRow(option: TripOption, gain: TransferGain?, now: ZonedDateTime, divider: Boolean) {
     val time = rememberTimeFormatter()
     fun at(millis: Long) = Instant.ofEpochMilli(millis).atZone(now.zone).format(time)
     val first = option.legs.first()
@@ -162,7 +170,7 @@ private fun OptionRow(option: TripOption, now: ZonedDateTime, divider: Boolean) 
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Hint(detailText(option))
+        Hint(detailText(option, gain))
     }
 }
 
@@ -211,23 +219,38 @@ private fun TransitRow(
     }
 }
 
-/** "Direct · Pl. 4" or "Change at Oslo S · Pl. 4". / 「直达 · 4 站台」或「在 Oslo S 换乘 · 4 站台」。 */
+/**
+ * "Direct · Pl. 4" or "Change at Asker · 8 min earlier · Pl. 4"; the gain is green, the only colour in the line.
+ * 「直达 · 4 站台」或「在 Asker 换乘 · 早到 8 分钟 · 4 站台」；收益用绿色，是这一行里唯一的颜色。
+ */
 @Composable
-private fun detailText(option: TripOption): String {
+private fun detailText(option: TripOption, gain: TransferGain?): AnnotatedString {
     val route = if (option.transfers == 0) {
         stringResource(R.string.transit_direct)
     } else {
         pluralStringResource(R.plurals.transit_transfers, option.transfers, option.legs.dropLast(1).map { it.toName }.distinct().joinToString(", "))
     }
+    val gainText = when (gain?.kind) {
+        null -> null
+        TransferGainKind.ARRIVE_EARLIER -> pluralStringResource(R.plurals.transit_arrive_earlier, gain.minutes, gain.minutes)
+        TransferGainKind.LEAVE_LATER -> pluralStringResource(R.plurals.transit_leave_later, gain.minutes, gain.minutes)
+    }
+    val green = MaterialTheme.statusColors.green
     val platform = option.legs.first().platform
     val parts = listOfNotNull(
         // Said in words too: the bus leaves from a street stop, not the platform the user would head for.
         // 也用文字说明：巴士从街边站点出发，而不是用户平时去的站台。
-        stringResource(R.string.transit_replacement_bus).takeIf { option.legs.any { it.replacementBus } },
-        route,
-        platform.takeIf { it.isNotEmpty() }?.let { stringResource(R.string.transit_platform, it) },
+        stringResource(R.string.transit_replacement_bus).takeIf { option.legs.any { it.replacementBus } }?.let { AnnotatedString(it) },
+        AnnotatedString(route),
+        gainText?.let { text -> buildAnnotatedString { withStyle(SpanStyle(color = green)) { append(text) } } },
+        platform.takeIf { it.isNotEmpty() }?.let { AnnotatedString(stringResource(R.string.transit_platform, it)) },
     )
-    return parts.joinToString(" · ")
+    return buildAnnotatedString {
+        parts.forEachIndexed { i, part ->
+            if (i > 0) append(" · ")
+            append(part)
+        }
+    }
 }
 
 /**
@@ -372,7 +395,10 @@ private fun StatusBadge(status: LegStatus, prefix: String? = null) {
 }
 
 @Composable
-private fun Hint(text: String, maxLines: Int = 1) {
+private fun Hint(text: String, maxLines: Int = 1) = Hint(AnnotatedString(text), maxLines)
+
+@Composable
+private fun Hint(text: AnnotatedString, maxLines: Int = 1) {
     Text(
         text,
         style = MaterialTheme.typography.bodySmall,

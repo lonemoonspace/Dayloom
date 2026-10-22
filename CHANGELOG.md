@@ -4,7 +4,7 @@ Each version has an English section followed by a Chinese one. The heading must 
 looks it up literally.
 每个版本先写英文、再写中文。标题必须恰好是 `## X.Y.Z`：发版 workflow 按字面查找。
 
-## Unreleased
+## 0.2.1
 
 - Train card: transfers onto a faster train now show. Entur hides a change at a bigger station (for example a local train
   to a hub, then an express) as a near-copy of the direct train, so train commutes ask for those hidden options too and

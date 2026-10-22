@@ -3,6 +3,7 @@ package io.github.lonemoonspace.dayloom.feature.transit
 import io.github.lonemoonspace.dayloom.R
 import io.github.lonemoonspace.dayloom.core.i18n.UiText
 import io.github.lonemoonspace.dayloom.core.notify.RuleInput
+import io.github.lonemoonspace.dayloom.core.refresh.RefreshCadence
 import io.github.lonemoonspace.dayloom.core.refresh.RefreshReport
 import io.github.lonemoonspace.dayloom.core.refresh.SourceId
 import io.github.lonemoonspace.dayloom.core.refresh.SourceResult
@@ -19,6 +20,7 @@ import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitBrief
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitLeg
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitPolicy
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TripOption
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -104,6 +106,80 @@ class TransitPolicyTest {
         assertEquals("a broken limit shows nothing instead of crashing", emptyList<TripOption>(), TransitPolicy.visibleOptions(listOf(soon), now, -1))
     }
 
+    @Test
+    fun `a train that passed its time after the last fetch stays until a fetch confirms it left`() {
+        val train = TripOption(listOf(leg(dep = now.minusMinutes(2))))
+        val fetchedBefore = ms(now.minusMinutes(5))
+        val fetchedAfter = ms(now.minusMinutes(1))
+
+        assertEquals(listOf(train), TransitPolicy.visibleOptions(listOf(train), now, 3, fetchedBefore))
+        assertTrue(TransitPolicy.awaitingDeparture(listOf(train), fetchedBefore, now))
+        // A fetch after its departure time that still lists the old time has nothing newer to say: it is gone.
+        // 发车时刻之后的抓取仍是旧时刻，说明没有更新的消息：它已开走。
+        assertEquals(emptyList<TripOption>(), TransitPolicy.visibleOptions(listOf(train), now, 3, fetchedAfter))
+        assertFalse(TransitPolicy.awaitingDeparture(listOf(train), fetchedAfter, now))
+        assertEquals("without a fetch time nothing is kept", emptyList<TripOption>(), TransitPolicy.visibleOptions(listOf(train), now, 3))
+    }
+
+    @Test
+    fun `an unconfirmed train is kept for at most the grace period`() {
+        val old = TripOption(listOf(leg(dep = now.minus(TransitPolicy.UNCONFIRMED_GRACE).minusMinutes(1))))
+        val fetched = ms(now.minusHours(2))
+
+        assertEquals(emptyList<TripOption>(), TransitPolicy.visibleOptions(listOf(old), now, 3, fetched))
+        assertFalse(TransitPolicy.awaitingDeparture(listOf(old), fetched, now))
+    }
+
+    @Test
+    fun `an unconfirmed train does not take a place in the limit`() {
+        val late = TripOption(listOf(leg(dep = now.minusMinutes(2))))
+        val next = TripOption(listOf(leg(dep = now.plusMinutes(20))))
+        val fetched = ms(now.minusMinutes(5))
+
+        assertEquals(listOf(late, next), TransitPolicy.visibleOptions(listOf(next, late), now, 1, fetched))
+    }
+
+    @Test
+    fun `only a shown, uncancelled train waiting to be confirmed speeds up refreshing`() {
+        val fetched = ms(now.minusMinutes(5))
+        val cancelled = TripOption(listOf(leg(dep = now.minusMinutes(2), cancelled = true)))
+        // Leaves later than a direct train and arrives later too: the card never shows it.
+        // 比直达晚走也晚到：卡片从不显示它。
+        val laterLeg = leg(dep = now.minusMinutes(2))
+        val hidden = TripOption(listOf(laterLeg.copy(expectedArrival = laterLeg.expectedArrival + 600_000)), alternative = true)
+        val direct = TripOption(listOf(leg(dep = now.minusMinutes(3))))
+        val confirmedGone = TripOption(listOf(leg(dep = now.minusMinutes(10))))
+        val normal = RefreshCadence(interval = Duration.ofMinutes(30))
+
+        assertFalse(TransitPolicy.awaitingDeparture(listOf(cancelled), fetched, now))
+        assertEquals(emptyList<TripOption>(), TransitPolicy.visibleOptions(listOf(confirmedGone, hidden), now, 5, fetched))
+        assertFalse(TransitPolicy.awaitingDeparture(listOf(confirmedGone, hidden), fetched, now))
+        assertEquals(normal, TransitPolicy.commuteCadence(listOf(cancelled), fetched, now, normal))
+        assertEquals(TransitPolicy.AWAITING_CADENCE, TransitPolicy.commuteCadence(listOf(direct), fetched, now, normal))
+    }
+
+    @Test
+    fun `unconfirmed edges - leaving at the fetch time, at the end of the grace, and a zero limit`() {
+        val atFetch = TripOption(listOf(leg(dep = now.minusMinutes(5))))
+        val atGraceEnd = TripOption(listOf(leg(dep = now.minus(TransitPolicy.UNCONFIRMED_GRACE))))
+        val next = TripOption(listOf(leg(dep = now.plusMinutes(20))))
+        val fetched = ms(now.minusMinutes(40))
+
+        assertEquals(listOf(atFetch), TransitPolicy.visibleOptions(listOf(atFetch), now, 3, ms(now.minusMinutes(5))))
+        assertEquals(listOf(atGraceEnd), TransitPolicy.visibleOptions(listOf(atGraceEnd), now, 3, fetched))
+        assertEquals("a zero limit still keeps unconfirmed trains", listOf(atFetch), TransitPolicy.visibleOptions(listOf(next, atFetch), now, 0, fetched))
+        assertEquals(listOf(atFetch), TransitPolicy.visibleOptions(listOf(next, atFetch), now, -1, fetched))
+    }
+
+    @Test
+    fun `a two-change trip whose first train passed its time stays until confirmed`() {
+        val trip = TripOption(listOf(leg(dep = now.minusMinutes(3)), leg(dep = now.plusMinutes(20)), leg(dep = now.plusMinutes(40))))
+        val fetched = ms(now.minusMinutes(5))
+
+        assertEquals(listOf(trip), TransitPolicy.visibleOptions(listOf(trip), now, 3, fetched))
+        assertTrue(TransitPolicy.awaitingDeparture(listOf(trip), fetched, now))
+    }
+
     // Transfers / 换乘
 
     private fun ride(line: String, dep: ZonedDateTime, arr: ZonedDateTime, from: String, to: String, cancelled: Boolean = false) = TransitLeg(
@@ -131,6 +207,40 @@ class TransitPolicyTest {
         assertEquals(listOf(faster1, direct2), TransitPolicy.visibleOptions(all, now, 5))
         assertEquals(TransferGain(TransferGainKind.ARRIVE_EARLIER, 8), TransitPolicy.transferGain(faster1, all, now))
         assertNull(TransitPolicy.transferGain(direct2, all, now))
+    }
+
+    @Test
+    fun `a late transfer stays, with its direct option folded in, until a fetch confirms it left`() {
+        val all = listOf(direct1, faster1, direct2, slower2)
+        val fetched = ms(t(5, 7, 35))
+        val passed = t(5, 7, 45)
+
+        assertEquals(listOf(faster1, direct2), TransitPolicy.visibleOptions(all, passed, 5, fetched))
+        assertEquals(direct1, TransitPolicy.foldedDirect(faster1, all))
+        assertEquals(TransferGain(TransferGainKind.ARRIVE_EARLIER, 8), TransitPolicy.transferGain(faster1, all, passed, fetched))
+        assertEquals(listOf(direct2), TransitPolicy.visibleOptions(all, passed, 5))
+    }
+
+    @Test
+    fun `a transfer shows the direct option it replaced on its second line`() {
+        val all = listOf(direct1, faster1, direct2, slower2)
+
+        assertEquals(direct1, TransitPolicy.foldedDirect(faster1, all))
+        assertNull(TransitPolicy.foldedDirect(direct2, all))
+        // Leaving home on a different train than any direct option, nothing was folded in. / 和任何直达都不是同一班首车，没有并入的直达。
+        val leaveLater = TripOption(listOf(ride("R1", t(5, 7, 45), t(5, 7, 52), "Stop A", "Stop B"), faster1.legs[1]), alternative = true)
+        assertNull(TransitPolicy.foldedDirect(leaveLater, listOf(direct1, leaveLater)))
+        // A cancelled direct option was never folded in, so it keeps its own struck-through row. / 被取消的直达从未被并入，仍单独一行并划掉。
+        val cancelledDirect = direct1.copy(legs = direct1.legs.map { it.copy(cancelled = true) })
+        assertNull(TransitPolicy.foldedDirect(faster1, listOf(cancelledDirect, faster1)))
+    }
+
+    @Test
+    fun `stop names drop the stasjon suffix for the narrow station column`() {
+        assertEquals("Asker", TransitPolicy.shortStopName("Asker stasjon"))
+        assertEquals("Oslo S", TransitPolicy.shortStopName(" Oslo S "))
+        assertEquals("Nationaltheatret", TransitPolicy.shortStopName("Nationaltheatret Stasjon"))
+        assertEquals("stasjon", TransitPolicy.shortStopName("stasjon"))
     }
 
     @Test

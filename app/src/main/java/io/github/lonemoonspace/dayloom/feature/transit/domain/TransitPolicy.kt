@@ -1,5 +1,6 @@
 package io.github.lonemoonspace.dayloom.feature.transit.domain
 
+import io.github.lonemoonspace.dayloom.core.refresh.RefreshCadence
 import io.github.lonemoonspace.dayloom.core.routine.CommuteDirection
 import io.github.lonemoonspace.dayloom.core.routine.RoutinePolicy
 import java.time.Duration
@@ -89,16 +90,62 @@ object TransitPolicy {
         RoutinePolicy.isDaytime(now) && (option.departure - now.toInstant().toEpochMilli()).let { it >= 0 && it <= ALERT_AHEAD.toMillis() }
 
     /**
-     * Options not yet departed, at most [limit], after [withTransfers]; a cancelled first leg still shows, so the user sees
-     * why it is missing.
-     * 经 [withTransfers] 处理后尚未发车的方案，最多 [limit] 个；第一段被取消的方案照样显示，用户才知道它为什么没了。
+     * How long after its expected departure an option stays while no fetch since then has confirmed it left. Long enough
+     * for a typical late train, short enough that a card left without network does not fill up with departed trains.
+     * 方案过了预计发车时刻、但之后还没有抓取确认它已开走时，最多保留多久。够覆盖常见的晚点，又不至于让断网的卡片堆满已开走的车。
      */
-    fun visibleOptions(options: List<TripOption>, now: ZonedDateTime, limit: Int): List<TripOption> {
+    val UNCONFIRMED_GRACE: Duration = Duration.ofMinutes(30)
+
+    /**
+     * Options not yet departed, at most [limit], after [withTransfers]; a cancelled first leg still shows, so the user sees
+     * why it is missing. With [fetchedAt], an option whose expected departure passed after that fetch also stays (for up to
+     * [UNCONFIRMED_GRACE]) on top of the [limit]: a delay announced since then would otherwise make a train that is still
+     * coming vanish, and it must not push the next real train off a short list. Without [fetchedAt] nothing past is kept.
+     * 经 [withTransfers] 处理后尚未发车的方案，最多 [limit] 个；第一段被取消的方案照样显示，用户才知道它为什么没了。给了
+     * [fetchedAt] 时，预计发车时刻在那次抓取之后才过去的方案也保留（最多 [UNCONFIRMED_GRACE]），且不占 [limit] 的名额：否则
+     * 之后才报的晚点会让一班还没来的车消失，它也不能把下一班真正的车挤出很短的列表。不给 [fetchedAt] 就不保留过点的方案。
+     */
+    fun visibleOptions(options: List<TripOption>, now: ZonedDateTime, limit: Int, fetchedAt: Long? = null): List<TripOption> {
         val nowMillis = now.toInstant().toEpochMilli()
+        val shown = shown(options, now, fetchedAt)
+        val unconfirmed = shown.filter { it.departure < nowMillis && isUnconfirmed(it, fetchedAt, nowMillis) }
         // A limit from a damaged settings file must not crash the card. / 设置文件损坏得来的上限不能让卡片崩溃。
-        return withTransfers(options, now).filter { it.legs.isNotEmpty() && it.departure >= nowMillis }.sortedBy { it.departure }
-            .take(limit.coerceAtLeast(0))
+        val upcoming = shown.filter { it.departure >= nowMillis }.sortedBy { it.departure }.take(limit.coerceAtLeast(0))
+        return (unconfirmed + upcoming).sortedBy { it.departure }
     }
+
+    /**
+     * Whether the card shows an uncancelled option whose expected departure passed after [fetchedAt], so it is not known yet
+     * whether it left. The commute source then refreshes every minute until a fetch settles it. Computed on what the card
+     * shows, so options the card hides never drive the faster refresh.
+     * 卡片上是否有未取消、且预计发车时刻在 [fetchedAt] 之后才过去的方案，因而还不知道它开走没有。这时通勤来源每分钟刷新一次，
+     * 直到有抓取确认。按卡片显示的内容来算，卡片不显示的方案不会引起加快刷新。
+     */
+    fun awaitingDeparture(options: List<TripOption>, fetchedAt: Long, now: ZonedDateTime): Boolean {
+        val nowMillis = now.toInstant().toEpochMilli()
+        return shown(options, now, fetchedAt).any { it.departure < nowMillis && isUnconfirmed(it, fetchedAt, nowMillis) && !it.isCancelled() }
+    }
+
+    /** What [visibleOptions] picks from: after [withTransfers], with a first leg. / [visibleOptions] 从中挑选的方案：经过 [withTransfers]、且至少有一段。 */
+    private fun shown(options: List<TripOption>, now: ZonedDateTime, fetchedAt: Long?): List<TripOption> =
+        withTransfers(options, now, fetchedAt).filter { it.legs.isNotEmpty() }
+
+    /**
+     * The commute source's cadence: [AWAITING_CADENCE] while [awaitingDeparture], else [normal].
+     * 通勤来源的刷新节奏：[awaitingDeparture] 时用 [AWAITING_CADENCE]，否则用 [normal]。
+     */
+    fun commuteCadence(options: List<TripOption>, fetchedAt: Long, now: ZonedDateTime, normal: RefreshCadence): RefreshCadence =
+        if (awaitingDeparture(options, fetchedAt, now)) AWAITING_CADENCE else normal
+
+    /** Every minute, day or night: a train about to be confirmed gone is the same at any hour. / 白天夜里都每分钟一次：确认一班车是否开走不分时段。 */
+    val AWAITING_CADENCE = RefreshCadence(interval = Duration.ofMinutes(1))
+
+    /** Not departed by the clock, or departed only after [fetchedAt] and so not yet confirmed. / 按时钟还没发车，或者在 [fetchedAt] 之后才过发车时刻、还没被确认。 */
+    private fun isPending(option: TripOption, fetchedAt: Long?, nowMillis: Long): Boolean =
+        option.departure >= nowMillis || isUnconfirmed(option, fetchedAt, nowMillis)
+
+    private fun isUnconfirmed(option: TripOption, fetchedAt: Long?, nowMillis: Long): Boolean =
+        fetchedAt != null && option.departure >= fetchedAt && option.departure >= nowMillis - UNCONFIRMED_GRACE.toMillis()
 
     /**
      * Keeps an [TripOption.alternative] only when it has a [transferGain], is not cancelled, and nothing else leaves at least
@@ -109,10 +156,10 @@ object TransitPolicy {
      * 保留下来的换乘方案若和某个直达方案第一段是同一班车、又到得更早，就取代那个直达：在换乘站不下车就是那个直达，两行会
      * 重复同一班车。只取代未被取消的直达，其他方案都保留自己的一行。
      */
-    fun withTransfers(options: List<TripOption>, now: ZonedDateTime): List<TripOption> {
+    fun withTransfers(options: List<TripOption>, now: ZonedDateTime, fetchedAt: Long? = null): List<TripOption> {
         if (options.none { it.alternative }) return options
         val kept = options.withIndex().filter { (i, option) ->
-            option.alternative && !option.isCancelled() && transferGain(option, options, now) != null &&
+            option.alternative && !option.isCancelled() && transferGain(option, options, now, fetchedAt) != null &&
                 options.withIndex().none { (j, other) -> j != i && beats(other, option, otherFirst = j < i) }
         }.map { it.value }
         return options.filter { option ->
@@ -128,14 +175,18 @@ object TransitPolicy {
      * What [option] gains over the latest ordinary option in [options] (the raw list, before [withTransfers]) that it beats
      * and that has not left yet; null for ordinary options. Arriving earlier is named first; otherwise the same arrival with
      * a later start. The baseline is any ordinary option, not only direct ones, so routes with no direct train benefit too.
+     * "Not left yet" follows [visibleOptions]: with [fetchedAt], a baseline past its time but not confirmed gone still counts,
+     * so a late transfer does not swap back to its slower direct option the moment the clock passes it.
      * [option] 比 [options]（[withTransfers] 之前的原始列表）里它胜过、且还没开走的最晚出发的普通方案好在哪里；普通方案
      * 返回 null。先看能否早到；否则是同时到、但可以晚走。比较对象是任何普通方案而不只是直达，没有直达车的线路也能受益。
+     * 「还没开走」与 [visibleOptions] 一致：给了 [fetchedAt] 时，过了时刻但还没确认开走的比较对象也算，晚点的换乘方案不会在
+     * 时钟走过它的那一刻又换回更慢的直达。
      */
-    fun transferGain(option: TripOption, options: List<TripOption>, now: ZonedDateTime): TransferGain? {
+    fun transferGain(option: TripOption, options: List<TripOption>, now: ZonedDateTime, fetchedAt: Long? = null): TransferGain? {
         if (!option.alternative) return null
         val nowMillis = now.toInstant().toEpochMilli()
         val baseline = options.filter {
-            !it.alternative && it.legs.isNotEmpty() && !it.isCancelled() && it.departure >= nowMillis &&
+            !it.alternative && it.legs.isNotEmpty() && !it.isCancelled() && isPending(it, fetchedAt, nowMillis) &&
                 it.departure <= option.departure && it.arrival >= option.arrival
         }.maxByOrNull { it.departure } ?: return null
         val earlier = Duration.ofMillis(baseline.arrival - option.arrival).toMinutes().toInt()
@@ -157,6 +208,35 @@ object TransitPolicy {
         if (other.legs.isEmpty() || other.isCancelled() || other.departure < option.departure || other.arrival > option.arrival) return false
         return other.departure > option.departure || other.arrival < option.arrival || !other.alternative || otherFirst
     }
+
+    /**
+     * The direct option [withTransfers] folded into the shown transfer [option] (same first ride, arriving later): staying on
+     * board at the transfer stop. The card shows it dimmed under the transfer so the two arrivals can be compared. Null for
+     * ordinary options and when no direct option was folded in.
+     * [withTransfers] 并入换乘方案 [option] 的那个直达方案（第一段是同一班车、到得更晚），也就是在换乘站不下车。卡片把它淡色
+     * 显示在换乘方案下面，两个到达时刻一比就清楚。普通方案或没有并入直达时返回 null。
+     */
+    fun foldedDirect(option: TripOption, options: List<TripOption>): TripOption? {
+        if (!option.alternative) return null
+        return options.filter {
+            !it.alternative && it.transfers == 0 && !it.isCancelled() && sameFirstRide(option, it) && option.arrival < it.arrival
+        }.minByOrNull { it.arrival }
+    }
+
+    /**
+     * "Asker stasjon" becomes "Asker": Entur names rail stops this way, and the suffix does not fit the card's station column.
+     * 「Asker stasjon」变成「Asker」：Entur 的火车站都这样命名，卡片的站名列放不下这个后缀。
+     */
+    fun shortStopName(name: String): String {
+        val trimmed = name.trim()
+        return if (trimmed.endsWith(STATION_SUFFIX, ignoreCase = true) && trimmed.length > STATION_SUFFIX.length) {
+            trimmed.dropLast(STATION_SUFFIX.length).trimEnd()
+        } else {
+            trimmed
+        }
+    }
+
+    private const val STATION_SUFFIX = " stasjon"
 
     private fun sameFirstRide(a: TripOption, b: TripOption): Boolean {
         val x = a.legs.firstOrNull() ?: return false

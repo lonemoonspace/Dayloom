@@ -13,6 +13,12 @@ import java.time.format.DateTimeFormatter
  */
 object TransitBrief {
 
+    /**
+     * Only trips still ahead by the clock, unlike the card: the brief is sent once, without the card's "updated X min ago",
+     * so a train kept on the card because no fetch confirmed it left must not be announced as the next one.
+     * 和卡片不同，只看按时钟还没发车的方案：简报只发一次，没有卡片上的「X 分钟前更新」，卡片因为还没确认开走而保留的车不能
+     * 被播报成下一班。
+     */
     fun line(trips: CommuteTrips, now: ZonedDateTime): UiText? {
         // The direction the snapshot was fetched for: after noon that is the way home, and outbound is empty.
         // 用快照抓取时的方向：中午以后是回家方向，去程列表是空的。

@@ -42,6 +42,9 @@ class DisruptionRule(
         // 还不该提醒的班次视同没有；进入范围后提醒一次。
         val option = next?.takeIf { TransitPolicy.isAlertable(it, input.now) }
         if (option == null && previous != null) {
+            // No fetchedAt: the rule only runs right after this round refreshed the snapshot, so nothing past is unconfirmed
+            // beyond the time the round itself took.
+            // 不传 fetchedAt：规则只在本轮刷新完快照之后才运行，除了这一轮本身花的时间，不会有过点却未确认的车。
             val upcoming = TransitPolicy.visibleOptions(snapshot.current, input.now, Int.MAX_VALUE)
             // Nothing to decide, but the trip told about may have left: then its alert is withdrawn and the state cleared.
             // 没有可判定的方案，但提醒过的那班车可能已经开走：那就撤回通知并清空状态。

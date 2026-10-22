@@ -145,14 +145,39 @@ class TransitPolicyTest {
         val cancelled = TripOption(listOf(leg(dep = now.minusMinutes(2), cancelled = true)))
         // Leaves later than a direct train and arrives later too: the card never shows it.
         // 比直达晚走也晚到：卡片从不显示它。
-        val hidden = TripOption(listOf(leg(dep = now.minusMinutes(2)).let { it.copy(expectedArrival = it.expectedArrival + 600_000) }), alternative = true)
+        val laterLeg = leg(dep = now.minusMinutes(2))
+        val hidden = TripOption(listOf(laterLeg.copy(expectedArrival = laterLeg.expectedArrival + 600_000)), alternative = true)
         val direct = TripOption(listOf(leg(dep = now.minusMinutes(3))))
+        val confirmedGone = TripOption(listOf(leg(dep = now.minusMinutes(10))))
         val normal = RefreshCadence(interval = Duration.ofMinutes(30))
 
         assertFalse(TransitPolicy.awaitingDeparture(listOf(cancelled), fetched, now))
-        assertFalse(TransitPolicy.awaitingDeparture(listOf(direct.copy(legs = direct.legs.map { it.copy(expectedDeparture = ms(now.minusMinutes(10))) }), hidden), fetched, now))
+        assertEquals(emptyList<TripOption>(), TransitPolicy.visibleOptions(listOf(confirmedGone, hidden), now, 5, fetched))
+        assertFalse(TransitPolicy.awaitingDeparture(listOf(confirmedGone, hidden), fetched, now))
         assertEquals(normal, TransitPolicy.commuteCadence(listOf(cancelled), fetched, now, normal))
         assertEquals(TransitPolicy.AWAITING_CADENCE, TransitPolicy.commuteCadence(listOf(direct), fetched, now, normal))
+    }
+
+    @Test
+    fun `unconfirmed edges - leaving at the fetch time, at the end of the grace, and a zero limit`() {
+        val atFetch = TripOption(listOf(leg(dep = now.minusMinutes(5))))
+        val atGraceEnd = TripOption(listOf(leg(dep = now.minus(TransitPolicy.UNCONFIRMED_GRACE))))
+        val next = TripOption(listOf(leg(dep = now.plusMinutes(20))))
+        val fetched = ms(now.minusMinutes(40))
+
+        assertEquals(listOf(atFetch), TransitPolicy.visibleOptions(listOf(atFetch), now, 3, ms(now.minusMinutes(5))))
+        assertEquals(listOf(atGraceEnd), TransitPolicy.visibleOptions(listOf(atGraceEnd), now, 3, fetched))
+        assertEquals("a zero limit still keeps unconfirmed trains", listOf(atFetch), TransitPolicy.visibleOptions(listOf(next, atFetch), now, 0, fetched))
+        assertEquals(listOf(atFetch), TransitPolicy.visibleOptions(listOf(next, atFetch), now, -1, fetched))
+    }
+
+    @Test
+    fun `a two-change trip whose first train passed its time stays until confirmed`() {
+        val trip = TripOption(listOf(leg(dep = now.minusMinutes(3)), leg(dep = now.plusMinutes(20)), leg(dep = now.plusMinutes(40))))
+        val fetched = ms(now.minusMinutes(5))
+
+        assertEquals(listOf(trip), TransitPolicy.visibleOptions(listOf(trip), now, 3, fetched))
+        assertTrue(TransitPolicy.awaitingDeparture(listOf(trip), fetched, now))
     }
 
     // Transfers / 换乘
@@ -191,6 +216,7 @@ class TransitPolicyTest {
         val passed = t(5, 7, 45)
 
         assertEquals(listOf(faster1, direct2), TransitPolicy.visibleOptions(all, passed, 5, fetched))
+        assertEquals(direct1, TransitPolicy.foldedDirect(faster1, all))
         assertEquals(TransferGain(TransferGainKind.ARRIVE_EARLIER, 8), TransitPolicy.transferGain(faster1, all, passed, fetched))
         assertEquals(listOf(direct2), TransitPolicy.visibleOptions(all, passed, 5))
     }

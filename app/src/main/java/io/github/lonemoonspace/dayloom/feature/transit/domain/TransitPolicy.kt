@@ -107,7 +107,7 @@ object TransitPolicy {
      */
     fun visibleOptions(options: List<TripOption>, now: ZonedDateTime, limit: Int, fetchedAt: Long? = null): List<TripOption> {
         val nowMillis = now.toInstant().toEpochMilli()
-        val shown = withTransfers(options, now, fetchedAt).filter { it.legs.isNotEmpty() }
+        val shown = shown(options, now, fetchedAt)
         val unconfirmed = shown.filter { it.departure < nowMillis && isUnconfirmed(it, fetchedAt, nowMillis) }
         // A limit from a damaged settings file must not crash the card. / 设置文件损坏得来的上限不能让卡片崩溃。
         val upcoming = shown.filter { it.departure >= nowMillis }.sortedBy { it.departure }.take(limit.coerceAtLeast(0))
@@ -121,8 +121,14 @@ object TransitPolicy {
      * 卡片上是否有未取消、且预计发车时刻在 [fetchedAt] 之后才过去的方案，因而还不知道它开走没有。这时通勤来源每分钟刷新一次，
      * 直到有抓取确认。按卡片显示的内容来算，卡片不显示的方案不会引起加快刷新。
      */
-    fun awaitingDeparture(options: List<TripOption>, fetchedAt: Long, now: ZonedDateTime): Boolean =
-        visibleOptions(options, now, 0, fetchedAt).any { !it.isCancelled() }
+    fun awaitingDeparture(options: List<TripOption>, fetchedAt: Long, now: ZonedDateTime): Boolean {
+        val nowMillis = now.toInstant().toEpochMilli()
+        return shown(options, now, fetchedAt).any { it.departure < nowMillis && isUnconfirmed(it, fetchedAt, nowMillis) && !it.isCancelled() }
+    }
+
+    /** What [visibleOptions] picks from: after [withTransfers], with a first leg. / [visibleOptions] 从中挑选的方案：经过 [withTransfers]、且至少有一段。 */
+    private fun shown(options: List<TripOption>, now: ZonedDateTime, fetchedAt: Long?): List<TripOption> =
+        withTransfers(options, now, fetchedAt).filter { it.legs.isNotEmpty() }
 
     /**
      * The commute source's cadence: [AWAITING_CADENCE] while [awaitingDeparture], else [normal].

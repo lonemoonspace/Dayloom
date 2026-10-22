@@ -305,7 +305,6 @@
     <string name="transit_back_home">回家 · %1$s → %2$s</string>
     <string name="transit_no_options">目前查不到出行方案。</string>
     <string name="transit_no_departures">接下来几小时没有符合条件的班次。</string>
-    <string name="transit_direct">直达</string>
     <plurals name="transit_minutes">
         <item quantity="other">%1$d 分钟</item>
     </plurals>
@@ -320,7 +319,8 @@
     <string name="transit_cancelled">已取消</string>
     <string name="transit_brief">%1$s %2$s · %3$s</string>
     <string name="transit_line_status">%1$s：%2$s</string>
-    <string name="transit_line_status_stacked">%1$s\n%2$s</string>
+    <string name="transit_line_status_compact">%1$s %2$s</string>
+    <string name="transit_arrives">%1$s 到达</string>
     <string name="transit_attribution">公共交通数据：Entur（NLOD）</string>
     <string name="transit_region_note">你的「家」不在挪威。公共交通目前只覆盖挪威（Entur）。</string>
     <string name="transit_from">起点</string>

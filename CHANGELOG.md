@@ -4,6 +4,19 @@ Each version has an English section followed by a Chinese one. The heading must 
 looks it up literally.
 每个版本先写英文、再写中文。标题必须恰好是 `## X.Y.Z`：发版 workflow 按字面查找。
 
+## Unreleased
+
+- Train and bus cards: each route is packed on one line, "L1 (1) Asker R12 (3)": the first line and the platform it leaves
+  from, then the stop, the line changed to and its platform; a direct route is just "L1 (1)" and no longer says "Direct".
+  Platforms are small outlined numbers instead of "Pl. 3", and when a row runs short of room they go from the whole card
+  before the stop name is shortened. The arrival has no arrow and is as large as the departure, in its own column. A late
+  leg's line sits on the same line as its status in the pill, "L1 3 min late", or is dropped when that does not fit.
+
+- 火车与公交卡片：每条路线紧挨着排成一行，如「L1 ① Asker R12 ③」：先坐的线路和出发站台，再是换乘站、换乘的线路和它的站台；
+  直达只有「L1 ①」，不再写「直达」。站台改成描边的小数字胶囊，不再写「3站台」；某一行放不下时整张卡片先去掉站台胶囊，之后才
+  省略站名。到达时刻不带箭头，和出发时刻一样大，单独一列。晚点那段的线路和状态在胶囊里写成一行，如「L1 晚 3 分」，放不下时
+  去掉线路。
+
 ## 0.2.1
 
 - Train card: transfers onto a faster train now show. Entur hides a change at a bigger station (for example a local train

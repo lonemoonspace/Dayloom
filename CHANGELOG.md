@@ -4,7 +4,7 @@ Each version has an English section followed by a Chinese one. The heading must 
 looks it up literally.
 每个版本先写英文、再写中文。标题必须恰好是 `## X.Y.Z`：发版 workflow 按字面查找。
 
-## Unreleased
+## 0.2.2
 
 - Train and bus cards: each route is packed on one line, "L1 (1) Asker R12 (3)": the first line and the platform it leaves
   from, then the stop, the line changed to and its platform; a direct route is just "L1 (1)" and no longer says "Direct".

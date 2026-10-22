@@ -183,6 +183,35 @@ object TransitPolicy {
         return other.departure > option.departure || other.arrival < option.arrival || !other.alternative || otherFirst
     }
 
+    /**
+     * The direct option [withTransfers] folded into the shown transfer [option] (same first ride, arriving later): staying on
+     * board at the transfer stop. The card shows it dimmed under the transfer so the two arrivals can be compared. Null for
+     * ordinary options and when no direct option was folded in.
+     * [withTransfers] 并入换乘方案 [option] 的那个直达方案（第一段是同一班车、到得更晚），也就是在换乘站不下车。卡片把它淡色
+     * 显示在换乘方案下面，两个到达时刻一比就清楚。普通方案或没有并入直达时返回 null。
+     */
+    fun foldedDirect(option: TripOption, options: List<TripOption>): TripOption? {
+        if (!option.alternative) return null
+        return options.filter {
+            !it.alternative && it.transfers == 0 && !it.isCancelled() && sameFirstRide(option, it) && option.arrival < it.arrival
+        }.minByOrNull { it.arrival }
+    }
+
+    /**
+     * "Asker stasjon" becomes "Asker": Entur names rail stops this way, and the suffix does not fit the card's station column.
+     * 「Asker stasjon」变成「Asker」：Entur 的火车站都这样命名，卡片的站名列放不下这个后缀。
+     */
+    fun shortStopName(name: String): String {
+        val trimmed = name.trim()
+        return if (trimmed.endsWith(STATION_SUFFIX, ignoreCase = true) && trimmed.length > STATION_SUFFIX.length) {
+            trimmed.dropLast(STATION_SUFFIX.length).trimEnd()
+        } else {
+            trimmed
+        }
+    }
+
+    private const val STATION_SUFFIX = " stasjon"
+
     private fun sameFirstRide(a: TripOption, b: TripOption): Boolean {
         val x = a.legs.firstOrNull() ?: return false
         val y = b.legs.firstOrNull() ?: return false

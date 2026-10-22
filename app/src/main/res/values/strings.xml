@@ -316,19 +316,7 @@
     <string name="transit_back_home">Home · %1$s → %2$s</string>
     <string name="transit_no_options">No trips found right now.</string>
     <string name="transit_no_departures">No matching departures in the next hours.</string>
-    <plurals name="transit_arrive_earlier">
-        <item quantity="one">%1$d min earlier</item>
-        <item quantity="other">%1$d min earlier</item>
-    </plurals>
-    <plurals name="transit_leave_later">
-        <item quantity="one">Leave %1$d min later</item>
-        <item quantity="other">Leave %1$d min later</item>
-    </plurals>
     <string name="transit_direct">Direct</string>
-    <plurals name="transit_transfers">
-        <item quantity="one">Change at %1$s</item>
-        <item quantity="other">Changes at %1$s</item>
-    </plurals>
     <plurals name="transit_minutes">
         <item quantity="one">%1$d min</item>
         <item quantity="other">%1$d min</item>

@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.background
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -23,14 +24,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.lonemoonspace.dayloom.R
@@ -54,19 +54,16 @@ import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteTrips
 import io.github.lonemoonspace.dayloom.feature.transit.domain.FavouriteBoard
 import io.github.lonemoonspace.dayloom.feature.transit.domain.LegState
 import io.github.lonemoonspace.dayloom.feature.transit.domain.LegStatus
-import io.github.lonemoonspace.dayloom.feature.transit.domain.TransferGain
-import io.github.lonemoonspace.dayloom.feature.transit.domain.TransferGainKind
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitPolicy
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TripOption
-import java.time.Duration
 import java.time.Instant
 import java.time.ZonedDateTime
 
 /**
  * One commute card (train or bus): the next options towards the destination before noon, back from noon on. One row per
- * option: departure time, lines, arrival and duration, transfers and platform, and the worst real-time status of its legs.
- * 一张通勤卡片（火车或公交）：中午前显示去程、中午起显示回程的接下来几个方案。每个方案一行：出发时刻、线路、到达与用时、
- * 换乘与站台，以及各段中最差的实时状态。
+ * option: departure time, its route in aligned columns (see [RouteLine]), and the worst real-time status of its legs.
+ * 一张通勤卡片（火车或公交）：中午前显示去程、中午起显示回程的接下来几个方案。每个方案一行：出发时刻、按列对齐的路线（见
+ * [RouteLine]），以及各段中最差的实时状态。
  */
 @Composable
 internal fun CommuteCard(
@@ -120,7 +117,7 @@ private fun kindIcon(kind: CommuteKind): Int = when (kind) {
     CommuteKind.BUS -> R.drawable.ic_bus
 }
 
-/** [all] is the snapshot's list: a transfer's gain is measured against direct options it may have replaced. / [all] 是快照里的列表：换乘的收益要和可能被它取代的直达方案比。 */
+/** [all] is the snapshot's list: it still holds the direct options folded into transfers. / [all] 是快照里的列表：里面还有被并入换乘方案的直达方案。 */
 @Composable
 private fun OptionList(all: List<TripOption>, limit: Int, now: ZonedDateTime, fetchedAt: Long?) {
     val options = TransitPolicy.visibleOptions(all, now, limit, fetchedAt)
@@ -128,24 +125,22 @@ private fun OptionList(all: List<TripOption>, limit: Int, now: ZonedDateTime, fe
         Hint(stringResource(R.string.transit_no_options))
         return
     }
-    options.forEachIndexed { i, option -> OptionRow(option, TransitPolicy.transferGain(option, all, now), now, divider = i > 0) }
+    options.forEachIndexed { i, option -> OptionRow(option, TransitPolicy.foldedDirect(option, all), now, divider = i > 0) }
 }
 
 /**
  * One option in one row: the expected departure large on the left (the timetable time struck through under it when late),
- * lines, arrival and duration in the middle with transfers and platform under them, the status pill on the right.
- * Cancelled options stay, struck through, so the user knows why they are gone.
- * 一个方案一行：左边大字是预计出发时刻（晚点时下面划掉时刻表时间），中间是线路、到达与用时，下面是换乘与站台，右边是状态胶囊。
- * 被取消的方案保留并划掉，用户才知道它为什么没了。
+ * the route in the middle, the status pill on the right. A transfer that replaced a direct option on the same first train
+ * shows that direct option dimmed on a second line, so the two arrivals line up for comparison. Cancelled options stay,
+ * struck through, so the user knows why they are gone.
+ * 一个方案一行：左边大字是预计出发时刻（晚点时下面划掉时刻表时间），中间是路线，右边是状态胶囊。取代了同一班首车直达方案的
+ * 换乘方案，在第二行淡色显示那个直达方案，两个到达时刻上下对齐便于比较。被取消的方案保留并划掉，用户才知道它为什么没了。
  */
 @Composable
-private fun OptionRow(option: TripOption, gain: TransferGain?, now: ZonedDateTime, divider: Boolean) {
-    val time = rememberTimeFormatter()
-    fun at(millis: Long) = Instant.ofEpochMilli(millis).atZone(now.zone).format(time)
+private fun OptionRow(option: TripOption, folded: TripOption?, now: ZonedDateTime, divider: Boolean) {
     val first = option.legs.first()
     val worst = TransitPolicy.worst(option)
     val cancelled = worst?.second?.state == LegState.CANCELLED
-    val minutes = Duration.ofMillis(option.arrival - option.departure).toMinutes().toInt().coerceAtLeast(0)
     TransitRow(
         expected = option.departure,
         aimed = first.aimedDeparture,
@@ -159,20 +154,74 @@ private fun OptionRow(option: TripOption, gain: TransferGain?, now: ZonedDateTim
             }
         },
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            option.legs.forEach { LineChip(it.line, it.replacementBus) }
-            Text(
-                text = "→ ${at(option.arrival)} · " + pluralStringResource(R.plurals.transit_minutes, minutes, minutes),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (cancelled) MaterialTheme.colorScheme.outline else LocalContentColor.current,
-                textDecoration = if (cancelled) TextDecoration.LineThrough else null,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Hint(detailText(option, gain))
+        RouteLine(option, now, struck = cancelled)
+        if (folded != null) RouteLine(folded, now, struck = false, modifier = Modifier.padding(top = 2.dp).alpha(0.6f))
     }
 }
+
+/**
+ * One route in five columns, the same widths on every line of the card so they stay aligned: first line, then the transfer
+ * stop, the platform there and the line to change to, then the arrival. A direct route reads "L1 · Direct · Pl. 1" with
+ * the platform it leaves from. Only the arrival column flexes, so a wider status pill never shifts the others; the duration
+ * and the gain over the direct option are left out, the arrivals already show them and there is no room at 360 dp.
+ * 一条路线分五列，整张卡片每一行列宽相同，上下对齐：先坐的线路、换乘站、在那里的站台、换乘的线路，最后是到达时刻。直达写成
+ * 「L1 · 直达 · 1站台」，站台是出发站台。只有到达这一列会伸缩，状态胶囊宽一些也不会挤动其他列；用时和比直达早多少都不写，
+ * 到达时刻已经说明，360 dp 宽也放不下。
+ */
+@Composable
+private fun RouteLine(option: TripOption, now: ZonedDateTime, struck: Boolean, modifier: Modifier = Modifier) {
+    val time = rememberTimeFormatter()
+    val color = if (struck) MaterialTheme.colorScheme.outline else LocalContentColor.current
+    val decoration = if (struck) TextDecoration.LineThrough else null
+    val first = option.legs.first()
+    val rest = option.legs.drop(1)
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        // Line chips and platforms may grow past their column rather than lose text; stop names give way instead.
+        // 线路标签和站台宁可超出列宽也不截字；站名则让位省略。
+        Box(Modifier.widthIn(min = FIRST_LINE_WIDTH)) { LineChip(first.line, first.replacementBus, compact = true) }
+        val stop = if (rest.isEmpty()) {
+            stringResource(R.string.transit_direct)
+        } else {
+            option.legs.dropLast(1).map { TransitPolicy.shortStopName(it.toName) }.distinct().joinToString(", ")
+        }
+        RouteCell(stop, color, decoration, Modifier.width(STOP_WIDTH))
+        val platform = (rest.firstOrNull() ?: first).platform
+        RouteCell(
+            if (platform.isEmpty()) "" else stringResource(R.string.transit_platform, platform),
+            color,
+            decoration,
+            Modifier.widthIn(min = PLATFORM_WIDTH),
+        )
+        Row(Modifier.widthIn(min = NEXT_LINE_WIDTH), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            rest.forEach { LineChip(it.line, it.replacementBus, compact = true) }
+        }
+        RouteCell(
+            "→ " + Instant.ofEpochMilli(option.arrival).atZone(now.zone).format(time),
+            color,
+            decoration,
+            Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun RouteCell(text: String, color: Color, decoration: TextDecoration?, modifier: Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = color,
+        textDecoration = decoration,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier,
+    )
+}
+
+/** Column widths of [RouteLine], sized for "R13", "Asker", "3站台" / "Pl. 3" and "RE10". / [RouteLine] 的列宽，按「R13」「Asker」「3站台」/「Pl. 3」「RE10」定。 */
+private val FIRST_LINE_WIDTH = 32.dp
+private val STOP_WIDTH = 34.dp
+private val PLATFORM_WIDTH = 32.dp
+private val NEXT_LINE_WIDTH = 38.dp
 
 /**
  * The row shared by the train, bus and departure board cards, so the three stay identical: the expected time large on the
@@ -220,53 +269,20 @@ private fun TransitRow(
 }
 
 /**
- * "Direct · Pl. 4" or "Change at Asker · 8 min earlier · Pl. 4"; the gain is green, the only colour in the line.
- * 「直达 · 4 站台」或「在 Asker 换乘 · 早到 8 分钟 · 4 站台」；收益用绿色，是这一行里唯一的颜色。
- */
-@Composable
-private fun detailText(option: TripOption, gain: TransferGain?): AnnotatedString {
-    val route = if (option.transfers == 0) {
-        stringResource(R.string.transit_direct)
-    } else {
-        pluralStringResource(R.plurals.transit_transfers, option.transfers, option.legs.dropLast(1).map { it.toName }.distinct().joinToString(", "))
-    }
-    val gainText = when (gain?.kind) {
-        null -> null
-        TransferGainKind.ARRIVE_EARLIER -> pluralStringResource(R.plurals.transit_arrive_earlier, gain.minutes, gain.minutes)
-        TransferGainKind.LEAVE_LATER -> pluralStringResource(R.plurals.transit_leave_later, gain.minutes, gain.minutes)
-    }
-    val green = MaterialTheme.statusColors.green
-    val platform = option.legs.first().platform
-    val parts = listOfNotNull(
-        // Said in words too: the bus leaves from a street stop, not the platform the user would head for.
-        // 也用文字说明：巴士从街边站点出发，而不是用户平时去的站台。
-        stringResource(R.string.transit_replacement_bus).takeIf { option.legs.any { it.replacementBus } }?.let { AnnotatedString(it) },
-        AnnotatedString(route),
-        gainText?.let { text -> buildAnnotatedString { withStyle(SpanStyle(color = green)) { append(text) } } },
-        platform.takeIf { it.isNotEmpty() }?.let { AnnotatedString(stringResource(R.string.transit_platform, it)) },
-    )
-    return buildAnnotatedString {
-        parts.forEachIndexed { i, part ->
-            if (i > 0) append(" · ")
-            append(part)
-        }
-    }
-}
-
-/**
  * A line code as a small tinted tag, as on station signs. A replacement bus keeps the train's code, so it gets a bus icon
- * and a different tint.
- * 线路号做成小底色标签，像车站的指示牌。替代巴士沿用火车的线路号，所以加巴士图标并换一种底色。
+ * and a different tint. [compact] narrows the padding for the commute card's columns.
+ * 线路号做成小底色标签，像车站的指示牌。替代巴士沿用火车的线路号，所以加巴士图标并换一种底色。[compact] 收窄内边距，
+ * 用于通勤卡片的列。
  */
 @Composable
-private fun LineChip(line: String, replacementBus: Boolean = false) {
+private fun LineChip(line: String, replacementBus: Boolean = false, compact: Boolean = false) {
     val container = if (replacementBus) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.secondaryContainer
     val content = if (replacementBus) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .background(container, RoundedCornerShape(6.dp))
-            .padding(horizontal = 6.dp, vertical = 1.dp),
+            .padding(horizontal = if (compact) 4.dp else 6.dp, vertical = 1.dp),
     ) {
         if (replacementBus) {
             Icon(
@@ -391,7 +407,9 @@ private fun StatusBadge(status: LegStatus, prefix: String? = null) {
         LegState.NO_REALTIME -> stringResource(R.string.transit_no_realtime) to MaterialTheme.statusColors.gray
         LegState.CANCELLED -> stringResource(R.string.transit_cancelled) to MaterialTheme.statusColors.red
     }
-    StatusChip(if (prefix.isNullOrEmpty()) text else stringResource(R.string.transit_line_status, prefix, text), color)
+    // The line goes above the status: side by side the pill would take the room the route columns need.
+    // 线路写在状态上面：并排的话胶囊会占掉路线各列需要的宽度。
+    if (prefix.isNullOrEmpty()) StatusChip(text, color) else StatusChip("$prefix\n$text", color, maxLines = 2)
 }
 
 @Composable

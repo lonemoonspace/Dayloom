@@ -158,6 +158,28 @@ class TransitPolicyTest {
     }
 
     @Test
+    fun `a transfer shows the direct option it replaced on its second line`() {
+        val all = listOf(direct1, faster1, direct2, slower2)
+
+        assertEquals(direct1, TransitPolicy.foldedDirect(faster1, all))
+        assertNull(TransitPolicy.foldedDirect(direct2, all))
+        // Leaving home on a different train than any direct option, nothing was folded in. / 和任何直达都不是同一班首车，没有并入的直达。
+        val leaveLater = TripOption(listOf(ride("R1", t(5, 7, 45), t(5, 7, 52), "Stop A", "Stop B"), faster1.legs[1]), alternative = true)
+        assertNull(TransitPolicy.foldedDirect(leaveLater, listOf(direct1, leaveLater)))
+        // A cancelled direct option was never folded in, so it keeps its own struck-through row. / 被取消的直达从未被并入，仍单独一行并划掉。
+        val cancelledDirect = direct1.copy(legs = direct1.legs.map { it.copy(cancelled = true) })
+        assertNull(TransitPolicy.foldedDirect(faster1, listOf(cancelledDirect, faster1)))
+    }
+
+    @Test
+    fun `stop names drop the stasjon suffix for the narrow station column`() {
+        assertEquals("Asker", TransitPolicy.shortStopName("Asker stasjon"))
+        assertEquals("Oslo S", TransitPolicy.shortStopName(" Oslo S "))
+        assertEquals("Nationaltheatret", TransitPolicy.shortStopName("Nationaltheatret Stasjon"))
+        assertEquals("stasjon", TransitPolicy.shortStopName("stasjon"))
+    }
+
+    @Test
     fun `a later train that catches the same connection says how much later the user can leave`() {
         val home = TripOption(listOf(ride("L1", t(5, 16, 21), t(5, 16, 54), "Stop C", "Stop A")))
         val leaveLater = TripOption(

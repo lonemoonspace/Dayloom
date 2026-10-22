@@ -202,11 +202,13 @@ private const val FOLDED_ALPHA = 0.7f
  * Column widths for one card, measured from the texts it shows, so every line of every row aligns: the time column, the
  * first line, the platform, the line changed to, the arrival and the status pill. Each fits its widest entry, and a column
  * nobody uses takes no room. The stop name takes what is left of [width]; when that is under [STOP_MIN_WIDTH] (large
- * fonts, 12-hour clocks, wide pills), the platform column goes first, then the line changed to joins the stop name
- * ([RouteColumns.mergeNext]), and only then does the stop name shorten. The arrival column is never given up.
+ * fonts, 12-hour clocks, wide pills), [fitRoute] picks the layout that loses least: the line changed to joins the stop
+ * name, or the platform column goes, or both; only then does the stop name shorten. The arrival column is never given
+ * up, which holds up to about 1.3× font size.
  * 一张卡片的列宽，按卡片上实际显示的文字量出来，每一行的每一列都对得齐：时刻列、先坐的线路、站台、换乘的线路、到达时刻、
  * 状态胶囊。每列取最宽的那一项，没人用的列不占地方。站名分 [width] 剩下的宽度；不到 [STOP_MIN_WIDTH] 时（大字号、12 小时制、
- * 宽胶囊），先去掉站台列，再把换乘的线路并进站名（[RouteColumns.mergeNext]），最后才省略站名。到达时刻这一列始终保留。
+ * 宽胶囊），由 [fitRoute] 挑损失最少的布局：把换乘的线路并进站名，或去掉站台列，或两者都做；之后才省略站名。到达时刻这一列
+ * 始终保留，这一点在约 1.3 倍字号以内成立。
  */
 private class RouteColumns(
     val time: Dp,
@@ -231,20 +233,23 @@ private fun routeColumns(rows: List<CommuteRow>, now: ZonedDateTime, width: Dp, 
     val pillStyle = statusChipStyle()
     val time = timeColumnWidth(rows.map { it.option.departure to it.option.legs.first().aimedDeparture }, now, textWidth)
     val first = lines.maxOf { chip(it.legs.first()) }
-    var platform = platforms.maxOfOrNull { textWidth(it, bodySmall) } ?: 0.dp
-    var next = lines.maxOf { chips(it.legs.drop(1)) }
+    val platform = platforms.maxOfOrNull { textWidth(it, bodySmall) } ?: 0.dp
+    val next = lines.maxOf { chips(it.legs.drop(1)) }
+    val mergedSuffix = lines.maxOf { option -> mergedLines(option)?.let { textWidth(it, bodySmall) } ?: 0.dp }
     val arrival = lines.maxOf { textWidth(arrivalText(at(it.arrival)), bodySmall) }
     val badge = rows.mapNotNull { it.status }.maxOfOrNull { textWidth(it.text, pillStyle) + STATUS_CHIP_PADDING * 2 }
         ?.coerceAtMost(BADGE_MAX_WIDTH) ?: 0.dp
     val route = width - time - TIME_GAP - BADGE_GAP - badge
-    fun stopSpace(): Dp {
-        val columns = listOf(first, platform, next, arrival).filter { it > 0.dp }
-        return route - columns.fold(0.dp) { sum, w -> sum + w } - ROUTE_GAP * columns.size
-    }
-    if (stopSpace() < STOP_MIN_WIDTH) platform = 0.dp
-    val mergeNext = next > 0.dp && stopSpace() < STOP_MIN_WIDTH
-    if (mergeNext) next = 0.dp
-    return RouteColumns(time, first, platform, next, arrival, badge, mergeNext)
+    val fit = fitRoute(route, first, platform, next, arrival, mergedSuffix, ROUTE_GAP, STOP_MIN_WIDTH)
+    return RouteColumns(
+        time = time,
+        first = first,
+        platform = if (fit.platform) platform else 0.dp,
+        next = if (fit.mergeNext) 0.dp else next,
+        arrival = arrival,
+        badge = badge,
+        mergeNext = fit.mergeNext,
+    )
 }
 
 /**
@@ -286,14 +291,19 @@ private fun RouteLine(option: TripOption, columns: RouteColumns, now: ZonedDateT
         horizontalArrangement = Arrangement.spacedBy(ROUTE_GAP),
     ) {
         Box(Modifier.width(columns.first)) { LineChip(first.line, first.replacementBus, compact = true) }
-        val stop = when {
-            rest.isEmpty() -> stringResource(R.string.transit_direct)
-            // Several changes: the last stop is where the final train is boarded, the one worth naming.
-            // 多次换乘时写最后一个换乘站：在那里上最后一班车，最值得写出来。
-            columns.mergeNext -> TransitPolicy.shortStopName(option.legs[option.legs.size - 2].toName) + " · " + rest.joinToString(" ") { it.line }
-            else -> TransitPolicy.shortStopName(option.legs[option.legs.size - 2].toName)
+        // Several changes: the last stop is where the final train is boarded, the one worth naming.
+        // 多次换乘时写最后一个换乘站：在那里上最后一班车，最值得写出来。
+        val stop = if (rest.isEmpty()) stringResource(R.string.transit_direct) else TransitPolicy.shortStopName(option.legs[option.legs.size - 2].toName)
+        val merged = mergedLines(option)?.takeIf { columns.mergeNext }
+        if (merged == null) {
+            RouteCell(stop, color, decoration, Modifier.weight(1f))
+        } else {
+            // Merged, the stop name shortens and the lines stay whole. / 并进来之后省略的是站名，线路保持完整。
+            Row(Modifier.weight(1f)) {
+                RouteCell(stop, color, decoration, Modifier.weight(1f, fill = false))
+                RouteCell(merged, color, decoration, Modifier)
+            }
         }
-        RouteCell(stop, color, decoration, Modifier.weight(1f))
         if (columns.platform > 0.dp) {
             val platform = routePlatform(option)
             if (platform.isEmpty()) {
@@ -315,6 +325,10 @@ private fun RouteLine(option: TripOption, columns: RouteColumns, now: ZonedDateT
 private fun routePlatform(option: TripOption): String = (option.legs.getOrNull(1) ?: option.legs.first()).platform
 
 private fun arrivalText(arrival: String): String = "→ $arrival"
+
+/** The lines changed to, as written after the stop name when merged: " · R12". / 并进站名时写在后面的换乘线路：「 · R12」。 */
+private fun mergedLines(option: TripOption): String? =
+    option.legs.drop(1).takeIf { it.isNotEmpty() }?.joinToString(" ", prefix = " · ") { it.line.ifEmpty { "–" } }
 
 @Composable
 private fun RouteCell(text: String, color: Color, decoration: TextDecoration?, modifier: Modifier) {
@@ -604,13 +618,15 @@ private fun Attribution() {
 }
 
 /**
- * The commute rows at 360 dp: a late first train with a faster change folded over its direct option, an on-time direct
+ * The commute rows at 360 dp (and larger fonts or 320 dp, where [fitRoute] gives way): a late first train with a faster change folded over its direct option, an on-time direct
  * train and one without live data, to check that the columns fit in both languages. Stops are made up.
- * 360 dp 宽的通勤行：首车晚点、换乘更快并叠在直达上面的一行，准点直达一行，没有实时数据一行，用来检查两种语言下各列都放得下。
+ * 360 dp 宽（以及大字号或 320 dp，这时 [fitRoute] 开始让位）的通勤行：首车晚点、换乘更快并叠在直达上面的一行，准点直达一行，没有实时数据一行，用来检查两种语言下各列都放得下。
  * 站名是虚构的。
  */
 @Preview(name = "en", widthDp = 360, locale = "en")
 @Preview(name = "zh", widthDp = 360, locale = "zh")
+@Preview(name = "en-large", widthDp = 360, locale = "en", fontScale = 1.3f)
+@Preview(name = "en-narrow", widthDp = 320, locale = "en")
 @Composable
 private fun CommuteRowsPreview() {
     val now = ZonedDateTime.of(2026, 10, 20, 8, 20, 0, 0, ZoneId.of("Europe/Oslo"))

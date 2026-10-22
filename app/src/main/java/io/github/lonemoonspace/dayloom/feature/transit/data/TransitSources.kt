@@ -61,7 +61,7 @@ class CommuteSource(
      */
     override fun cadence(current: Snapshot<CommuteTrips>?): RefreshCadence {
         val snapshot = current ?: return cadence
-        return if (TransitPolicy.awaitingDeparture(snapshot.value.current, snapshot.fetchedAt, clock.now())) AWAITING else cadence
+        return TransitPolicy.commuteCadence(snapshot.value.current, snapshot.fetchedAt, clock.now(), cadence)
     }
 
     override val inputs: Flow<SourceInput<CommuteParams>> = combine(route, mode) { r, m ->
@@ -79,8 +79,6 @@ class CommuteSource(
 
     companion object {
         private const val EXTRA_OPTIONS = 2
-
-        private val AWAITING = RefreshCadence(interval = Duration.ofMinutes(1), busyInterval = Duration.ofMinutes(1), busyByDay = true)
 
         fun inputFor(origin: TransitStop, destination: TransitStop, options: Int, mode: CommuteMode): SourceInput<CommuteParams> {
             if (!origin.isSet || !destination.isSet) return SourceInput.Missing(uiText(R.string.transit_setup_commute))

@@ -320,6 +320,7 @@
     <string name="transit_cancelled">已取消</string>
     <string name="transit_brief">%1$s %2$s · %3$s</string>
     <string name="transit_line_status">%1$s：%2$s</string>
+    <string name="transit_line_status_stacked">%1$s\n%2$s</string>
     <string name="transit_attribution">公共交通数据：Entur（NLOD）</string>
     <string name="transit_region_note">你的「家」不在挪威。公共交通目前只覆盖挪威（Entur）。</string>
     <string name="transit_from">起点</string>

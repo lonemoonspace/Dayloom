@@ -333,6 +333,7 @@
     <string name="transit_cancelled">Cancelled</string>
     <string name="transit_brief">%1$s at %2$s · %3$s</string>
     <string name="transit_line_status">%1$s: %2$s</string>
+    <string name="transit_line_status_stacked">%1$s\n%2$s</string>
     <string name="transit_attribution">Public transport data: Entur (NLOD)</string>
     <string name="transit_region_note">Your Home is outside Norway. Public transport currently covers Norway only (Entur).</string>
     <string name="transit_from">From</string>

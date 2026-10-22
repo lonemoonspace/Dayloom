@@ -171,7 +171,7 @@ private class CommuteInstance(private val ctx: ModuleContext, private val kind: 
     )
 
     override val brief = BriefContributor { now ->
-        source.current()?.takeUnless { source.isStale(it, now.toInstant()) }?.value?.let { TransitBrief.line(it, now) }
+        source.current()?.takeUnless { source.isStale(it, now.toInstant()) }?.let { TransitBrief.line(it.value, now, it.fetchedAt) }
     }
 
     override val notificationChannels = listOf(channel)

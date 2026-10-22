@@ -11,22 +11,25 @@ looks it up literally.
   keep one only when it arrives earlier, or lets the user leave later and still arrive at the same time. Entur documents
   that switch as for testing only, so if it is ever refused the card falls back to the plain query.
 - Train and bus cards: each route is one line in aligned columns, "L1 Asker Pl. 3 R12 → 08:54" for a change or
-  "L1 Direct Pl. 1 → 08:58" for a direct train, so nothing is cut off at 360 dp. When a change starts on the same train
-  as a direct option, that direct option shows dimmed under it, so the two arrivals can be compared at a glance. The
-  platform is the one to change at, or the one to leave from on a direct train. The duration is no longer shown, and a
-  late leg's line goes above its status in the pill.
+  "L1 Direct Pl. 1 → 08:58" for a direct train, sized from what the card shows so a route fits one line at 360 dp; only
+  a stop name too long for the space left is shortened. When a change starts on the same train as a direct option, that
+  direct option shows dimmed under it, so the two arrivals can be compared at a glance. The platform is the one to change
+  at, or the one to leave from on a direct train. The duration is no longer shown, and a late leg's line goes above its
+  status in the pill.
 - Train and bus cards: a departure whose time has passed since the last update stays on the card until an update
   confirms it left, for up to 30 minutes, so a delay announced at the last minute no longer makes a train that is still
-  coming disappear. Meanwhile the card updates every minute instead of every five.
+  coming disappear. This holds for transfers too, and such a train does not take one of the options to show. Until an
+  update confirms it, the card refreshes every minute.
 
 - 火车卡片：现在会显示换乘更快的车的方案。Entur 会把在大站换乘（比如先坐慢车到枢纽站，再换快车）当成直达车的近似重复
   而隐藏，所以火车通勤连这些被隐藏的方案一起要，只留下能早到、或能晚走又同时到的那些。Entur 的文档写明这个开关只供测试，哪天
   被拒绝了卡片就退回普通查询。
-- 火车与公交卡片：每条路线一行、按列对齐，换乘写成「L1 Asker 3站台 R12 → 08:54」，直达写成「L1 直达 1站台 → 08:58」，
-  360 dp 宽也不再被截断。换乘方案和某个直达方案第一段是同一班车时，那个直达方案淡色显示在它下面，两个到达时刻一眼就能比较。
-  站台是换乘的站台，直达则是出发站台。不再显示用时；晚点的那段线路写在胶囊里状态的上面。
+- 火车与公交卡片：每条路线一行、按列对齐，换乘写成「L1 Asker 3站台 R12 → 08:54」，直达写成「L1 直达 1站台 → 08:58」；
+  列宽按卡片上实际显示的内容量出来，360 dp 宽也能一行放下，只有放不下的长站名会省略。换乘方案和某个直达方案第一段是同一班车
+  时，那个直达方案淡色显示在它下面，两个到达时刻一眼就能比较。站台是换乘的站台，直达则是出发站台。不再显示用时；晚点的那段
+  线路写在胶囊里状态的上面。
 - 火车与公交卡片：上次更新之后才过了发车时刻的班次，会一直留在卡片上，直到有更新确认它已开走（最多 30 分钟）；临时才报的晚点
-  不会再让一班还没来的车消失。这段时间卡片每分钟更新一次，而不是每五分钟。
+  不会再让一班还没来的车消失。换乘方案同样如此，而且这样的车不占「显示方案数」的名额。在有更新确认之前，卡片每分钟刷新一次。
 
 ## 0.2.0
 

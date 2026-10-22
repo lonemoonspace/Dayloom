@@ -3,6 +3,7 @@ package io.github.lonemoonspace.dayloom.feature.transit
 import io.github.lonemoonspace.dayloom.R
 import io.github.lonemoonspace.dayloom.core.i18n.UiText
 import io.github.lonemoonspace.dayloom.core.notify.RuleInput
+import io.github.lonemoonspace.dayloom.core.refresh.RefreshCadence
 import io.github.lonemoonspace.dayloom.core.refresh.RefreshReport
 import io.github.lonemoonspace.dayloom.core.refresh.SourceId
 import io.github.lonemoonspace.dayloom.core.refresh.SourceResult
@@ -19,6 +20,7 @@ import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitBrief
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitLeg
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitPolicy
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TripOption
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -128,6 +130,31 @@ class TransitPolicyTest {
         assertFalse(TransitPolicy.awaitingDeparture(listOf(old), fetched, now))
     }
 
+    @Test
+    fun `an unconfirmed train does not take a place in the limit`() {
+        val late = TripOption(listOf(leg(dep = now.minusMinutes(2))))
+        val next = TripOption(listOf(leg(dep = now.plusMinutes(20))))
+        val fetched = ms(now.minusMinutes(5))
+
+        assertEquals(listOf(late, next), TransitPolicy.visibleOptions(listOf(next, late), now, 1, fetched))
+    }
+
+    @Test
+    fun `only a shown, uncancelled train waiting to be confirmed speeds up refreshing`() {
+        val fetched = ms(now.minusMinutes(5))
+        val cancelled = TripOption(listOf(leg(dep = now.minusMinutes(2), cancelled = true)))
+        // Leaves later than a direct train and arrives later too: the card never shows it.
+        // 比直达晚走也晚到：卡片从不显示它。
+        val hidden = TripOption(listOf(leg(dep = now.minusMinutes(2)).let { it.copy(expectedArrival = it.expectedArrival + 600_000) }), alternative = true)
+        val direct = TripOption(listOf(leg(dep = now.minusMinutes(3))))
+        val normal = RefreshCadence(interval = Duration.ofMinutes(30))
+
+        assertFalse(TransitPolicy.awaitingDeparture(listOf(cancelled), fetched, now))
+        assertFalse(TransitPolicy.awaitingDeparture(listOf(direct.copy(legs = direct.legs.map { it.copy(expectedDeparture = ms(now.minusMinutes(10))) }), hidden), fetched, now))
+        assertEquals(normal, TransitPolicy.commuteCadence(listOf(cancelled), fetched, now, normal))
+        assertEquals(TransitPolicy.AWAITING_CADENCE, TransitPolicy.commuteCadence(listOf(direct), fetched, now, normal))
+    }
+
     // Transfers / 换乘
 
     private fun ride(line: String, dep: ZonedDateTime, arr: ZonedDateTime, from: String, to: String, cancelled: Boolean = false) = TransitLeg(
@@ -155,6 +182,17 @@ class TransitPolicyTest {
         assertEquals(listOf(faster1, direct2), TransitPolicy.visibleOptions(all, now, 5))
         assertEquals(TransferGain(TransferGainKind.ARRIVE_EARLIER, 8), TransitPolicy.transferGain(faster1, all, now))
         assertNull(TransitPolicy.transferGain(direct2, all, now))
+    }
+
+    @Test
+    fun `a late transfer stays, with its direct option folded in, until a fetch confirms it left`() {
+        val all = listOf(direct1, faster1, direct2, slower2)
+        val fetched = ms(t(5, 7, 35))
+        val passed = t(5, 7, 45)
+
+        assertEquals(listOf(faster1, direct2), TransitPolicy.visibleOptions(all, passed, 5, fetched))
+        assertEquals(TransferGain(TransferGainKind.ARRIVE_EARLIER, 8), TransitPolicy.transferGain(faster1, all, passed, fetched))
+        assertEquals(listOf(direct2), TransitPolicy.visibleOptions(all, passed, 5))
     }
 
     @Test

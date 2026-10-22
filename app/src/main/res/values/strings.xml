@@ -316,7 +316,6 @@
     <string name="transit_back_home">Home · %1$s → %2$s</string>
     <string name="transit_no_options">No trips found right now.</string>
     <string name="transit_no_departures">No matching departures in the next hours.</string>
-    <string name="transit_direct">Direct</string>
     <plurals name="transit_minutes">
         <item quantity="one">%1$d min</item>
         <item quantity="other">%1$d min</item>
@@ -333,7 +332,8 @@
     <string name="transit_cancelled">Cancelled</string>
     <string name="transit_brief">%1$s at %2$s · %3$s</string>
     <string name="transit_line_status">%1$s: %2$s</string>
-    <string name="transit_line_status_stacked">%1$s\n%2$s</string>
+    <string name="transit_line_status_compact">%1$s %2$s</string>
+    <string name="transit_arrives">Arrives %1$s</string>
     <string name="transit_attribution">Public transport data: Entur (NLOD)</string>
     <string name="transit_region_note">Your Home is outside Norway. Public transport currently covers Norway only (Entur).</string>
     <string name="transit_from">From</string>

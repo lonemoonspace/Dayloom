@@ -89,16 +89,41 @@ object TransitPolicy {
         RoutinePolicy.isDaytime(now) && (option.departure - now.toInstant().toEpochMilli()).let { it >= 0 && it <= ALERT_AHEAD.toMillis() }
 
     /**
-     * Options not yet departed, at most [limit], after [withTransfers]; a cancelled first leg still shows, so the user sees
-     * why it is missing.
-     * 经 [withTransfers] 处理后尚未发车的方案，最多 [limit] 个；第一段被取消的方案照样显示，用户才知道它为什么没了。
+     * How long after its expected departure an option stays while no fetch since then has confirmed it left. Long enough
+     * for a typical late train, short enough that a card left without network does not fill up with departed trains.
+     * 方案过了预计发车时刻、但之后还没有抓取确认它已开走时，最多保留多久。够覆盖常见的晚点，又不至于让断网的卡片堆满已开走的车。
      */
-    fun visibleOptions(options: List<TripOption>, now: ZonedDateTime, limit: Int): List<TripOption> {
+    val UNCONFIRMED_GRACE: Duration = Duration.ofMinutes(30)
+
+    /**
+     * Options not yet departed, at most [limit], after [withTransfers]; a cancelled first leg still shows, so the user sees
+     * why it is missing. With [fetchedAt], an option whose expected departure passed after that fetch also stays (for up to
+     * [UNCONFIRMED_GRACE]): a delay announced since then would otherwise make a train that is still coming vanish.
+     * 经 [withTransfers] 处理后尚未发车的方案，最多 [limit] 个；第一段被取消的方案照样显示，用户才知道它为什么没了。给了
+     * [fetchedAt] 时，预计发车时刻在那次抓取之后才过去的方案也保留（最多 [UNCONFIRMED_GRACE]）：否则之后才报的晚点会让一班
+     * 还没来的车从卡片上消失。
+     */
+    fun visibleOptions(options: List<TripOption>, now: ZonedDateTime, limit: Int, fetchedAt: Long? = null): List<TripOption> {
         val nowMillis = now.toInstant().toEpochMilli()
         // A limit from a damaged settings file must not crash the card. / 设置文件损坏得来的上限不能让卡片崩溃。
-        return withTransfers(options, now).filter { it.legs.isNotEmpty() && it.departure >= nowMillis }.sortedBy { it.departure }
+        return withTransfers(options, now)
+            .filter { it.legs.isNotEmpty() && (it.departure >= nowMillis || isUnconfirmed(it, fetchedAt, nowMillis)) }
+            .sortedBy { it.departure }
             .take(limit.coerceAtLeast(0))
     }
+
+    /**
+     * Whether some option's expected departure passed after [fetchedAt], so it is not known yet whether it left. The commute
+     * source then refreshes every minute until a fetch settles it.
+     * 是否有方案的预计发车时刻在 [fetchedAt] 之后才过去，因而还不知道它开走没有。这时通勤来源每分钟刷新一次，直到有抓取确认。
+     */
+    fun awaitingDeparture(options: List<TripOption>, fetchedAt: Long, now: ZonedDateTime): Boolean {
+        val nowMillis = now.toInstant().toEpochMilli()
+        return options.any { it.legs.isNotEmpty() && it.departure < nowMillis && isUnconfirmed(it, fetchedAt, nowMillis) }
+    }
+
+    private fun isUnconfirmed(option: TripOption, fetchedAt: Long?, nowMillis: Long): Boolean =
+        fetchedAt != null && option.departure >= fetchedAt && option.departure >= nowMillis - UNCONFIRMED_GRACE.toMillis()
 
     /**
      * Keeps an [TripOption.alternative] only when it has a [transferGain], is not cancelled, and nothing else leaves at least

@@ -11,10 +11,15 @@ looks it up literally.
   keep one only when it arrives earlier, or lets the user leave later and still arrive at the same time. The row says
   "Change at X · 8 min earlier" (or "Leave 8 min later"); a faster transfer replaces the direct row of the same first
   train. Entur documents that switch as for testing only, so if it is ever refused the card falls back to the plain query.
+- Train and bus cards: a departure whose time has passed since the last update stays on the card until an update
+  confirms it left, for up to 30 minutes, so a delay announced at the last minute no longer makes a train that is still
+  coming disappear. Meanwhile the card updates every minute instead of every five.
 
 - 火车卡片：现在会显示换乘更快的车的方案。Entur 会把在大站换乘（比如先坐慢车到枢纽站，再换快车）当成直达车的近似重复
   而隐藏，所以火车通勤连这些被隐藏的方案一起要，只留下能早到、或能晚走又同时到的那些。这一行写「在 X 换乘 · 早到 8 分钟」
   （或「晚走 8 分钟」）；更快的换乘方案取代同一班首车的直达行。Entur 的文档写明这个开关只供测试，哪天被拒绝了卡片就退回普通查询。
+- 火车与公交卡片：上次更新之后才过了发车时刻的班次，会一直留在卡片上，直到有更新确认它已开走（最多 30 分钟）；临时才报的晚点
+  不会再让一班还没来的车消失。这段时间卡片每分钟更新一次，而不是每五分钟。
 
 ## 0.2.0
 

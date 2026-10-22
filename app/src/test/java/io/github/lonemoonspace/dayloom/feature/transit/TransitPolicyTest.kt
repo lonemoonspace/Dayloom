@@ -104,6 +104,30 @@ class TransitPolicyTest {
         assertEquals("a broken limit shows nothing instead of crashing", emptyList<TripOption>(), TransitPolicy.visibleOptions(listOf(soon), now, -1))
     }
 
+    @Test
+    fun `a train that passed its time after the last fetch stays until a fetch confirms it left`() {
+        val train = TripOption(listOf(leg(dep = now.minusMinutes(2))))
+        val fetchedBefore = ms(now.minusMinutes(5))
+        val fetchedAfter = ms(now.minusMinutes(1))
+
+        assertEquals(listOf(train), TransitPolicy.visibleOptions(listOf(train), now, 3, fetchedBefore))
+        assertTrue(TransitPolicy.awaitingDeparture(listOf(train), fetchedBefore, now))
+        // A fetch after its departure time that still lists the old time has nothing newer to say: it is gone.
+        // 发车时刻之后的抓取仍是旧时刻，说明没有更新的消息：它已开走。
+        assertEquals(emptyList<TripOption>(), TransitPolicy.visibleOptions(listOf(train), now, 3, fetchedAfter))
+        assertFalse(TransitPolicy.awaitingDeparture(listOf(train), fetchedAfter, now))
+        assertEquals("without a fetch time nothing is kept", emptyList<TripOption>(), TransitPolicy.visibleOptions(listOf(train), now, 3))
+    }
+
+    @Test
+    fun `an unconfirmed train is kept for at most the grace period`() {
+        val old = TripOption(listOf(leg(dep = now.minus(TransitPolicy.UNCONFIRMED_GRACE).minusMinutes(1))))
+        val fetched = ms(now.minusHours(2))
+
+        assertEquals(emptyList<TripOption>(), TransitPolicy.visibleOptions(listOf(old), now, 3, fetched))
+        assertFalse(TransitPolicy.awaitingDeparture(listOf(old), fetched, now))
+    }
+
     // Transfers / 换乘
 
     private fun ride(line: String, dep: ZonedDateTime, arr: ZonedDateTime, from: String, to: String, cancelled: Boolean = false) = TransitLeg(

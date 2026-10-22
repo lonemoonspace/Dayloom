@@ -100,8 +100,8 @@ internal fun CommuteCard(
         }
         when (trips?.mode) {
             null -> if (error == null) SkeletonLines()
-            CommuteMode.OUTBOUND -> OptionList(trips.outbound, route.options, now)
-            CommuteMode.INBOUND -> OptionList(trips.inbound, route.options, now)
+            CommuteMode.OUTBOUND -> OptionList(trips.outbound, route.options, now, snapshot?.fetchedAt)
+            CommuteMode.INBOUND -> OptionList(trips.inbound, route.options, now, snapshot?.fetchedAt)
         }
         if (error != null) ErrorLine(error)
         Attribution()
@@ -122,8 +122,8 @@ private fun kindIcon(kind: CommuteKind): Int = when (kind) {
 
 /** [all] is the snapshot's list: a transfer's gain is measured against direct options it may have replaced. / [all] 是快照里的列表：换乘的收益要和可能被它取代的直达方案比。 */
 @Composable
-private fun OptionList(all: List<TripOption>, limit: Int, now: ZonedDateTime) {
-    val options = TransitPolicy.visibleOptions(all, now, limit)
+private fun OptionList(all: List<TripOption>, limit: Int, now: ZonedDateTime, fetchedAt: Long?) {
+    val options = TransitPolicy.visibleOptions(all, now, limit, fetchedAt)
     if (options.isEmpty()) {
         Hint(stringResource(R.string.transit_no_options))
         return

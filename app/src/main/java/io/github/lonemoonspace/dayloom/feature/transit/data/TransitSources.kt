@@ -54,6 +54,16 @@ class CommuteSource(
         busyByDay = true,
     )
 
+    /**
+     * Every minute while a train has passed its expected departure since the last fetch, so a fresh delay shows quickly
+     * instead of after the usual five minutes.
+     * 上次抓取之后有车过了预计发车时刻时每分钟刷新一次，新报的晚点很快就能显示，而不用等平时的五分钟。
+     */
+    override fun cadence(current: Snapshot<CommuteTrips>?): RefreshCadence {
+        val snapshot = current ?: return cadence
+        return if (TransitPolicy.awaitingDeparture(snapshot.value.current, snapshot.fetchedAt, clock.now())) AWAITING else cadence
+    }
+
     override val inputs: Flow<SourceInput<CommuteParams>> = combine(route, mode) { r, m ->
         inputFor(r.origin, r.destination, r.options, m)
     }
@@ -69,6 +79,8 @@ class CommuteSource(
 
     companion object {
         private const val EXTRA_OPTIONS = 2
+
+        private val AWAITING = RefreshCadence(interval = Duration.ofMinutes(1), busyInterval = Duration.ofMinutes(1), busyByDay = true)
 
         fun inputFor(origin: TransitStop, destination: TransitStop, options: Int, mode: CommuteMode): SourceInput<CommuteParams> {
             if (!origin.isSet || !destination.isSet) return SourceInput.Missing(uiText(R.string.transit_setup_commute))

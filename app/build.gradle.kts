@@ -32,8 +32,8 @@ android {
         targetSdk = 36
         // YYYYMMDDNN, fixed per release so builds on the same day or with a wrong clock stay predictable.
         // 按 YYYYMMDDNN 固定，避免同一天多次构建或系统时间错误导致升级/降级不可预测。
-        versionCode = 2026102201
-        versionName = "0.2.1"
+        versionCode = 2026102202
+        versionName = "0.2.2"
         // The APK is public: never put API keys in it. Keys are entered in the app's settings only.
         // APK 公开可下载：不放任何 API Key，Key 只在 App 设置页填写。
     }

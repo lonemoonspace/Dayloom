@@ -22,6 +22,7 @@ import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteTrips
 import io.github.lonemoonspace.dayloom.feature.transit.domain.FavouriteBoard
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitProvider
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitStop
+import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitLeg
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TripOption
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -287,7 +288,7 @@ class EnturProviderTest {
         override suspend fun planTrips(from: TransitStop, to: TransitStop, at: ZonedDateTime, count: Int, kind: CommuteKind): List<TripOption> {
             trips += from.id to to.id
             kinds += kind
-            return emptyList()
+            return listOf(TripOption(listOf(TransitLeg(line = "L1"))))
         }
         val departureStops = mutableListOf<String>()
         var failDepartures = false
@@ -302,6 +303,7 @@ class EnturProviderTest {
                 ),
                 "NSR:StopPlace:2" to listOf(
                     BoardDeparture("L1", mode = "rail", frontText = "Town D", aimed = soon, expected = soon),
+                    BoardDeparture("L1", mode = "rail", frontText = "Town D", aimed = soon, expected = soon, replacementBus = true),
                     BoardDeparture("280", mode = "bus", frontText = "Town D", aimed = soon, expected = soon),
                 ),
             )
@@ -349,8 +351,8 @@ class EnturProviderTest {
             return store.current!!.value
         }
         val on = FakeProvider()
-        // Inbound starts at the destination; only its rail departures are kept. / 回程从终点出发；只留火车。
-        assertEquals(listOf("L1"), fetch(CommuteKind.TRAIN, hint = true, on).opposing.map { it.line })
+        // Inbound starts at the destination; only its trains are kept, not buses or replacement buses. / 回程从终点出发；只留火车，不要公交和替代巴士。
+        assertEquals(listOf(false), fetch(CommuteKind.TRAIN, hint = true, on).opposing.map { it.replacementBus })
         assertEquals(listOf(b.id), on.departureStops)
         val off = FakeProvider()
         assertTrue(fetch(CommuteKind.TRAIN, hint = false, off).opposing.isEmpty())
@@ -359,7 +361,9 @@ class EnturProviderTest {
         assertTrue("neither asks for departures", off.departureStops.isEmpty() && bus.departureStops.isEmpty())
         // A failed guess must not fail the trips. / 推测取不到不能连累行程。
         val failing = FakeProvider().apply { failDepartures = true }
-        assertTrue(fetch(CommuteKind.TRAIN, hint = true, failing).opposing.isEmpty())
+        val kept = fetch(CommuteKind.TRAIN, hint = true, failing)
+        assertTrue(kept.opposing.isEmpty())
+        assertEquals("the trips still arrive", listOf("L1"), kept.inbound.flatMap { o -> o.legs.map { it.line } })
     }
 
     @Test

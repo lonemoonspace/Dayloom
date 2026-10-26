@@ -7,8 +7,8 @@ sealed interface OpposingEffect {
     /** The change at the transfer stop may be missed; [line] is the train changed to. / 换乘站的换乘可能赶不上；[line] 是要换的车。 */
     data class MissTransfer(val line: String) : OpposingEffect
 
-    /** The change still leaves enough time. / 换乘时间仍然够。 */
-    data object TransferHolds : OpposingEffect
+    /** The change still leaves about [minutesLeft] minutes. / 换乘还剩大约 [minutesLeft] 分钟。 */
+    data class TransferHolds(val minutesLeft: Int) : OpposingEffect
 
     /** A direct train arrives about [minutes] later. / 直达车大约晚到 [minutes] 分钟。 */
     data class LateArrival(val minutes: Int) : OpposingEffect
@@ -20,10 +20,12 @@ data class OpposingHint(val line: String, val delayMinutes: Int, val effect: Opp
 /**
  * A guess at single-track crossings: when a train of the same line leaving the other way at about the same time is late,
  * the first train of an option may have to wait for it. Entur has no track data and does not tell rail directions apart, so
- * the opposing train is one with the same line, a different sign and a different platform; the hint is opt-in because a
- * double-track stop or a crossing moved elsewhere gives false alarms.
+ * the opposing train is one with the same line, a different sign and a different platform, and both trains need live data.
+ * A missing platform or live time gives no hint rather than a guess on a guess. The hint is opt-in because a double-track
+ * stop or a crossing moved elsewhere gives false alarms.
  * 对单线会车的推测：同一条线、反方向、差不多同时开的车晚点时，方案的第一班车可能要等它。Entur 没有轨道数据，也不区分火车方向，
- * 所以对向车按「线路相同、终点牌不同、站台不同」来认；双线车站或调度改了会车点时会误报，所以这个提示要用户自己打开。
+ * 所以对向车按「线路相同、终点牌不同、站台不同」来认，两班车都要有实时数据。缺站台或缺实时数据时不提示，免得在推测上再推测。
+ * 双线车站或调度改了会车点时会误报，所以这个提示要用户自己打开。
  */
 object OpposingPolicy {
 
@@ -44,10 +46,11 @@ object OpposingPolicy {
      */
     fun hint(option: TripOption, departures: List<BoardDeparture>): OpposingHint? {
         val first = option.legs.firstOrNull() ?: return null
-        if (first.mode != RAIL || first.cancelled || first.line.isEmpty()) return null
+        // A rail replacement bus keeps mode `rail` but never waits at a crossing. / 铁路替代巴士的 mode 仍是 `rail`，但不会等会车。
+        if (first.mode != RAIL || first.replacementBus || first.cancelled || !first.realtime || first.line.isEmpty()) return null
         val window = CROSSING_WINDOW.toMillis()
         val opposing = departures.filter {
-            it.mode == RAIL && !it.cancelled && it.line == first.line &&
+            it.mode == RAIL && !it.replacementBus && !it.cancelled && it.realtime && it.line == first.line &&
                 it.frontText != first.frontText && differentPlatform(it.platform, first.platform) &&
                 kotlin.math.abs(it.aimed - first.aimedDeparture) <= window
         }
@@ -63,13 +66,13 @@ object OpposingPolicy {
             OpposingEffect.LateArrival(Math.floorDiv(wait + MINUTE - 1, MINUTE).toInt())
         } else {
             val left = next.expectedDeparture - first.expectedArrival - wait
-            if (left < MIN_CHANGE_MINUTES * MINUTE) OpposingEffect.MissTransfer(next.line) else OpposingEffect.TransferHolds
+            if (left < MIN_CHANGE_MINUTES * MINUTE) OpposingEffect.MissTransfer(next.line) else OpposingEffect.TransferHolds(Math.floorDiv(left, MINUTE).toInt())
         }
         return OpposingHint(worst.line, Math.floorDiv(delay, MINUTE).toInt(), effect)
     }
 
-    /** Unknown platforms do not rule a train out. / 站台未知时不据此排除。 */
-    private fun differentPlatform(a: String, b: String) = a.isEmpty() || b.isEmpty() || a != b
+    /** Without both platforms a different sign could just be a branch of the same direction. / 缺一个站台时，终点牌不同也可能只是同方向的另一条支线。 */
+    private fun differentPlatform(a: String, b: String) = a.isNotEmpty() && b.isNotEmpty() && a != b
 
     private const val MINUTE = 60_000L
 

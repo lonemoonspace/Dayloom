@@ -209,15 +209,7 @@ private fun OptionRow(row: CommuteRow, columns: RouteColumns, now: ZonedDateTime
         if (row.folded != null) {
             RouteLine(row.folded, columns, now, struck = false, modifier = Modifier.alpha(FOLDED_ALPHA))
         }
-        if (row.hint != null) {
-            Text(
-                text = opposingText(row.hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.statusColors.amber,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        if (row.hint != null) Hint(opposingText(row.hint), maxLines = 2, color = MaterialTheme.statusColors.amber)
     }
 }
 
@@ -227,10 +219,15 @@ private fun OptionRow(row: CommuteRow, columns: RouteColumns, now: ZonedDateTime
  * 行下面的对向车提示，说出可能的后果而不只是晚点：赶不上换乘，或直达车大约晚到多少。
  */
 @Composable
-private fun opposingText(hint: OpposingHint): String = when (val effect = hint.effect) {
-    is OpposingEffect.MissTransfer -> stringResource(R.string.transit_opposing_miss, hint.line, hint.delayMinutes, effect.line.ifEmpty { "–" })
-    OpposingEffect.TransferHolds -> stringResource(R.string.transit_opposing_holds, hint.line, hint.delayMinutes)
-    is OpposingEffect.LateArrival -> stringResource(R.string.transit_opposing_late, hint.line, hint.delayMinutes, effect.minutes)
+private fun opposingText(hint: OpposingHint): String {
+    val effect = when (val effect = hint.effect) {
+        is OpposingEffect.MissTransfer -> stringResource(R.string.transit_opposing_miss, effect.line.ifEmpty { "–" })
+        is OpposingEffect.TransferHolds -> stringResource(R.string.transit_opposing_holds, effect.minutesLeft)
+        is OpposingEffect.LateArrival -> stringResource(R.string.transit_opposing_late, effect.minutes)
+    }
+    // The delay reuses the card's own late wording. / 晚点沿用卡片自己的写法。
+    val late = pluralStringResource(R.plurals.transit_late, hint.delayMinutes, hint.delayMinutes)
+    return stringResource(R.string.transit_opposing, hint.line, late, effect)
 }
 
 /** Dimmed enough to read as the alternative, still about 4.5:1 on the card. / 淡到看得出是备选，在卡片上仍约有 4.5:1 的对比度。 */
@@ -634,14 +631,15 @@ private fun statusLabel(status: LegStatus, prefix: String? = null): StatusLabel 
 private fun StatusBadge(status: LegStatus) = statusLabel(status).let { StatusChip(it.text, it.color) }
 
 @Composable
-private fun Hint(text: String, maxLines: Int = 1) = Hint(AnnotatedString(text), maxLines)
+private fun Hint(text: String, maxLines: Int = 1, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) =
+    Hint(AnnotatedString(text), maxLines, color)
 
 @Composable
-private fun Hint(text: AnnotatedString, maxLines: Int = 1) {
+private fun Hint(text: AnnotatedString, maxLines: Int = 1, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
     Text(
         text,
         style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = color,
         maxLines = maxLines,
         overflow = TextOverflow.Ellipsis,
     )
@@ -664,10 +662,12 @@ private fun Attribution() {
 
 /**
  * The commute rows at 360 and 384 dp (and larger fonts or 320 dp, where [keepPlatforms] drops the platform pills): a late
- * first train with a faster change folded over its direct option, an on-time direct train and one without live data, to
- * check that the rows fit in both languages. A late opposing train puts the hint under the first row. Stops are made up.
+ * first train with a faster change folded over its direct option, an on-time change and a direct train without live data, to
+ * check that the rows fit in both languages. Late opposing trains put a missed-change hint under the first row and a
+ * change-still-works hint under the second. Stops are made up.
  * 360 与 384 dp 宽（以及大字号或 320 dp，这时 [keepPlatforms] 去掉站台胶囊）的通勤行：首车晚点、换乘更快并叠在直达上面的
- * 一行，准点直达一行，没有实时数据一行，用来检查两种语言下都放得下。一班晚点的对向车让第一行下面出现提示。站名是虚构的。
+ * 一行，准点换乘一行，没有实时数据的直达一行，用来检查两种语言下都放得下。晚点的对向车让第一行下面提示赶不上换乘、
+ * 第二行下面提示换乘还来得及。站名是虚构的。
  */
 @Preview(name = "en", widthDp = 360, locale = "en")
 @Preview(name = "zh", widthDp = 360, locale = "zh")
@@ -692,11 +692,17 @@ private fun CommuteRowsPreview() {
             ),
             alternative = true,
         ),
-        TripOption(listOf(ride("L1", at(8, 55), 0, at(9, 28), "Lindvik stasjon", "Nordby stasjon", "1"))),
+        TripOption(
+            listOf(
+                ride("L1", at(8, 55), 0, at(9, 7), "Lindvik stasjon", "Sentrum stasjon", "1"),
+                ride("R12", at(9, 20), 0, at(9, 30), "Sentrum stasjon", "Nordby stasjon", "3"),
+            ),
+        ),
         TripOption(listOf(ride("L1", at(9, 25), 0, at(9, 58), "Lindvik stasjon", "Nordby stasjon", "1", realtime = false))),
     )
     val opposing = listOf(
         BoardDeparture(line = "L1", mode = "rail", frontText = "Østby", platform = "2", aimed = at(8, 25), expected = at(8, 34), realtime = true),
+        BoardDeparture(line = "L1", mode = "rail", frontText = "Østby", platform = "2", aimed = at(8, 56), expected = at(9, 0), realtime = true),
     )
     DayloomTheme {
         Column(Modifier.padding(12.dp)) {

@@ -32,11 +32,11 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.lonemoonspace.dayloom.R
-import io.github.lonemoonspace.dayloom.core.ui.NotifySwitch
-import io.github.lonemoonspace.dayloom.core.ui.SwitchRow
 import io.github.lonemoonspace.dayloom.core.error.AppError
 import io.github.lonemoonspace.dayloom.core.error.toAppError
 import io.github.lonemoonspace.dayloom.core.i18n.asString
+import io.github.lonemoonspace.dayloom.core.ui.NotifySwitch
+import io.github.lonemoonspace.dayloom.core.ui.SwitchRow
 import io.github.lonemoonspace.dayloom.core.ui.userMessage
 import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteKind
 import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteRoute
@@ -95,6 +95,7 @@ internal fun RouteSettingsSection(
             onCheckedChange = { on -> updateRoute { it.copy(opposingHint = on) } },
             summary = stringResource(R.string.transit_opposing_switch_summary),
         )
+        Hint(stringResource(R.string.transit_opposing_note))
     }
     Hint(stringResource(R.string.transit_attribution))
 

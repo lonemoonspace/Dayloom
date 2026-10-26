@@ -23,6 +23,8 @@ import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitStop
 import java.time.Duration
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -79,13 +81,16 @@ class CommuteSource(
     override suspend fun fetch(params: CommuteParams, now: ZonedDateTime, previous: Snapshot<CommuteTrips>?): CommuteTrips {
         // A few more than shown, so the card still has options after the first ones leave. / 比显示的多取几个，前几班开走后卡片仍有方案。
         val count = params.options + EXTRA_OPTIONS
-        val trips = when (params.mode) {
-            CommuteMode.OUTBOUND -> CommuteTrips(params.mode, outbound = provider.planTrips(params.origin, params.destination, now, count, kind))
-            CommuteMode.INBOUND -> CommuteTrips(params.mode, inbound = provider.planTrips(params.destination, params.origin, now, count, kind))
-        }
-        if (!params.opposing) return trips
         val first = if (params.mode == CommuteMode.OUTBOUND) params.origin else params.destination
-        return trips.copy(opposing = opposingDepartures(first, now))
+        // Independent of the trips, so it runs alongside instead of adding a round trip. / 与行程无关，并行请求，不多等一轮。
+        return coroutineScope {
+            val opposing = if (params.opposing) async { opposingDepartures(first, now) } else null
+            val trips = when (params.mode) {
+                CommuteMode.OUTBOUND -> CommuteTrips(params.mode, outbound = provider.planTrips(params.origin, params.destination, now, count, kind))
+                CommuteMode.INBOUND -> CommuteTrips(params.mode, inbound = provider.planTrips(params.destination, params.origin, now, count, kind))
+            }
+            trips.copy(opposing = opposing?.await().orEmpty())
+        }
     }
 
     /**
@@ -94,7 +99,7 @@ class CommuteSource(
      * 这个提示只是推测，取不到也不能让行程跟着失败。起始时间提前一点，已经过了时刻表时间的对向车也能拿到。
      */
     private suspend fun opposingDepartures(stop: TransitStop, now: ZonedDateTime) = try {
-        provider.departures(listOf(stop.id), now.minus(OpposingPolicy.CROSSING_WINDOW))[stop.id].orEmpty().filter { it.mode == "rail" }
+        provider.departures(listOf(stop.id), now.minus(OpposingPolicy.CROSSING_WINDOW))[stop.id].orEmpty().filter { it.mode == "rail" && !it.replacementBus }
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {

@@ -362,10 +362,12 @@
     <string name="transit_notify_to_work">Disruption on your way to work</string>
     <string name="transit_notify_back_home">Disruption on your way home</string>
     <string name="transit_opposing_switch">Opposing delay hint</string>
-    <string name="transit_opposing_switch_summary">On single track your first train may wait for a train of the same line going the other way. When one leaving the first stop within 5 minutes is late, the row says whether you may miss the change or how late you may arrive. A guess: it can be wrong on double track or when the crossing moves.</string>
-    <string name="transit_opposing_miss">Opposing %1$s %2$d min late, may miss %3$s</string>
-    <string name="transit_opposing_holds">Opposing %1$s %2$d min late, change should still work</string>
-    <string name="transit_opposing_late">Opposing %1$s %2$d min late, may arrive about %3$d min late</string>
+    <string name="transit_opposing_switch_summary">Warns under a train row when a late train of the same line, leaving the first stop the other way within 5 minutes, may hold it at a single-track crossing</string>
+    <string name="transit_opposing_note">A guess: Entur has no track data, so it can be wrong on double track or when the crossing is moved</string>
+    <string name="transit_opposing">Opposing %1$s %2$s, %3$s</string>
+    <string name="transit_opposing_miss">may miss %1$s</string>
+    <string name="transit_opposing_holds">about %1$d min left to change</string>
+    <string name="transit_opposing_late">may arrive about %1$d min late</string>
     <string name="transit_notify_cancelled">%1$s at %2$s is cancelled</string>
     <plurals name="transit_notify_delayed">
         <item quantity="one">%1$s at %2$s is %3$d minute late</item>

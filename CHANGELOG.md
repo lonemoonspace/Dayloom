@@ -8,12 +8,13 @@ looks it up literally.
 
 - Train card: a new "Opposing delay hint" switch in the train settings, off by default. When it is on and a train of the
   same line leaving the first stop the other way within 5 minutes is late, the row says what it may cost: "Opposing L1
-  7 min late, may miss R12", "change should still work", or for a direct train "may arrive about 7 min late". It only
-  guesses at single-track crossings and can be wrong on double track or when the crossing moves.
+  7 min late, may miss R12", "about 4 min left to change", or for a direct train "may arrive about 7 min late". It only
+  guesses at single-track crossings, stays quiet without platforms or live data, and can be wrong on double track or
+  when the crossing moves.
 
 - 火车卡片：火车设置里新增「对向晚点提示」开关，默认关闭。打开后，起点站 5 分钟内同一条线反方向的车晚点时，那一行会提示可能的
-  后果：「对向 L1 晚 7 分，可能赶不上 R12」「换乘应该来得及」，直达则是「可能晚到约 7 分」。这只是对单线会车的推测，双线区段
-  或调度改了会车点时可能误报。
+  后果：「对向 L1 晚 7 分，可能赶不上 R12」「换乘还剩约 4 分」，直达则是「可能晚到约 7 分」。这只是对单线会车的推测，缺站台
+  或实时数据时不提示，双线区段或调度改了会车点时可能误报。
 
 ## 0.2.2
 

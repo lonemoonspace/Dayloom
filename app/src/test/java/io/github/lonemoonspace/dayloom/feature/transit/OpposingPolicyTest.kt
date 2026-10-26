@@ -16,12 +16,12 @@ class OpposingPolicyTest {
 
     private fun leg(line: String, dep: Int, arr: Int, late: Int = 0, platform: String = "1", front: String = "Nordby", mode: String = "rail") =
         TransitLeg(
-            mode = mode, line = line, frontText = front, platform = platform,
+            mode = mode, line = line, frontText = front, platform = platform, realtime = true,
             aimedDeparture = at(dep), expectedDeparture = at(dep + late), aimedArrival = at(arr), expectedArrival = at(arr + late),
         )
 
     private fun other(aimed: Int, late: Int, line: String = "L1", front: String = "Østby", platform: String = "2", mode: String = "rail") =
-        BoardDeparture(line = line, mode = mode, frontText = front, platform = platform, aimed = at(aimed), expected = at(aimed + late))
+        BoardDeparture(line = line, mode = mode, frontText = front, platform = platform, aimed = at(aimed), expected = at(aimed + late), realtime = true)
 
     /** L1 at :24 (expected :24) to the change at :36, then R12 at :40. / L1 :24 出发，:36 到换乘站，再换 :40 的 R12。 */
     private val transfer = TripOption(listOf(leg("L1", 24, 36), leg("R12", 40, 50)))
@@ -50,7 +50,7 @@ class OpposingPolicyTest {
         val slack = TripOption(listOf(leg("L1", 24, 36), leg("R12", 40, 50).let { it.copy(expectedDeparture = it.expectedDeparture - 1_000L) }))
         val opposing = other(24, 2).let { it.copy(expected = it.expected + 1_000L) }
         assertEquals(OpposingEffect.MissTransfer("R12"), OpposingPolicy.hint(slack, listOf(opposing))?.effect)
-        assertEquals(OpposingEffect.TransferHolds, OpposingPolicy.hint(transfer, listOf(other(24, 2)))?.effect)
+        assertEquals(OpposingEffect.TransferHolds(2), OpposingPolicy.hint(transfer, listOf(other(24, 2)))?.effect)
         // A 6:10 wait reads as about 7 minutes late. / 等 6 分 10 秒显示为约晚到 7 分。
         val longer = other(24, 6).let { it.copy(expected = it.expected + 10_000L) }
         assertEquals(OpposingEffect.LateArrival(7), OpposingPolicy.hint(direct, listOf(longer))?.effect)
@@ -59,7 +59,8 @@ class OpposingPolicyTest {
     @Test
     fun `with enough slack left the change holds`() {
         val roomy = TripOption(listOf(leg("L1", 24, 36), leg("R12", 50, 60)))
-        assertEquals(OpposingHint("L1", 4, OpposingEffect.TransferHolds), OpposingPolicy.hint(roomy, listOf(other(25, 4))))
+        // Waits 5 of 14 minutes, 9 left. / 14 分钟里等 5 分，还剩 9 分。
+        assertEquals(OpposingHint("L1", 4, OpposingEffect.TransferHolds(9)), OpposingPolicy.hint(roomy, listOf(other(25, 4))))
     }
 
     @Test
@@ -94,8 +95,19 @@ class OpposingPolicyTest {
     }
 
     @Test
-    fun `an unknown platform does not rule a train out`() {
-        assertEquals(OpposingHint("L1", 6, OpposingEffect.LateArrival(6)), OpposingPolicy.hint(direct, listOf(other(24, 6, platform = ""))))
+    fun `without both platforms or live data there is no hint`() {
+        // A different sign on an unknown platform could be a same-direction branch. / 站台未知时，终点牌不同可能只是同方向的支线。
+        assertNull(OpposingPolicy.hint(direct, listOf(other(24, 6, platform = ""))))
+        assertNull(OpposingPolicy.hint(TripOption(listOf(leg("L1", 24, 52, platform = ""))), listOf(other(24, 6))))
+        assertNull(OpposingPolicy.hint(direct, listOf(other(24, 6).copy(realtime = false))))
+        assertNull(OpposingPolicy.hint(TripOption(listOf(leg("L1", 24, 52).copy(realtime = false))), listOf(other(24, 6))))
+    }
+
+    @Test
+    fun `rail replacement buses neither get nor cause a hint`() {
+        val replacement = TripOption(listOf(leg("L1", 24, 52).copy(replacementBus = true)))
+        assertNull(OpposingPolicy.hint(replacement, listOf(other(24, 6))))
+        assertNull(OpposingPolicy.hint(direct, listOf(other(24, 6).copy(replacementBus = true))))
     }
 
     @Test

@@ -4,7 +4,7 @@ Each version has an English section followed by a Chinese one. The heading must 
 looks it up literally.
 每个版本先写英文、再写中文。标题必须恰好是 `## X.Y.Z`：发版 workflow 按字面查找。
 
-## Unreleased
+## 0.2.3
 
 - Train card: a new "Opposing delay hint" switch in the train settings, off by default. When it is on and a train of the
   same line leaving the first stop the other way within 5 minutes is late, the row says what it may cost: "Opposing L1

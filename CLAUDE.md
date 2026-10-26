@@ -139,10 +139,10 @@ APK 公开可下载，**不往里写任何 API Key**。APK、mapping、`local.pr
 3. `.github/workflows/internal-build.yml` 跑门禁并构建签名 APK，作为 artifact 保存 14 天。
 
 **Release / 正式版**
-1. Set `versionName` (`X.Y.Z`) and `versionCode`; update `CHANGELOG.md` (heading exactly `## X.Y.Z`, bilingual body).
+1. Set `versionName` (`X.Y.Z`) and `versionCode`; update `CHANGELOG.md` (rename `## Unreleased` to exactly `## X.Y.Z`, bilingual body; nothing checks that `Unreleased` is gone).
 2. Commit `Release vX.Y.Z` / `发布 vX.Y.Z`, push `main`, then trigger: push annotated tag `vX.Y.Z`, or from a cloud session push `HEAD:refs/heads/release/vX.Y.Z` (commit must already be on `main`). `.github/workflows/release.yml` runs the gate, checks tag = `versionName`, builds the signed APK and creates the Release with APK + SHA256.
 
-1. 改 `versionName`（`X.Y.Z`）与 `versionCode`；更新 `CHANGELOG.md`（标题恰好是 `## X.Y.Z`，正文双语）。
+1. 改 `versionName`（`X.Y.Z`）与 `versionCode`；更新 `CHANGELOG.md`（把 `## Unreleased` 改成恰好是 `## X.Y.Z`，正文双语；没有检查会发现漏改的 `Unreleased`）。
 2. 提交 `Release vX.Y.Z` / `发布 vX.Y.Z` 并推送 `main`，然后触发：推附注 tag `vX.Y.Z`；云端会话改推 `HEAD:refs/heads/release/vX.Y.Z`（提交必须已在 `main` 上）。`release.yml` 跑门禁、校验 tag 与 `versionName` 一致、构建签名 APK 并建 Release（附 APK 与 SHA256）。
 
 Day-to-day work happens on `main`; large changes get their own branch and are merged back before a release.

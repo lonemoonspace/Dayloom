@@ -20,6 +20,7 @@ import io.github.lonemoonspace.dayloom.feature.transit.domain.Boards
 import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteMode
 import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteTrips
 import io.github.lonemoonspace.dayloom.feature.transit.domain.FavouriteBoard
+import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitLeg
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitProvider
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitStop
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TripOption
@@ -287,14 +288,26 @@ class EnturProviderTest {
         override suspend fun planTrips(from: TransitStop, to: TransitStop, at: ZonedDateTime, count: Int, kind: CommuteKind): List<TripOption> {
             trips += from.id to to.id
             kinds += kind
-            return emptyList()
+            return listOf(TripOption(listOf(TransitLeg(line = "L1"))))
         }
-        override suspend fun departures(stopIds: List<String>, at: ZonedDateTime) = mapOf(
-            "NSR:StopPlace:1" to listOf(
-                BoardDeparture("31", frontText = "Town C", aimed = at.toInstant().toEpochMilli() + 60_000, expected = at.toInstant().toEpochMilli() + 60_000),
-                BoardDeparture("37", frontText = "Town C", aimed = at.toInstant().toEpochMilli() + 60_000, expected = at.toInstant().toEpochMilli() + 60_000),
-            ),
-        )
+        val departureStops = mutableListOf<String>()
+        var failDepartures = false
+        override suspend fun departures(stopIds: List<String>, at: ZonedDateTime): Map<String, List<BoardDeparture>> {
+            departureStops += stopIds
+            if (failDepartures) throw AppError.Network(java.io.IOException("offline"))
+            val soon = at.toInstant().toEpochMilli() + 60_000
+            return mapOf(
+                "NSR:StopPlace:1" to listOf(
+                    BoardDeparture("31", frontText = "Town C", aimed = soon, expected = soon),
+                    BoardDeparture("37", frontText = "Town C", aimed = soon, expected = soon),
+                ),
+                "NSR:StopPlace:2" to listOf(
+                    BoardDeparture("L1", mode = "rail", frontText = "Town D", aimed = soon, expected = soon),
+                    BoardDeparture("L1", mode = "rail", frontText = "Town D", aimed = soon, expected = soon, replacementBus = true),
+                    BoardDeparture("280", mode = "bus", frontText = "Town D", aimed = soon, expected = soon),
+                ),
+            )
+        }
     }
 
     @Test
@@ -324,6 +337,42 @@ class EnturProviderTest {
         coordinator.refresh(setOf(source.id), Trigger.USER)
         assertEquals(listOf(b.id to a.id), provider.trips)
         assertEquals(CommuteMode.INBOUND, store.current!!.value.mode)
+    }
+
+    @Test
+    fun `train commutes fetch the first stop's rail departures only with the opposing hint on`() = runTest {
+        suspend fun fetch(kind: CommuteKind, hint: Boolean, provider: FakeProvider): CommuteTrips {
+            val store = InMemorySnapshotStore<CommuteTrips>()
+            val route = flowOf(CommuteRoute(a, b, 3, opposingHint = hint))
+            val source = CommuteSource(SourceId("transit.x"), store, FixedClock(now), kind, route, flowOf(CommuteMode.INBOUND), provider)
+            val coordinator = RefreshCoordinator(FakeNetworkStatus(), FixedClock(now), backgroundScope, watchInputs = false)
+            coordinator.register(listOf(source))
+            coordinator.refresh(setOf(source.id), Trigger.USER)
+            return store.current!!.value
+        }
+        val on = FakeProvider()
+        // Inbound starts at the destination; only its trains are kept, not buses or replacement buses. / 回程从终点出发；只留火车，不要公交和替代巴士。
+        val kept = fetch(CommuteKind.TRAIN, hint = true, on).opposing
+        assertEquals(listOf("L1"), kept.map { it.line })
+        assertTrue(kept.none { it.replacementBus })
+        assertEquals(listOf(b.id), on.departureStops)
+        val off = FakeProvider()
+        assertTrue(fetch(CommuteKind.TRAIN, hint = false, off).opposing.isEmpty())
+        val bus = FakeProvider()
+        assertTrue(fetch(CommuteKind.BUS, hint = true, bus).opposing.isEmpty())
+        assertTrue("neither asks for departures", off.departureStops.isEmpty() && bus.departureStops.isEmpty())
+        // A failed guess must not fail the trips. / 推测取不到不能连累行程。
+        val failing = FakeProvider().apply { failDepartures = true }
+        val failed = fetch(CommuteKind.TRAIN, hint = true, failing)
+        assertTrue(failed.opposing.isEmpty())
+        assertEquals("the trips still arrive", listOf("L1"), failed.inbound.flatMap { o -> o.legs.map { it.line } })
+    }
+
+    @Test
+    fun `commute keys change with the opposing hint`() {
+        val plain = (CommuteSource.inputFor(a, b, 3, CommuteMode.OUTBOUND) as SourceInput.Ready).key
+        val hinted = (CommuteSource.inputFor(a, b, 3, CommuteMode.OUTBOUND, opposing = true) as SourceInput.Ready).key
+        assertFalse(plain == hinted)
     }
 
     @Test

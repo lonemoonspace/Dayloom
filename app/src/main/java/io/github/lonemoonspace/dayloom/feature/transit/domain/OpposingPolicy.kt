@@ -52,22 +52,26 @@ object OpposingPolicy {
                 kotlin.math.abs(it.aimed - first.aimedDeparture) <= window
         }
         val worst = opposing.maxByOrNull { it.expected } ?: return null
-        val waitMinutes = minutes(worst.expected - first.expectedDeparture)
-        if (waitMinutes < MIN_WAIT_MINUTES || minutes(worst.expected - worst.aimed) < MIN_WAIT_MINUTES) return null
+        // Compared in milliseconds and rounded once for display, so a few seconds never tip a minute either way.
+        // 用毫秒比较，只在显示时取整一次，免得几秒钟的误差把结果推到另一边。
+        val wait = worst.expected - first.expectedDeparture
+        val delay = worst.expected - worst.aimed
+        if (wait < MIN_WAIT_MINUTES * MINUTE || delay < MIN_WAIT_MINUTES * MINUTE) return null
         val next = option.legs.getOrNull(1)
         val effect = if (next == null) {
-            OpposingEffect.LateArrival(waitMinutes)
+            // Rounded up: a warning should not understate the wait. / 向上取整：提示不该把等待说少了。
+            OpposingEffect.LateArrival(Math.floorDiv(wait + MINUTE - 1, MINUTE).toInt())
         } else {
-            val slack = minutes(next.expectedDeparture - first.expectedArrival)
-            if (slack - waitMinutes < MIN_CHANGE_MINUTES) OpposingEffect.MissTransfer(next.line) else OpposingEffect.TransferHolds
+            val left = next.expectedDeparture - first.expectedArrival - wait
+            if (left < MIN_CHANGE_MINUTES * MINUTE) OpposingEffect.MissTransfer(next.line) else OpposingEffect.TransferHolds
         }
-        return OpposingHint(worst.line, minutes(worst.expected - worst.aimed), effect)
+        return OpposingHint(worst.line, Math.floorDiv(delay, MINUTE).toInt(), effect)
     }
 
     /** Unknown platforms do not rule a train out. / 站台未知时不据此排除。 */
     private fun differentPlatform(a: String, b: String) = a.isEmpty() || b.isEmpty() || a != b
 
-    private fun minutes(millis: Long) = Math.floorDiv(millis, 60_000L).toInt()
+    private const val MINUTE = 60_000L
 
     private const val RAIL = "rail"
 }

@@ -37,6 +37,26 @@ class OpposingPolicyTest {
     }
 
     @Test
+    fun `a wait far longer than the slack still only warns about the change`() {
+        // Arrives :38, change leaves :40, opposing :24 is 9 min late. / :38 到，:40 换乘，对向 :24 晚 9 分。
+        val tight = TripOption(listOf(leg("L1", 24, 38), leg("R12", 40, 50)))
+        assertEquals(OpposingHint("L1", 9, OpposingEffect.MissTransfer("R12")), OpposingPolicy.hint(tight, listOf(other(24, 9))))
+    }
+
+    @Test
+    fun `seconds count before rounding`() {
+        // 3:59 of slack minus a 2:01 wait leaves 1:58, under two minutes; 4:00 minus 2:00 leaves exactly two.
+        // 3 分 59 秒余量减去 2 分 01 秒等待剩 1 分 58 秒，不到两分钟；4 分减 2 分正好两分钟。
+        val slack = TripOption(listOf(leg("L1", 24, 36), leg("R12", 40, 50).let { it.copy(expectedDeparture = it.expectedDeparture - 1_000L) }))
+        val opposing = other(24, 2).let { it.copy(expected = it.expected + 1_000L) }
+        assertEquals(OpposingEffect.MissTransfer("R12"), OpposingPolicy.hint(slack, listOf(opposing))?.effect)
+        assertEquals(OpposingEffect.TransferHolds, OpposingPolicy.hint(transfer, listOf(other(24, 2)))?.effect)
+        // A 6:10 wait reads as about 7 minutes late. / 等 6 分 10 秒显示为约晚到 7 分。
+        val longer = other(24, 6).let { it.copy(expected = it.expected + 10_000L) }
+        assertEquals(OpposingEffect.LateArrival(7), OpposingPolicy.hint(direct, listOf(longer))?.effect)
+    }
+
+    @Test
     fun `with enough slack left the change holds`() {
         val roomy = TripOption(listOf(leg("L1", 24, 36), leg("R12", 50, 60)))
         assertEquals(OpposingHint("L1", 4, OpposingEffect.TransferHolds), OpposingPolicy.hint(roomy, listOf(other(25, 4))))

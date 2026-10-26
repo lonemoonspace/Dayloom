@@ -68,6 +68,8 @@ object OpposingPolicy {
             val left = next.expectedDeparture - first.expectedArrival - wait
             if (left < MIN_CHANGE_MINUTES * MINUTE) OpposingEffect.MissTransfer(next.line) else OpposingEffect.TransferHolds(Math.floorDiv(left, MINUTE).toInt())
         }
+        // Floored like every other delay on the card, while the warning above rounds up; keep the two apart.
+        // 与卡片上其他晚点一样向下取整，而上面的警告向上取整；两者故意不同。
         return OpposingHint(worst.line, Math.floorDiv(delay, MINUTE).toInt(), effect)
     }
 

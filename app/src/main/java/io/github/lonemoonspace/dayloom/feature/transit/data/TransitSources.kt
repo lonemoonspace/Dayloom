@@ -82,7 +82,9 @@ class CommuteSource(
         // A few more than shown, so the card still has options after the first ones leave. / 比显示的多取几个，前几班开走后卡片仍有方案。
         val count = params.options + EXTRA_OPTIONS
         val first = if (params.mode == CommuteMode.OUTBOUND) params.origin else params.destination
-        // Independent of the trips, so it runs alongside instead of adding a round trip. / 与行程无关，并行请求，不多等一轮。
+        // Independent of the trips, so it runs alongside instead of adding a round trip. Its catch must stay inside the
+        // async: an escaping failure would cancel the scope and fail the trips too.
+        // 与行程无关，并行请求，不多等一轮。异常必须在 async 内部捕获：漏出来会取消整个作用域，连行程一起失败。
         return coroutineScope {
             val opposing = if (params.opposing) async { opposingDepartures(first, now) } else null
             val trips = when (params.mode) {

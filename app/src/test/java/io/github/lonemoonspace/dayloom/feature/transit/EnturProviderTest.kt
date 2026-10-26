@@ -20,9 +20,9 @@ import io.github.lonemoonspace.dayloom.feature.transit.domain.Boards
 import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteMode
 import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteTrips
 import io.github.lonemoonspace.dayloom.feature.transit.domain.FavouriteBoard
+import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitLeg
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitProvider
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitStop
-import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitLeg
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TripOption
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -352,7 +352,9 @@ class EnturProviderTest {
         }
         val on = FakeProvider()
         // Inbound starts at the destination; only its trains are kept, not buses or replacement buses. / 回程从终点出发；只留火车，不要公交和替代巴士。
-        assertEquals(listOf(false), fetch(CommuteKind.TRAIN, hint = true, on).opposing.map { it.replacementBus })
+        val kept = fetch(CommuteKind.TRAIN, hint = true, on).opposing
+        assertEquals(listOf("L1"), kept.map { it.line })
+        assertTrue(kept.none { it.replacementBus })
         assertEquals(listOf(b.id), on.departureStops)
         val off = FakeProvider()
         assertTrue(fetch(CommuteKind.TRAIN, hint = false, off).opposing.isEmpty())
@@ -361,9 +363,9 @@ class EnturProviderTest {
         assertTrue("neither asks for departures", off.departureStops.isEmpty() && bus.departureStops.isEmpty())
         // A failed guess must not fail the trips. / 推测取不到不能连累行程。
         val failing = FakeProvider().apply { failDepartures = true }
-        val kept = fetch(CommuteKind.TRAIN, hint = true, failing)
-        assertTrue(kept.opposing.isEmpty())
-        assertEquals("the trips still arrive", listOf("L1"), kept.inbound.flatMap { o -> o.legs.map { it.line } })
+        val failed = fetch(CommuteKind.TRAIN, hint = true, failing)
+        assertTrue(failed.opposing.isEmpty())
+        assertEquals("the trips still arrive", listOf("L1"), failed.inbound.flatMap { o -> o.legs.map { it.line } })
     }
 
     @Test

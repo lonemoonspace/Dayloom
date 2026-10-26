@@ -70,6 +70,9 @@ import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteTrips
 import io.github.lonemoonspace.dayloom.feature.transit.domain.FavouriteBoard
 import io.github.lonemoonspace.dayloom.feature.transit.domain.LegState
 import io.github.lonemoonspace.dayloom.feature.transit.domain.LegStatus
+import io.github.lonemoonspace.dayloom.feature.transit.domain.OpposingEffect
+import io.github.lonemoonspace.dayloom.feature.transit.domain.OpposingHint
+import io.github.lonemoonspace.dayloom.feature.transit.domain.OpposingPolicy
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitLeg
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitPolicy
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TripOption
@@ -95,6 +98,8 @@ internal fun CommuteCard(
     val origin = route.origin
     val destination = route.destination
     val trips = snapshot?.value?.takeIf { route.isSet }
+    // A snapshot fetched before the switch was turned off may still hold departures. / 开关关掉之前抓的快照可能还带着发车数据。
+    val opposing = trips?.opposing?.takeIf { kind == CommuteKind.TRAIN && route.opposingHint }.orEmpty()
     // Before the first snapshot the direction comes from the clock, so the title does not change once data arrives.
     // 第一份快照到来之前按时钟定方向，数据到了标题也不会变。
     val subtitle = when {
@@ -115,8 +120,8 @@ internal fun CommuteCard(
         }
         when (trips?.mode) {
             null -> if (error == null) SkeletonLines()
-            CommuteMode.OUTBOUND -> OptionList(trips.outbound, route.options, now, snapshot?.fetchedAt)
-            CommuteMode.INBOUND -> OptionList(trips.inbound, route.options, now, snapshot?.fetchedAt)
+            CommuteMode.OUTBOUND -> OptionList(trips.outbound, route.options, now, snapshot?.fetchedAt, opposing)
+            CommuteMode.INBOUND -> OptionList(trips.inbound, route.options, now, snapshot?.fetchedAt, opposing)
         }
         if (error != null) ErrorLine(error)
         Attribution()
@@ -137,7 +142,7 @@ private fun kindIcon(kind: CommuteKind): Int = when (kind) {
 
 /** [all] is the snapshot's list: it still holds the direct options folded into transfers. / [all] 是快照里的列表：里面还有被并入换乘方案的直达方案。 */
 @Composable
-private fun OptionList(all: List<TripOption>, limit: Int, now: ZonedDateTime, fetchedAt: Long?) {
+private fun OptionList(all: List<TripOption>, limit: Int, now: ZonedDateTime, fetchedAt: Long?, opposing: List<BoardDeparture>) {
     val options = TransitPolicy.visibleOptions(all, now, limit, fetchedAt)
     if (options.isEmpty()) {
         Hint(stringResource(R.string.transit_no_options))
@@ -161,6 +166,7 @@ private fun OptionList(all: List<TripOption>, limit: Int, now: ZonedDateTime, fe
             folded = TransitPolicy.foldedDirect(option, all),
             status = status,
             cancelled = worst?.second?.state == LegState.CANCELLED,
+            hint = OpposingPolicy.hint(option, opposing),
         )
     }
     BoxWithConstraints {
@@ -170,7 +176,13 @@ private fun OptionList(all: List<TripOption>, limit: Int, now: ZonedDateTime, fe
 }
 
 /** One option as the card shows it, worked out before measuring so the columns fit every row. / 卡片上的一个方案，先算好再量列宽，列宽才能容下每一行。 */
-private class CommuteRow(val option: TripOption, val folded: TripOption?, val status: StatusLabel?, val cancelled: Boolean)
+private class CommuteRow(
+    val option: TripOption,
+    val folded: TripOption?,
+    val status: StatusLabel?,
+    val cancelled: Boolean,
+    val hint: OpposingHint? = null,
+)
 
 /**
  * One option in one row: the expected departure large on the left (the timetable time struck through under it when late),
@@ -197,7 +209,28 @@ private fun OptionRow(row: CommuteRow, columns: RouteColumns, now: ZonedDateTime
         if (row.folded != null) {
             RouteLine(row.folded, columns, now, struck = false, modifier = Modifier.alpha(FOLDED_ALPHA))
         }
+        if (row.hint != null) {
+            Text(
+                text = opposingText(row.hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.statusColors.amber,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
+}
+
+/**
+ * The opposing-train hint under a row, naming what it may cost rather than only the delay: a missed change, or how much
+ * later a direct train arrives.
+ * 行下面的对向车提示，说出可能的后果而不只是晚点：赶不上换乘，或直达车大约晚到多少。
+ */
+@Composable
+private fun opposingText(hint: OpposingHint): String = when (val effect = hint.effect) {
+    is OpposingEffect.MissTransfer -> stringResource(R.string.transit_opposing_miss, hint.line, hint.delayMinutes, effect.line.ifEmpty { "–" })
+    OpposingEffect.TransferHolds -> stringResource(R.string.transit_opposing_holds, hint.line, hint.delayMinutes)
+    is OpposingEffect.LateArrival -> stringResource(R.string.transit_opposing_late, hint.line, hint.delayMinutes, effect.minutes)
 }
 
 /** Dimmed enough to read as the alternative, still about 4.5:1 on the card. / 淡到看得出是备选，在卡片上仍约有 4.5:1 的对比度。 */
@@ -632,9 +665,9 @@ private fun Attribution() {
 /**
  * The commute rows at 360 and 384 dp (and larger fonts or 320 dp, where [keepPlatforms] drops the platform pills): a late
  * first train with a faster change folded over its direct option, an on-time direct train and one without live data, to
- * check that the rows fit in both languages. Stops are made up.
+ * check that the rows fit in both languages. A late opposing train puts the hint under the first row. Stops are made up.
  * 360 与 384 dp 宽（以及大字号或 320 dp，这时 [keepPlatforms] 去掉站台胶囊）的通勤行：首车晚点、换乘更快并叠在直达上面的
- * 一行，准点直达一行，没有实时数据一行，用来检查两种语言下都放得下。站名是虚构的。
+ * 一行，准点直达一行，没有实时数据一行，用来检查两种语言下都放得下。一班晚点的对向车让第一行下面出现提示。站名是虚构的。
  */
 @Preview(name = "en", widthDp = 360, locale = "en")
 @Preview(name = "zh", widthDp = 360, locale = "zh")
@@ -662,9 +695,12 @@ private fun CommuteRowsPreview() {
         TripOption(listOf(ride("L1", at(8, 55), 0, at(9, 28), "Lindvik stasjon", "Nordby stasjon", "1"))),
         TripOption(listOf(ride("L1", at(9, 25), 0, at(9, 58), "Lindvik stasjon", "Nordby stasjon", "1", realtime = false))),
     )
+    val opposing = listOf(
+        BoardDeparture(line = "L1", mode = "rail", frontText = "Østby", platform = "2", aimed = at(8, 25), expected = at(8, 34), realtime = true),
+    )
     DayloomTheme {
         Column(Modifier.padding(12.dp)) {
-            InfoCard(title = stringResource(R.string.transit_train_title)) { OptionList(all, 3, now, fetchedAt = null) }
+            InfoCard(title = stringResource(R.string.transit_train_title)) { OptionList(all, 3, now, fetchedAt = null, opposing = opposing) }
         }
     }
 }

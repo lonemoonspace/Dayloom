@@ -348,6 +348,11 @@
     <string name="transit_notify_switch_summary">45 分钟内的下一班被取消或晚点 5 分钟以上时提醒；上午看去程，下午看返程，22:00–06:00 不提醒</string>
     <string name="transit_notify_to_work">上班路上有异常</string>
     <string name="transit_notify_back_home">回家路上有异常</string>
+    <string name="transit_opposing_switch">对向晚点提示</string>
+    <string name="transit_opposing_switch_summary">单线区段上，本车可能要等同一条线反方向的车会车。起点站 5 分钟内反方向的车晚点时，在那一行提示可能赶不上换乘或晚到多少。只是推测，双线区段或调度改了会车点时可能误报。</string>
+    <string name="transit_opposing_miss">对向 %1$s 晚 %2$d 分，可能赶不上 %3$s</string>
+    <string name="transit_opposing_holds">对向 %1$s 晚 %2$d 分，换乘应该来得及</string>
+    <string name="transit_opposing_late">对向 %1$s 晚 %2$d 分，可能晚到约 %3$d 分</string>
     <string name="transit_notify_cancelled">%2$s 的 %1$s 已取消</string>
     <plurals name="transit_notify_delayed">
         <item quantity="other">%2$s 的 %1$s 晚点 %3$d 分钟</item>

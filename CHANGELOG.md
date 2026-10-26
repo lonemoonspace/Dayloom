@@ -4,6 +4,17 @@ Each version has an English section followed by a Chinese one. The heading must 
 looks it up literally.
 每个版本先写英文、再写中文。标题必须恰好是 `## X.Y.Z`：发版 workflow 按字面查找。
 
+## Unreleased
+
+- Train card: a new "Opposing delay hint" switch in the train settings, off by default. When it is on and a train of the
+  same line leaving the first stop the other way within 5 minutes is late, the row says what it may cost: "Opposing L1
+  7 min late, may miss R12", "change should still work", or for a direct train "may arrive about 7 min late". It only
+  guesses at single-track crossings and can be wrong on double track or when the crossing moves.
+
+- 火车卡片：火车设置里新增「对向晚点提示」开关，默认关闭。打开后，起点站 5 分钟内同一条线反方向的车晚点时，那一行会提示可能的
+  后果：「对向 L1 晚 7 分，可能赶不上 R12」「换乘应该来得及」，直达则是「可能晚到约 7 分」。这只是对单线会车的推测，双线区段
+  或调度改了会车点时可能误报。
+
 ## 0.2.2
 
 - Train and bus cards: each route is packed on one line, "L1 (1) Asker R12 (3)": the first line and the platform it leaves

@@ -26,6 +26,11 @@ data class CommuteRoute(
     val options: Int = TransitPolicy.DEFAULT_OPTIONS,
     /** Opt-in, off by default like every notification (design §7.4). / 选择加入，与所有通知一样默认关闭（设计文档 §7.4）。 */
     val notify: Boolean = false,
+    /**
+     * Train only, opt-in: warn when a late opposing train may hold the first train at a single-track crossing ([OpposingPolicy]).
+     * 仅火车、需用户打开：对向车晚点、第一班车可能要在单线会车时等它时提示（[OpposingPolicy]）。
+     */
+    val opposingHint: Boolean = false,
 ) {
     val isSet: Boolean get() = origin.isSet && destination.isSet
 }
@@ -90,6 +95,11 @@ data class CommuteTrips(
     val mode: CommuteMode = CommuteMode.OUTBOUND,
     val outbound: List<TripOption> = emptyList(),
     val inbound: List<TripOption> = emptyList(),
+    /**
+     * Rail departures from the first stop of [mode]'s direction, fetched only for [OpposingPolicy]; empty when it is off.
+     * [mode] 方向第一站的火车发车，只为 [OpposingPolicy] 抓取；关闭时为空。
+     */
+    val opposing: List<BoardDeparture> = emptyList(),
 ) {
     /** The options of [mode]; a fetch fills only that direction. / [mode] 方向的方案；每次抓取只填这一个方向。 */
     val current: List<TripOption>

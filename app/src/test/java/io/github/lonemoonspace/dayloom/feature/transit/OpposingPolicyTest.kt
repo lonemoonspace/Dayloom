@@ -31,22 +31,27 @@ class OpposingPolicyTest {
         // Leaving a few seconds before the opposing train's expected time still counts. / 比对向车预计时刻早几秒开也算。
         val seconds = other(25, 4).let { it.copy(expected = it.expected + 30_000L) }
         assertEquals(OpposingHint("L1", 4), OpposingPolicy.hint(option(5), listOf(seconds)))
+        // Up to two minutes after it still counts, three does not. / 晚两分钟内开仍算，三分钟就不算。
+        assertEquals(OpposingHint("L1", 3), OpposingPolicy.hint(option(5), listOf(other(24, 3))))
+        assertNull(OpposingPolicy.hint(option(6), listOf(other(24, 3))))
     }
 
     @Test
     fun `a train late for another reason gets no hint`() {
         // Leaves :33, five minutes after the opposing train passed at :28. / :33 开，对向车 :28 就过了。
         assertNull(OpposingPolicy.hint(option(9), listOf(other(25, 3))))
-        // Leaves well before the opposing train arrives: the crossing moved. / 远早于对向车到站就开：会车点改了。
-        assertNull(OpposingPolicy.hint(option(2), listOf(other(25, 16))))
+        // 3 min late but leaves well before the opposing train arrives: the crossing moved. / 晚 3 分，却远早于对向车到站就开：会车点改了。
+        assertNull(OpposingPolicy.hint(option(3), listOf(other(25, 16))))
     }
 
     @Test
     fun `nothing to explain without a delay on both sides`() {
-        assertNull(OpposingPolicy.hint(option(1), listOf(other(25, 0))))
-        assertNull(OpposingPolicy.hint(option(0), listOf(other(24, 0))))
-        // The opposing train is on time, so it cannot be the cause. / 对向车准点，就不是原因。
+        // The first train is not late enough. / 本车晚得不够。
+        assertNull(OpposingPolicy.hint(option(1), listOf(other(25, 4))))
+        // Leaves with an opposing train that is on time, or under two minutes late: not the cause.
+        // 和准点或晚不到两分钟的对向车同时开：不是原因。
         assertNull(OpposingPolicy.hint(option(5), listOf(other(29, 0))))
+        assertNull(OpposingPolicy.hint(option(5), listOf(other(25, 4).copy(aimed = at(28) + 20_000L))))
     }
 
     @Test

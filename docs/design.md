@@ -335,7 +335,7 @@ val allModules: List<FeatureModule> = listOf(
 - **数据源**：Entur Journey Planner v3（GraphQL）`trip` 与 `stopPlace.estimatedCalls`；站点搜索用 Entur Geocoder。请求头 `ET-Client-Name: lonemoonspace-dayloom`。
 - **可插拔**：`TransitProvider` 接口（`searchStops`、`planTrips`、`departures`），第一版只有 `EnturProvider`。设置里地点不在挪威时提示「暂不支持该地区」。
 - **设置**：火车、公交（起点站、终点站、显示方案数、异常提醒）与发车板（收藏站点 + 筛选条件）各是一张模块卡片。
-- **注明会车晚点**（仅火车，可选，默认关）：最接近未移植的 `UpcomingL1Policy`，改成了通用做法。打开后火车数据来源还会去取起点站的火车发车信息；第一班车已经晚点，而且在同一条线、终点牌不同、站台不同、时刻表相差 5 分钟以内的晚点车前后一两分钟内开时，`OpposingPolicy` 在那一行下面注明它在等这班车会车。它只解释、不预测：第一版（0.2.3）预测前方的等待，但 Bane NOR 的预计时刻已经算进了会车等待，对向车大晚点时会车点又常被挪走，所以那个提示几乎不出现，出现时又是误报。Entur 没有轨道数据也不区分火车方向，所以缺站台或缺实时数据时不提示。
+- **注明会车晚点**（仅火车，可选，默认关）：最接近未移植的 `UpcomingL1Policy`，改成了通用做法。打开后火车数据来源还会去取起点站的火车发车信息；第一班车已经晚点，而且在同一条线、终点牌不同、站台不同、时刻表相差 5 分钟以内的晚点车前后一两分钟内开时，`OpposingPolicy` 在那一行下面注明它在等这班车会车。它只解释、不预测：Bane NOR 的预计时刻已经算进了会车等待，对向车大晚点时会车点又常被挪走，所以预测的等待几乎不出现，出现时又常是误报。Entur 没有轨道数据也不区分火车方向，所以缺站台或缺实时数据时不提示。
 - **来源**：`train.commute`、`bus.commute`、`departures.boards`。
 - **通知**：下一班在 45 分钟内发车且被取消或大晚点时提醒，22:00–06:00 不提醒（移植 `CommuteDisruptionPolicy` 的指纹去重思路）。
 - **移植**：`EnturApi` 的请求与解析基础、`StationMatcher`/`TransferMatcher` 中通用的部分、状态标签的判定规则（准点/晚点/取消/实时未知）。

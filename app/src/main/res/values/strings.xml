@@ -362,7 +362,7 @@
     <string name="transit_notify_to_work">Disruption on your way to work</string>
     <string name="transit_notify_back_home">Disruption on your way home</string>
     <string name="transit_opposing_switch">Note crossing delays</string>
-    <string name="transit_opposing_switch_summary">When your train is late because it waits at the first stop for a late train going the other way, says so under the row</string>
+    <string name="transit_opposing_switch_summary">When your train is late because it waits at the first stop for a late train going the other way, says so under the row. Inferred from signs, platforms and times; Entur has no track data</string>
     <string name="transit_opposing">Held for the opposing %1$s (%2$s)</string>
     <string name="transit_notify_cancelled">%1$s at %2$s is cancelled</string>
     <plurals name="transit_notify_delayed">

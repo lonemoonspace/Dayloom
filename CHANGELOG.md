@@ -4,7 +4,7 @@ Each version has an English section followed by a Chinese one. The heading must 
 looks it up literally.
 每个版本先写英文、再写中文。标题必须恰好是 `## X.Y.Z`：发版 workflow 按字面查找。
 
-## Unreleased
+## 0.2.4
 
 - Train card: the "Opposing delay hint" becomes "Note crossing delays". Instead of predicting a wait, which almost never
   showed because Bane NOR's expected times already include it, a row that is already late now says why when its first

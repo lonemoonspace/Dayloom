@@ -87,7 +87,7 @@ internal fun RouteSettingsSection(
         checked = route.notify,
         channelId = channelId,
     ) { on -> updateRoute { it.copy(notify = on) } }
-    // Only rail has single-track crossings worth guessing at. / 只有铁路有值得推测的单线会车。
+    // Only rail has single-track crossings. / 只有铁路有单线会车。
     if (kind == CommuteKind.TRAIN) {
         SwitchRow(
             label = stringResource(R.string.transit_opposing_switch),
@@ -95,7 +95,6 @@ internal fun RouteSettingsSection(
             onCheckedChange = { on -> updateRoute { it.copy(opposingHint = on) } },
             summary = stringResource(R.string.transit_opposing_switch_summary),
         )
-        Hint(stringResource(R.string.transit_opposing_note))
     }
     Hint(stringResource(R.string.transit_attribution))
 

@@ -70,7 +70,6 @@ import io.github.lonemoonspace.dayloom.feature.transit.domain.CommuteTrips
 import io.github.lonemoonspace.dayloom.feature.transit.domain.FavouriteBoard
 import io.github.lonemoonspace.dayloom.feature.transit.domain.LegState
 import io.github.lonemoonspace.dayloom.feature.transit.domain.LegStatus
-import io.github.lonemoonspace.dayloom.feature.transit.domain.OpposingEffect
 import io.github.lonemoonspace.dayloom.feature.transit.domain.OpposingHint
 import io.github.lonemoonspace.dayloom.feature.transit.domain.OpposingPolicy
 import io.github.lonemoonspace.dayloom.feature.transit.domain.TransitLeg
@@ -214,21 +213,13 @@ private fun OptionRow(row: CommuteRow, columns: RouteColumns, now: ZonedDateTime
 }
 
 /**
- * The opposing-train hint under a row, naming what it may cost rather than only the delay: a missed change, or how much
- * later a direct train arrives.
- * 行下面的对向车提示，说出可能的后果而不只是晚点：赶不上换乘，或直达车大约晚到多少。
+ * The reason under a late row: the first train is waiting for a late opposing train. The delay reuses the card's own
+ * late wording.
+ * 晚点行下面的原因：第一班车在等晚点的对向车会车。晚点沿用卡片自己的写法。
  */
 @Composable
-private fun opposingText(hint: OpposingHint): String {
-    val effect = when (val effect = hint.effect) {
-        is OpposingEffect.MissTransfer -> stringResource(R.string.transit_opposing_miss, effect.line.ifEmpty { "–" })
-        is OpposingEffect.TransferHolds -> stringResource(R.string.transit_opposing_holds, effect.minutesLeft)
-        is OpposingEffect.LateArrival -> stringResource(R.string.transit_opposing_late, effect.minutes)
-    }
-    // The delay reuses the card's own late wording. / 晚点沿用卡片自己的写法。
-    val late = pluralStringResource(R.plurals.transit_late, hint.delayMinutes, hint.delayMinutes)
-    return stringResource(R.string.transit_opposing, hint.line, late, effect)
-}
+private fun opposingText(hint: OpposingHint): String =
+    stringResource(R.string.transit_opposing, hint.line, pluralStringResource(R.plurals.transit_late, hint.delayMinutes, hint.delayMinutes))
 
 /** Dimmed enough to read as the alternative, still about 4.5:1 on the card. / 淡到看得出是备选，在卡片上仍约有 4.5:1 的对比度。 */
 private const val FOLDED_ALPHA = 0.7f
@@ -663,11 +654,11 @@ private fun Attribution() {
 /**
  * The commute rows at 360 and 384 dp (and larger fonts or 320 dp, where [keepPlatforms] drops the platform pills): a late
  * first train with a faster change folded over its direct option, an on-time change and a direct train without live data, to
- * check that the rows fit in both languages. Late opposing trains put a missed-change hint under the first row and a
- * change-still-works hint under the second. Stops are made up.
+ * check that the rows fit in both languages. The first train is held for a late opposing train, so its row says why.
+ * Stops are made up.
  * 360 与 384 dp 宽（以及大字号或 320 dp，这时 [keepPlatforms] 去掉站台胶囊）的通勤行：首车晚点、换乘更快并叠在直达上面的
- * 一行，准点换乘一行，没有实时数据的直达一行，用来检查两种语言下都放得下。晚点的对向车让第一行下面提示赶不上换乘、
- * 第二行下面提示换乘还来得及。站名是虚构的。
+ * 一行，准点换乘一行，没有实时数据的直达一行，用来检查两种语言下都放得下。首车在等晚点的对向车会车，所以第一行下面注明原因。
+ * 站名是虚构的。
  */
 @Preview(name = "en", widthDp = 360, locale = "en")
 @Preview(name = "zh", widthDp = 360, locale = "zh")
@@ -701,8 +692,7 @@ private fun CommuteRowsPreview() {
         TripOption(listOf(ride("L1", at(9, 25), 0, at(9, 58), "Lindvik stasjon", "Nordby stasjon", "1", realtime = false))),
     )
     val opposing = listOf(
-        BoardDeparture(line = "L1", mode = "rail", frontText = "Østby", platform = "2", aimed = at(8, 25), expected = at(8, 34), realtime = true),
-        BoardDeparture(line = "L1", mode = "rail", frontText = "Østby", platform = "2", aimed = at(8, 56), expected = at(9, 0), realtime = true),
+        BoardDeparture(line = "L1", mode = "rail", frontText = "Østby", platform = "2", aimed = at(8, 25), expected = at(8, 30), realtime = true),
     )
     DayloomTheme {
         Column(Modifier.padding(12.dp)) {

@@ -27,8 +27,8 @@ data class CommuteRoute(
     /** Opt-in, off by default like every notification (design §7.4). / 选择加入，与所有通知一样默认关闭（设计文档 §7.4）。 */
     val notify: Boolean = false,
     /**
-     * Train only, opt-in: warn when a late opposing train may hold the first train at a single-track crossing ([OpposingPolicy]).
-     * 仅火车、需用户打开：对向车晚点、第一班车可能要在单线会车时等它时提示（[OpposingPolicy]）。
+     * Train only, opt-in: say when a late first train is waiting for a late opposing train at a crossing ([OpposingPolicy]).
+     * 仅火车、需用户打开：第一班车晚点是在等晚点的对向车会车时，注明原因（[OpposingPolicy]）。
      */
     val opposingHint: Boolean = false,
 ) {

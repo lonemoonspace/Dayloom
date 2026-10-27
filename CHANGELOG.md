@@ -4,6 +4,15 @@ Each version has an English section followed by a Chinese one. The heading must 
 looks it up literally.
 每个版本先写英文、再写中文。标题必须恰好是 `## X.Y.Z`：发版 workflow 按字面查找。
 
+## Unreleased
+
+- Train card: the "Opposing delay hint" becomes "Note crossing delays". Instead of predicting a wait, which almost never
+  showed because Bane NOR's expected times already include it, a row that is already late now says why when its first
+  train is waiting for a late train going the other way: "Held for the opposing L1 (4 min late)". Still off by default.
+
+- 火车卡片：「对向晚点提示」改为「注明会车晚点」。不再预测等待（Bane NOR 的预计时刻已经算进了会车等待，所以以前的提示几乎
+  不出现），改为在已经晚点的那一行注明原因：第一班车在等晚点的对向车会车时，写「在等对向 L1 会车（对向晚 4 分）」。仍默认关闭。
+
 ## 0.2.3
 
 - Train card: a new "Opposing delay hint" switch in the train settings, off by default. When it is on and a train of the

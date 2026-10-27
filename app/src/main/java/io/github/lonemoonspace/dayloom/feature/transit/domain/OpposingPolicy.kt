@@ -2,75 +2,59 @@ package io.github.lonemoonspace.dayloom.feature.transit.domain
 
 import java.time.Duration
 
-/** What a late opposing train may do to an option. / 对向车晚点可能给一个方案带来的后果。 */
-sealed interface OpposingEffect {
-    /** The change at the transfer stop may be missed; [line] is the train changed to. / 换乘站的换乘可能赶不上；[line] 是要换的车。 */
-    data class MissTransfer(val line: String) : OpposingEffect
-
-    /** The change still leaves about [minutesLeft] minutes. / 换乘还剩大约 [minutesLeft] 分钟。 */
-    data class TransferHolds(val minutesLeft: Int) : OpposingEffect
-
-    /** A direct train arrives about [minutes] later. / 直达车大约晚到 [minutes] 分钟。 */
-    data class LateArrival(val minutes: Int) : OpposingEffect
-}
-
-/** The hint for one option: which line runs the other way, how late it is, and what it may cause. / 一个方案的提示：对向是哪条线、晚了多少、可能造成什么。 */
-data class OpposingHint(val line: String, val delayMinutes: Int, val effect: OpposingEffect)
+/**
+ * Why the first train of an option is late: it waits at its first stop for [line] going the other way, itself
+ * [delayMinutes] late.
+ * 方案第一班车晚点的原因：它在起点站等反方向的 [line] 会车，那班车自己晚了 [delayMinutes] 分钟。
+ */
+data class OpposingHint(val line: String, val delayMinutes: Int)
 
 /**
- * A guess at single-track crossings: when a train of the same line leaving the other way at about the same time is late,
- * the first train of an option may have to wait for it. Entur has no track data and does not tell rail directions apart, so
- * the opposing train is one with the same line, a different sign and a different platform, and both trains need live data.
- * A missing platform or live time gives no hint rather than a guess on a guess. The hint is opt-in because a double-track
- * stop or a crossing moved elsewhere gives false alarms.
- * 对单线会车的推测：同一条线、反方向、差不多同时开的车晚点时，方案的第一班车可能要等它。Entur 没有轨道数据，也不区分火车方向，
- * 所以对向车按「线路相同、终点牌不同、站台不同」来认，两班车都要有实时数据。缺站台或缺实时数据时不提示，免得在推测上再推测。
- * 双线车站或调度改了会车点时会误报，所以这个提示要用户自己打开。
+ * Explains a delay the live data already shows, instead of predicting one: Bane NOR's expected times already include a
+ * crossing wait, and when an opposing train is very late the crossing is often moved, so a prediction mostly misfired.
+ * Entur has no track data and does not tell rail directions apart, so the opposing train is one with the same line, a
+ * different sign and a different platform, and both trains need live data; missing data gives no hint.
+ * 解释实时数据已经显示的晚点，而不是预测晚点：Bane NOR 的预计时刻已经算进了会车等待，对向车大晚点时会车点又常被挪走，
+ * 所以预测大多不准。Entur 没有轨道数据，也不区分火车方向，所以对向车按「线路相同、终点牌不同、站台不同」来认，两班车都要有
+ * 实时数据；缺数据时不提示。
  */
 object OpposingPolicy {
 
     /** How far apart the two timetabled departures may be to count as a crossing. / 两班车时刻表相差多少以内算会车。 */
     val CROSSING_WINDOW: Duration = Duration.ofMinutes(5)
 
-    /** Waits shorter than this are noise in real-time data. / 比这更短的等待只是实时数据的噪声。 */
-    const val MIN_WAIT_MINUTES = 2
-
-    /** The least time left at the transfer stop for a change still to count as made. / 换乘站至少还剩这么多时间，才算还赶得上。 */
-    const val MIN_CHANGE_MINUTES = 2
+    /** Delays shorter than this are noise in real-time data. / 比这更短的晚点只是实时数据的噪声。 */
+    const val MIN_DELAY_MINUTES = 2
 
     /**
-     * The hint for [option] given the [departures] from its first stop, or null when no late opposing train makes its first
-     * train wait. Once the first train's own expected time already covers the wait, there is nothing left to warn about.
-     * 根据第一站的 [departures] 给 [option] 的提示；没有晚点的对向车让第一班车等待时返回 null。第一班车自己的预计时刻已经
-     * 包含了这段等待时，就没什么要提醒的了。
+     * The first train counts as held when it leaves between this long before and [HOLD_AFTER] after the opposing train;
+     * the two are a few seconds apart in practice, either way round.
+     * 第一班车在对向车之前这么久到之后 [HOLD_AFTER] 之内开，才算在等它；实际两者只差几秒，先后都有可能。
+     */
+    val HOLD_BEFORE: Duration = Duration.ofMinutes(1)
+
+    val HOLD_AFTER: Duration = Duration.ofMinutes(2)
+
+    /**
+     * The reason for [option]'s late first train given the [departures] from its first stop, or null when it is not late
+     * or no late opposing train explains it.
+     * 根据第一站的 [departures] 说明 [option] 第一班车晚点的原因；没晚点或没有晚点的对向车能解释时返回 null。
      */
     fun hint(option: TripOption, departures: List<BoardDeparture>): OpposingHint? {
         val first = option.legs.firstOrNull() ?: return null
         // A rail replacement bus keeps mode `rail` but never waits at a crossing. / 铁路替代巴士的 mode 仍是 `rail`，但不会等会车。
         if (first.mode != RAIL || first.replacementBus || first.cancelled || !first.realtime || first.line.isEmpty()) return null
+        if (first.expectedDeparture - first.aimedDeparture < MIN_DELAY_MINUTES * MINUTE) return null
         val window = CROSSING_WINDOW.toMillis()
-        val opposing = departures.filter {
+        val held = departures.filter {
             it.mode == RAIL && !it.replacementBus && !it.cancelled && it.realtime && it.line == first.line &&
                 it.frontText != first.frontText && differentPlatform(it.platform, first.platform) &&
-                kotlin.math.abs(it.aimed - first.aimedDeparture) <= window
+                kotlin.math.abs(it.aimed - first.aimedDeparture) <= window &&
+                it.expected - it.aimed >= MIN_DELAY_MINUTES * MINUTE &&
+                first.expectedDeparture - it.expected in -HOLD_BEFORE.toMillis()..HOLD_AFTER.toMillis()
         }
-        val worst = opposing.maxByOrNull { it.expected } ?: return null
-        // Compared in milliseconds and rounded once for display, so a few seconds never tip a minute either way.
-        // 用毫秒比较，只在显示时取整一次，免得几秒钟的误差把结果推到另一边。
-        val wait = worst.expected - first.expectedDeparture
-        val delay = worst.expected - worst.aimed
-        if (wait < MIN_WAIT_MINUTES * MINUTE || delay < MIN_WAIT_MINUTES * MINUTE) return null
-        val next = option.legs.getOrNull(1)
-        val effect = if (next == null) {
-            // Rounded up: a warning should not understate the wait. / 向上取整：提示不该把等待说少了。
-            OpposingEffect.LateArrival(Math.floorDiv(wait + MINUTE - 1, MINUTE).toInt())
-        } else {
-            val left = next.expectedDeparture - first.expectedArrival - wait
-            if (left < MIN_CHANGE_MINUTES * MINUTE) OpposingEffect.MissTransfer(next.line) else OpposingEffect.TransferHolds(Math.floorDiv(left, MINUTE).toInt())
-        }
-        // Floored like every other delay on the card, while the warning above rounds up; keep the two apart.
-        // 与卡片上其他晚点一样向下取整，而上面的警告向上取整；两者故意不同。
-        return OpposingHint(worst.line, Math.floorDiv(delay, MINUTE).toInt(), effect)
+        val reason = held.minByOrNull { kotlin.math.abs(first.expectedDeparture - it.expected) } ?: return null
+        return OpposingHint(reason.line, Math.floorDiv(reason.expected - reason.aimed, MINUTE).toInt())
     }
 
     /** Without both platforms a different sign could just be a branch of the same direction. / 缺一个站台时，终点牌不同也可能只是同方向的另一条支线。 */

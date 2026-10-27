@@ -96,9 +96,9 @@ class CommuteSource(
     }
 
     /**
-     * The hint is a guess, so failing to fetch it must not fail the trips. Starting a little early keeps an opposing train
+     * The hint is only extra, so failing to fetch it must not fail the trips. Starting a little early keeps an opposing train
      * that is already past its timetable time.
-     * 这个提示只是推测，取不到也不能让行程跟着失败。起始时间提前一点，已经过了时刻表时间的对向车也能拿到。
+     * 这个提示只是附加信息，取不到也不能让行程跟着失败。起始时间提前一点，已经过了时刻表时间的对向车也能拿到。
      */
     private suspend fun opposingDepartures(stop: TransitStop, now: ZonedDateTime) = try {
         provider.departures(listOf(stop.id), now.minus(OpposingPolicy.CROSSING_WINDOW))[stop.id].orEmpty().filter { it.mode == "rail" && !it.replacementBus }

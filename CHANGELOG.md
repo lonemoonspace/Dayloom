@@ -8,12 +8,12 @@ looks it up literally.
 
 - Train card: "Note crossing delays" now also warns while your train still shows on time. Bane NOR sometimes adds the
   crossing wait to the expected time only minutes before departure, too late to plan a change, so a late opposing train
-  due after yours is named under the row too. The line is shorter: "Opposing L1 6 min late". Still off by default.
+  due 2 to 15 minutes after yours is named under the row too. The line is shorter: "Opposing L1 6 min late". Still off by default.
 - Train, bus and departure board cards: a delay of a few seconds no longer strikes through the timetable time under the
   same minute ("08:24" over a struck "08:24").
 
 - 火车卡片：「注明会车晚点」在本车还显示准点时也会提示。Bane NOR 有时到开车前几分钟才把会车等待算进预计时刻，来不及安排
-  换乘，所以对向车晚点、而且比本车更晚才到时，也在那一行下面写出来。提示改短为「对向 L1 晚点 6 分钟」。仍默认关闭。
+  换乘，所以对向车晚点、而且在本车之后 2 到 15 分钟内到时，也在那一行下面写出来。提示改短为「对向 L1 晚点 6 分钟」。仍默认关闭。
 - 火车、公交与发车板卡片：只晚几秒时，不再在同一分钟下面划掉时刻表时间（「08:24」下面划掉「08:24」）。
 
 ## 0.2.4

@@ -65,6 +65,15 @@ class OpposingPolicyTest {
     }
 
     @Test
+    fun `an on-time train does not wait for an opposing one far behind`() {
+        // Due :39, fifteen minutes after :24, still counts; :40 and an hour late do not.
+        // :39 到，比 :24 晚十五分钟，仍算；:40 和晚一小时都不算。
+        assertEquals(OpposingHint("L1", 14), OpposingPolicy.hint(option(0), listOf(other(25, 14))))
+        assertNull(OpposingPolicy.hint(option(0), listOf(other(25, 15))))
+        assertNull(OpposingPolicy.hint(option(0), listOf(other(25, 60))))
+    }
+
+    @Test
     fun `nothing to explain without a delay on both sides`() {
         // Leaves with an opposing train that is on time, or under two minutes late: not the cause.
         // 和准点或晚不到两分钟的对向车同时开：不是原因。

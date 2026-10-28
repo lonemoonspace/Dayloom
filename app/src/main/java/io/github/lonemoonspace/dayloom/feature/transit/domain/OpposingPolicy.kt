@@ -11,12 +11,12 @@ data class OpposingHint(val line: String, val delayMinutes: Int)
 /**
  * Names a late opposing train at the first stop in two cases. When the first train is already late and leaves right after
  * it, it is the cause. When the first train still shows on time but the opposing one is due later, it may hold the first
- * train: Bane NOR often adds the crossing wait to the expected time only minutes before departure, too late to plan a
+ * train, if it is due within [MAX_WAIT]: Bane NOR often adds the crossing wait to the expected time only minutes before departure, too late to plan a
  * change. A first train that is late but leaves well before the opposing one gets nothing, since the crossing has moved.
  * Entur has no track data and does not tell rail directions apart, so the opposing train is one with the same line, a
  * different sign and a different platform, and both trains need live data; missing data gives no hint.
  * 在两种情况下写出起点站晚点的对向车。第一班车已经晚点、紧跟着它开时，它就是原因。第一班车还显示准点、而对向车要更晚才到时，
- * 第一班车可能要等它：Bane NOR 常常到开车前几分钟才把会车等待算进预计时刻，来不及安排换乘。第一班车晚点却远早于对向车开时
+ * 第一班车可能要等它（限 [MAX_WAIT] 以内）：Bane NOR 常常到开车前几分钟才把会车等待算进预计时刻，来不及安排换乘。第一班车晚点却远早于对向车开时
  * 不提示，因为会车点已经改了。Entur 没有轨道数据，也不区分火车方向，所以对向车按「线路相同、终点牌不同、站台不同」来认，
  * 两班车都要有实时数据；缺数据时不提示。
  */
@@ -38,6 +38,15 @@ object OpposingPolicy {
     val HOLD_AFTER: Duration = Duration.ofMinutes(2)
 
     /**
+     * An on-time first train is only warned about an opposing train due within this long after it; one later than that is
+     * not a crossing the train would wait for. Not [CROSSING_WINDOW], which bounds the timetable: a train 6 minutes late,
+     * as seen in practice, would already fall outside it.
+     * 准点的第一班车只为在它之后这么久以内到的对向车提示；再晚就不是本车会等的会车了。不用 [CROSSING_WINDOW]，那是约束时刻表的：
+     * 实际遇到过的晚 6 分钟就已经超出它了。
+     */
+    val MAX_WAIT: Duration = Duration.ofMinutes(15)
+
+    /**
      * The late opposing train that holds, or may hold, [option]'s first train given the [departures] from its first stop,
      * or null when there is none.
      * 根据第一站的 [departures] 找出让 [option] 第一班车在等、或可能要等的晚点对向车；没有时返回 null。
@@ -56,7 +65,7 @@ object OpposingPolicy {
                 if (late) {
                     first.expectedDeparture - it.expected in -HOLD_BEFORE.toMillis()..HOLD_AFTER.toMillis()
                 } else {
-                    it.expected - first.expectedDeparture >= MIN_DELAY_MINUTES * MINUTE
+                    it.expected - first.expectedDeparture in MIN_DELAY_MINUTES * MINUTE..MAX_WAIT.toMillis()
                 }
         }
         val reason = matching.minByOrNull { kotlin.math.abs(first.expectedDeparture - it.expected) } ?: return null

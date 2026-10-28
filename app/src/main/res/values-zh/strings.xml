@@ -349,8 +349,10 @@
     <string name="transit_notify_to_work">上班路上有异常</string>
     <string name="transit_notify_back_home">回家路上有异常</string>
     <string name="transit_opposing_switch">注明会车晚点</string>
-    <string name="transit_opposing_switch_summary">本车晚点、而且是在起点站等晚点的对向车会车时，在那一行注明原因。按终点牌、站台和时刻推断，Entur 没有轨道数据</string>
-    <string name="transit_opposing">在等对向 %1$s 会车（对向%2$s）</string>
+    <string name="transit_opposing_switch_summary">同一条线反方向的车在起点站晚点、本车在等或可能要等它会车时，在那一行下面写出来。按终点牌、站台和时刻推断，Entur 没有轨道数据</string>
+    <plurals name="transit_opposing">
+        <item quantity="other">对向 %1$s 晚点 %2$d 分钟</item>
+    </plurals>
     <string name="transit_notify_cancelled">%2$s 的 %1$s 已取消</string>
     <plurals name="transit_notify_delayed">
         <item quantity="other">%2$s 的 %1$s 晚点 %3$d 分钟</item>

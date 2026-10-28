@@ -213,13 +213,13 @@ private fun OptionRow(row: CommuteRow, columns: RouteColumns, now: ZonedDateTime
 }
 
 /**
- * The reason under a late row: the first train is waiting for a late opposing train. The delay reuses the card's own
- * late wording.
- * 晚点行下面的原因：第一班车在等晚点的对向车会车。晚点沿用卡片自己的写法。
+ * The line under a row whose first train waits, or may have to wait, for a late opposing train: only the line and its delay,
+ * which is all the user needs to judge a tight change.
+ * 第一班车在等、或可能要等晚点的对向车会车时，行下面的那一句：只写线路和晚点多少，用户凭这个就能判断换乘来不来得及。
  */
 @Composable
 private fun opposingText(hint: OpposingHint): String =
-    stringResource(R.string.transit_opposing, hint.line, pluralStringResource(R.plurals.transit_late, hint.delayMinutes, hint.delayMinutes))
+    pluralStringResource(R.plurals.transit_opposing, hint.delayMinutes, hint.line, hint.delayMinutes)
 
 /** Dimmed enough to read as the alternative, still about 4.5:1 on the card. / 淡到看得出是备选，在卡片上仍约有 4.5:1 的对比度。 */
 private const val FOLDED_ALPHA = 0.7f
@@ -447,8 +447,11 @@ private fun TransitRow(
                 textDecoration = if (cancelled) TextDecoration.LineThrough else null,
                 maxLines = 1,
             )
-            if (!cancelled && expected != aimed) {
-                Text(at(aimed), style = MaterialTheme.typography.labelSmall, color = faint, textDecoration = TextDecoration.LineThrough, maxLines = 1)
+            // Compared as shown: a delay of a few seconds would otherwise strike "08:24" under "08:24".
+            // 按显示出来的时刻比较：否则晚几秒也会在「08:24」下面划掉「08:24」。
+            val aimedText = at(aimed)
+            if (!cancelled && aimedText != at(expected)) {
+                Text(aimedText, style = MaterialTheme.typography.labelSmall, color = faint, textDecoration = TextDecoration.LineThrough, maxLines = 1)
             }
         }
         Spacer(Modifier.width(TIME_GAP))
@@ -654,11 +657,11 @@ private fun Attribution() {
 /**
  * The commute rows at 360 and 384 dp (and larger fonts or 320 dp, where [keepPlatforms] drops the platform pills): a late
  * first train with a faster change folded over its direct option, an on-time change and a direct train without live data, to
- * check that the rows fit in both languages. The first train is held for a late opposing train, so its row says why.
- * Stops are made up.
+ * check that the rows fit in both languages. The first train is held for a late opposing train, so its row names it, and the
+ * on-time change may still have to wait for another one. Stops are made up.
  * 360 与 384 dp 宽（以及大字号或 320 dp，这时 [keepPlatforms] 去掉站台胶囊）的通勤行：首车晚点、换乘更快并叠在直达上面的
- * 一行，准点换乘一行，没有实时数据的直达一行，用来检查两种语言下都放得下。首车在等晚点的对向车会车，所以第一行下面注明原因。
- * 站名是虚构的。
+ * 一行，准点换乘一行，没有实时数据的直达一行，用来检查两种语言下都放得下。首车在等晚点的对向车会车，所以第一行下面写出对向车；
+ * 准点的换乘也可能要等另一班晚点的对向车。站名是虚构的。
  */
 @Preview(name = "en", widthDp = 360, locale = "en")
 @Preview(name = "zh", widthDp = 360, locale = "zh")
@@ -693,6 +696,7 @@ private fun CommuteRowsPreview() {
     )
     val opposing = listOf(
         BoardDeparture(line = "L1", mode = "rail", frontText = "Østby", platform = "2", aimed = at(8, 25), expected = at(8, 30), realtime = true),
+        BoardDeparture(line = "L1", mode = "rail", frontText = "Østby", platform = "2", aimed = at(8, 56), expected = at(9, 2), realtime = true),
     )
     DayloomTheme {
         Column(Modifier.padding(12.dp)) {

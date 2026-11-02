@@ -1,6 +1,15 @@
 # Gradle and build output / Gradle 与构建产物
+.android/
+.android-sdk/
+.bin/
 .gradle/
+.gradle-home/
+.jdk17/
 .kotlin/
+.m2/
+.robolectric/
+.robolectric-download-lock
+.tmp/
 build/
 *.apk
 *.aab
@@ -29,3 +38,4 @@ replay_pid*.log
 
 # Python bytecode from scripts / scripts 运行产生的 Python 字节码
 __pycache__/
+.cache/

@@ -46,22 +46,20 @@ private val AppTypography: Typography = Typography().run {
 }
 
 /**
- * Colours come from the wallpaper (Material You, always available from minSdk 33). Only the tones are fixed: the page is
- * one step darker than the cards in light mode and one step lighter in dark mode, so cards stand out on any wallpaper, and
- * status colours keep their contrast because neutral tones do not depend on the hue (see StatusColorsContrastTest).
- * 颜色取自壁纸（Material You，minSdk 33 起总是可用）。固定的只有明度：浅色时页面比卡片暗一级，深色时卡片比页面亮一级，
- * 任何壁纸下卡片都分得开；中性色的明度与色相无关，状态色的对比度因此不变（见 StatusColorsContrastTest）。
+ * Colours come from the selected preset, or the wallpaper by default (Material You, minSdk 33).
+ * Cards keep a subtle border and elevated contrast; status colours keep their contrast.
+ * 颜色取自所选预设，默认取自壁纸（Material You，minSdk 33 起）。卡片保留微光描边与层次对比度；状态色对比度不变。
  */
 @Composable
-fun DayloomTheme(content: @Composable () -> Unit) {
+fun DayloomTheme(preset: String = "", content: @Composable () -> Unit) {
     val dark = isSystemInDarkTheme()
     val context = LocalContext.current
-    val wallpaper = if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-    val scheme = wallpaper.copy(background = if (dark) wallpaper.surface else wallpaper.surfaceContainer)
+    val scheme = ThemePresets.resolveColorScheme(preset, dark, context)
+    val border = if (dark) scheme.outlineVariant.copy(alpha = 0.5f) else scheme.outlineVariant.copy(alpha = 0.4f)
     val surfaces = if (dark) {
-        AppSurfaces(card = scheme.surfaceContainer, tile = scheme.surfaceContainerHigh)
+        AppSurfaces(card = scheme.surfaceContainer, tile = scheme.surfaceContainerHigh, cardBorder = border)
     } else {
-        AppSurfaces(card = scheme.surfaceContainerLowest, tile = scheme.surfaceContainerLow)
+        AppSurfaces(card = scheme.surfaceContainerLowest, tile = scheme.surfaceContainerLow, cardBorder = border)
     }
     CompositionLocalProvider(
         LocalStatusColors provides if (dark) DarkStatusColors else LightStatusColors,

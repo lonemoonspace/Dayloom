@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.lonemoonspace.dayloom.app.nav.AppRoot
 import io.github.lonemoonspace.dayloom.core.ui.theme.DayloomTheme
 
@@ -28,7 +29,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val graph = DayloomApp.from(this).graph
         setContent {
-            DayloomTheme {
+            val settings by graph.appSettings.flow.collectAsStateWithLifecycle(initialValue = null)
+            DayloomTheme(preset = settings?.themePreset.orEmpty()) {
                 AppRoot(graph = graph, pendingIntent = pendingIntent)
             }
         }

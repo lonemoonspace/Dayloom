@@ -271,6 +271,7 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?) {
                                 onModuleEnabled = vm::setModuleEnabled,
                                 onMorningBrief = vm::setMorningBrief,
                                 onMorningBriefTime = vm::setMorningBriefTime,
+                                onThemePreset = vm::setThemePreset,
                             ) {
                                 val places by sharedVm.placeList.collectAsStateWithLifecycle()
                                 val editor by sharedVm.editor.collectAsStateWithLifecycle()

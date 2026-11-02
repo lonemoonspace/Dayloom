@@ -4,6 +4,7 @@ package io.github.lonemoonspace.dayloom.core.ui
 // minimum heights take about a sixth of a phone screen. Content scrolls under both bars.
 // 44dp 玻璃顶栏与 52dp 悬浮玻璃底栏，代替 Material 3 自带组件：后者 64dp + 80dp 的最小高度会占掉手机屏幕约六分之一。内容从两条栏下面滚过。
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -36,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
@@ -108,7 +110,8 @@ fun CompactNavBar(tabs: List<NavTab>) {
             modifier = Modifier
                 .widthIn(max = 420.dp)
                 .fillMaxWidth()
-                .height(52.dp)
+                .height(56.dp)
+                .shadow(elevation = 6.dp, shape = PillShape, spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
                 .clip(PillShape)
                 .glass()
                 .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f), PillShape)
@@ -137,13 +140,25 @@ private fun NavTabItem(tab: NavTab, modifier: Modifier) {
             .semantics { contentDescription = tab.label },
         contentAlignment = Alignment.Center,
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .size(40.dp)
-                .background(if (tab.selected) primary.copy(alpha = 0.18f) else Color.Transparent, CircleShape),
-            contentAlignment = Alignment.Center,
+                .animateContentSize()
+                .clip(CircleShape)
+                .background(if (tab.selected) primary.copy(alpha = 0.14f) else Color.Transparent)
+                .padding(horizontal = if (tab.selected) 12.dp else 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             tab.icon(tint)
+            if (tab.selected) {
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = tab.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = primary,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }

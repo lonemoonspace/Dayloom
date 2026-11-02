@@ -30,6 +30,7 @@ data class SettingsState(
     /** Empty = follow the device. / 空 = 跟随设备。 */
     val timeZoneOverride: String = "",
     val effectiveZone: String = "",
+    val themePreset: String = "",
     val modules: List<ModuleToggle> = emptyList(),
     val morningBrief: Boolean = false,
     /** Minutes after midnight. / 午夜起的分钟数。 */
@@ -54,11 +55,16 @@ class SettingsViewModel(
             language = lang,
             timeZoneOverride = s.timeZoneOverride,
             effectiveZone = z.id,
+            themePreset = s.themePreset,
             modules = modules.map { ModuleToggle(it, it.id in enabled, sectionsOf(it)) },
             morningBrief = s.morningBrief,
             morningBriefMinute = s.morningBriefMinute,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsState())
+
+    fun setThemePreset(preset: String) {
+        viewModelScope.launch { settings.update { it.copy(themePreset = preset) } }
+    }
 
     fun setLanguage(choice: LanguageChoice) {
         language.set(choice)

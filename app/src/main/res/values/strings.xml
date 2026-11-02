@@ -79,6 +79,9 @@
 
     <string name="calendar_title">Calendar</string>
     <string name="calendar_summary">Clock, date, week number, lunar calendar and holidays</string>
+    <string name="calendar_greeting_morning">Good morning</string>
+    <string name="calendar_greeting_afternoon">Good afternoon</string>
+    <string name="calendar_greeting_evening">Good evening</string>
     <string name="calendar_date_week">%1$s · Week %2$d</string>
     <string name="calendar_show_lunar">Chinese lunar calendar</string>
     <string name="calendar_show_lunar_summary">Lunar date, stem-branch year and solar terms</string>
@@ -390,6 +393,14 @@
     <string name="home_open_settings">Open settings</string>
 
     <string name="common_cancel">Cancel</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_summary">Choose your visual style</string>
+    <string name="theme_system">Dynamic (Wallpaper)</string>
+    <string name="theme_nordic_dawn">Nordic Dawn</string>
+    <string name="theme_warm_linen">Warm Linen</string>
+    <string name="theme_sage_forest">Sage Forest</string>
+    <string name="theme_oled_obsidian">OLED Obsidian</string>
+    <string name="theme_aurora_twilight">Aurora Twilight</string>
     <string name="settings_places">Places</string>
     <string name="places_not_set">Not set</string>
     <string name="places_add">Add a place</string>

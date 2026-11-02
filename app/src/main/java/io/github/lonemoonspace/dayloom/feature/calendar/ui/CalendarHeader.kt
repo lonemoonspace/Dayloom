@@ -2,16 +2,20 @@ package io.github.lonemoonspace.dayloom.feature.calendar.ui
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -30,6 +34,7 @@ import io.github.lonemoonspace.dayloom.R
 import io.github.lonemoonspace.dayloom.core.ui.rememberMinuteTick
 import io.github.lonemoonspace.dayloom.core.ui.rememberPatternFormatter
 import io.github.lonemoonspace.dayloom.core.ui.rememberTimeFormatter
+import io.github.lonemoonspace.dayloom.core.ui.theme.appSurfaces
 import io.github.lonemoonspace.dayloom.core.ui.theme.statusColors
 import io.github.lonemoonspace.dayloom.feature.calendar.domain.Holiday
 import io.github.lonemoonspace.dayloom.feature.calendar.domain.HolidayCountry
@@ -41,31 +46,47 @@ import java.time.temporal.ChronoUnit
 import java.time.temporal.IsoFields
 
 /**
- * The clock header (no card around it), in two aligned rows: the time with the holiday and the solar term stacked on the
- * right, then the date and week with the stem-branch year and lunar date on the right.
- * 时钟页头（不套卡片），两行对齐：时间与右侧上下排列的节日和节气；日期、周数与右侧的干支年和农历日期。
+ * The clock header in an editorial Bento layout: morning/afternoon greeting, bold time with stacked holiday and solar
+ * term pills on the right, followed by a dedicated card holding the Gregorian and lunar dates.
+ * 杂志级 Bento 时钟页头：时段问候、加粗时间与右侧上下排列的节日/节气胶囊，下方搭配独立的公历与农历卡片。
  */
 @Composable
 internal fun CalendarHeader(showLunar: Boolean, countries: Set<HolidayCountry>, lunar: LunarProvider) {
     val now = rememberMinuteTick()
     val date = now.toLocalDate()
     val day = remember(date, showLunar) { if (showLunar) lunar.lunarDate(date) else null }
+    val hour = now.hour
+    val (greetingRes, iconSymbol) = when (hour) {
+        in 5..11 -> Pair(R.string.calendar_greeting_morning, "☀️")
+        in 12..17 -> Pair(R.string.calendar_greeting_afternoon, "🌤️")
+        else -> Pair(R.string.calendar_greeting_evening, "🌙")
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 4.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = now.format(rememberTimeFormatter()),
-                fontSize = 44.sp,
-                lineHeight = 46.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(Modifier.weight(1f))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "$iconSymbol " + stringResource(greetingRes),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = now.format(rememberTimeFormatter()),
+                    fontSize = 46.sp,
+                    lineHeight = 48.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+            }
             // Sized to the widest pill so the stacked pills share one width and one right edge.
-            // 宽度取最宽的胶囊，上下几个胶囊等宽且右侧对齐。
             Column(
                 modifier = Modifier.width(IntrinsicSize.Max),
                 horizontalAlignment = Alignment.End,
@@ -75,36 +96,47 @@ internal fun CalendarHeader(showLunar: Boolean, countries: Set<HolidayCountry>, 
                 if (day != null) SolarTermText(date, lunar)
             }
         }
-        Row(Modifier.fillMaxWidth()) {
-            // ISO 8601 weeks (Monday first), as Norwegian calendars count them. / 周数按 ISO 8601（周一为一周开始），与挪威日历一致。
-            // Unweighted, so the date is measured first and the lunar text gives way on a narrow screen.
-            // 不加权重，日期先测量，窄屏上让农历文字让位。
-            Text(
-                text = stringResource(
-                    R.string.calendar_date_week,
-                    date.format(rememberPatternFormatter("MMMMEEEEd")),
-                    date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR),
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                // The header sits on the page, not in a card, so it names its colour instead of inheriting one.
-                // 页头直接放在页面上而不是卡片里，所以明确指定颜色，不依赖继承。
-                color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 1,
-                modifier = Modifier.alignByBaseline(),
-            )
-            if (day != null) {
-                Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.height(8.dp))
+        val border = MaterialTheme.appSurfaces.cardBorder
+        val shape = RoundedCornerShape(16.dp)
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (border != Color.Transparent) Modifier.border(0.5.dp, border, shape) else Modifier),
+            shape = shape,
+            color = MaterialTheme.appSurfaces.card,
+            shadowElevation = 1.dp,
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
-                    text = stringResource(R.string.calendar_lunar_line, lunarYearText(day), lunarDateText(day)),
+                    text = stringResource(
+                        R.string.calendar_date_week,
+                        date.format(rememberPatternFormatter("MMMMEEEEd")),
+                        date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR),
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.End,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .weight(1f)
-                        .alignByBaseline(),
+                    modifier = Modifier.weight(1f, fill = false),
                 )
+                if (day != null) {
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = stringResource(R.string.calendar_lunar_line, lunarYearText(day), lunarDateText(day)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.End,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
     }

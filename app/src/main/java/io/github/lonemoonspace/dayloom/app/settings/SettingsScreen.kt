@@ -57,6 +57,8 @@ import io.github.lonemoonspace.dayloom.core.ui.InfoCard
 import io.github.lonemoonspace.dayloom.core.ui.NotifySwitch
 import io.github.lonemoonspace.dayloom.core.ui.SwitchRow
 import io.github.lonemoonspace.dayloom.core.ui.rememberTimeFormatter
+import androidx.compose.ui.text.font.FontWeight
+import io.github.lonemoonspace.dayloom.core.ui.theme.ThemePresets
 import io.github.lonemoonspace.dayloom.core.ui.plusBars
 
 @Composable
@@ -67,6 +69,7 @@ fun SettingsScreen(
     onModuleEnabled: (String, Boolean) -> Unit,
     onMorningBrief: (Boolean) -> Unit,
     onMorningBriefTime: (Int) -> Unit,
+    onThemePreset: (String) -> Unit = {},
     /** The shared places card. / 共用的地点卡片。 */
     sharedData: @Composable () -> Unit = {},
 ) {
@@ -75,12 +78,50 @@ fun SettingsScreen(
         contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 12.dp).plusBars(top = true),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        item(key = "theme") { ThemeCard(state.themePreset, onThemePreset) }
         item(key = "language") { LanguageCard(state.language, onLanguage) }
         item(key = "timezone") { TimeZoneCard(state.timeZoneOverride, state.effectiveZone, onTimeZone) }
         item(key = "shared") { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { sharedData() } }
         item(key = "notifications") { NotificationsCard(state.morningBrief, state.morningBriefMinute, onMorningBrief, onMorningBriefTime) }
         items(state.modules, key = { "module:${it.module.id}" }) { toggle -> ModuleSettingsCard(toggle, onModuleEnabled) }
         item(key = "about") { AboutCard() }
+    }
+}
+
+@Composable
+internal fun ThemeCard(selected: String, onSelect: (String) -> Unit) {
+    InfoCard(
+        title = stringResource(R.string.settings_theme),
+        subtitle = stringResource(R.string.settings_theme_summary),
+    ) {
+        Column(Modifier.selectableGroup()) {
+            val presets = listOf(
+                ThemePresets.SYSTEM to R.string.theme_system,
+                ThemePresets.NORDIC_DAWN to R.string.theme_nordic_dawn,
+                ThemePresets.WARM_LINEN to R.string.theme_warm_linen,
+                ThemePresets.SAGE_FOREST to R.string.theme_sage_forest,
+                ThemePresets.OLED_OBSIDIAN to R.string.theme_oled_obsidian,
+                ThemePresets.AURORA_TWILIGHT to R.string.theme_aurora_twilight,
+            )
+            presets.forEach { (presetKey, titleRes) ->
+                val active = (selected.isEmpty() && presetKey == ThemePresets.SYSTEM) || selected == presetKey
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .selectable(selected = active, role = Role.RadioButton, onClick = { onSelect(presetKey) })
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(selected = active, onClick = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(titleRes),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                    )
+                }
+            }
+        }
     }
 }
 

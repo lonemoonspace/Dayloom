@@ -4,6 +4,24 @@ Each version has an English section followed by a Chinese one. The heading must 
 looks it up literally.
 每个版本先写英文、再写中文。标题必须恰好是 `## X.Y.Z`：发版 workflow 按字面查找。
 
+## Unreleased
+
+- Visual & Theme Redesign:
+  - Curated Theme Presets: Added 5 custom color palettes (Nordic Dawn, Warm Linen, Sage Forest, OLED Obsidian, Aurora Twilight) selectable in Settings, in addition to Android Material You dynamic wallpaper theming.
+  - Card & Container Polish: Added delicate borders and subtle elevation to InfoCard and weather cards for crisp visual hierarchy.
+  - Floating Bottom Navigation: Upgraded CompactNavBar with animated tonal pill indicator and expanding label on selection.
+  - Editorial Calendar Header: Reorganized clock header into an editorial greeting ("Good morning / afternoon / evening") with time, date, lunar, and holiday badges in a sleek Bento card.
+  - Fluid Weather Curve: Replaced raw polyline in WeatherCard with smooth cubic Bezier curve and vertical gradient area fill.
+  - Transit & Traffic Polish: Added bordered badge chips on transit routes and a real-time flow indicator bar on the traffic card.
+
+- 视觉与界面美化：
+  - 精选主题调色板：设置中新增 5 套专属色彩风格（北欧晨曦、暖阳木棉、森林晨露、曜石极夜、深空暮紫），兼顾明亮浅色与 OLED 纯黑护眼模式，支持随时与动态壁纸取色切换。
+  - 卡片与容器质感：为 InfoCard 和天气卡片补充 0.5dp 微光描边与柔和微投影，大幅提升层次感与分界辨识度。
+  - 灵动悬浮底栏：底栏增加平滑跟随的药丸滑块背板动效，选中项自适应展开名称与图标。
+  - 杂志级日历页头：日历时钟区增加时段问候语（早/中/晚），并将公历、周数、农历与节日徽标整合进精致的 Bento 摘要卡中。
+  - 气象流体曲线：天气图表将生硬折线升级为平滑三次贝塞尔曲线，并增加纵向透明渐变阴影填充。
+  - 通勤与路况打磨：优化公交/火车线路标签为立体微标，路况卡片增加实时通畅度进度条。
+
 ## 0.2.5
 
 - Train card: "Note crossing delays" now also warns while your train still shows on time. Bane NOR sometimes adds the

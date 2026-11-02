@@ -74,6 +74,9 @@
 
     <string name="calendar_title">日历</string>
     <string name="calendar_summary">时钟、日期、周数、农历与节日</string>
+    <string name="calendar_greeting_morning">早上好</string>
+    <string name="calendar_greeting_afternoon">下午好</string>
+    <string name="calendar_greeting_evening">晚上好</string>
     <string name="calendar_date_week">%1$s · 第%2$d周</string>
     <string name="calendar_show_lunar">中国农历</string>
     <string name="calendar_show_lunar_summary">农历日期、干支年与二十四节气</string>
@@ -375,6 +378,14 @@
     <string name="home_open_settings">打开设置</string>
 
     <string name="common_cancel">取消</string>
+    <string name="settings_theme">外观与主题</string>
+    <string name="settings_theme_summary">选择专属视觉风格</string>
+    <string name="theme_system">动态跟随壁纸</string>
+    <string name="theme_nordic_dawn">北欧晨曦</string>
+    <string name="theme_warm_linen">暖阳木棉</string>
+    <string name="theme_sage_forest">森林晨露</string>
+    <string name="theme_oled_obsidian">曜石极夜</string>
+    <string name="theme_aurora_twilight">深空暮紫</string>
     <string name="settings_places">地点</string>
     <string name="places_not_set">未设置</string>
     <string name="places_add">添加地点</string>

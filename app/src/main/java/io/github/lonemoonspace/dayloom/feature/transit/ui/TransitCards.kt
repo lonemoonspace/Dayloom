@@ -475,6 +475,7 @@ private fun LineChip(line: String, replacementBus: Boolean = false, compact: Boo
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .background(container, RoundedCornerShape(6.dp))
+            .border(0.5.dp, content.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
             .padding(horizontal = if (compact) LINE_CHIP_COMPACT_PADDING else LINE_CHIP_PADDING, vertical = 1.dp),
     ) {
         if (replacementBus) {

@@ -14,6 +14,11 @@ class StatusColorsContrastTest {
         for ((theme, colors, surfaces) in listOf(
             Triple("light", LightStatusColors, LightAppSurfaces),
             Triple("dark", DarkStatusColors, DarkAppSurfaces),
+            Triple("nordic_dawn_light", LightStatusColors, AppSurfaces(Color(0xFFFFFFFF), Color(0xFFEDF2F7))),
+            Triple("warm_linen_light", LightStatusColors, AppSurfaces(Color(0xFFFFFFFF), Color(0xFFF9F3EA))),
+            Triple("sage_forest_light", LightStatusColors, AppSurfaces(Color(0xFFFFFFFF), Color(0xFFEDF5F0))),
+            Triple("oled_obsidian_dark", DarkStatusColors, AppSurfaces(Color(0xFF0D111A), Color(0xFF181F2E))),
+            Triple("aurora_twilight_dark", DarkStatusColors, AppSurfaces(Color(0xFF110E1C), Color(0xFF1E1730))),
         )) {
             for ((name, color) in colors.named()) {
                 for ((bgName, bg) in listOf("card" to surfaces.card, "tile" to surfaces.tile)) {

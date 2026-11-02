@@ -6,6 +6,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -115,6 +116,7 @@ internal fun WeatherCard(
                 .fillMaxWidth()
                 .clip(MaterialTheme.shapes.large)
                 .background(Brush.linearGradient(listOf(colors.container, lerp(colors.container, Color.Black, GRADIENT_DARKEN))))
+                .border(0.5.dp, colors.content.copy(alpha = 0.22f), MaterialTheme.shapes.large)
                 .animateContentSize()
                 .padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 8.dp),
         ) {
@@ -344,15 +346,36 @@ private fun DayChart(outlook: DayOutlook) {
         }
 
         val line = Path()
-        hours.forEachIndexed { i, h -> if (i == 0) line.moveTo(x(h.time), y(h.temperature!!)) else line.lineTo(x(h.time), y(h.temperature!!)) }
-        val area = Path().apply {
-            addPath(line)
-            lineTo(x(hours.last().time), tempBottom)
-            lineTo(x(hours.first().time), tempBottom)
-            close()
+        val area = Path()
+        hours.forEachIndexed { i, h ->
+            val currX = x(h.time)
+            val currY = y(h.temperature!!)
+            if (i == 0) {
+                line.moveTo(currX, currY)
+                area.moveTo(currX, tempBottom)
+                area.lineTo(currX, currY)
+            } else {
+                val prevH = hours[i - 1]
+                val prevX = x(prevH.time)
+                val prevY = y(prevH.temperature!!)
+                val cx1 = prevX + (currX - prevX) / 2f
+                val cx2 = prevX + (currX - prevX) / 2f
+                line.cubicTo(cx1, prevY, cx2, currY, currX, currY)
+                area.cubicTo(cx1, prevY, cx2, currY, currX, currY)
+            }
         }
-        drawPath(area, content.copy(alpha = 0.12f))
-        drawPath(line, content, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+        area.lineTo(x(hours.last().time), tempBottom)
+        area.close()
+
+        drawPath(
+            area,
+            Brush.verticalGradient(
+                listOf(content.copy(alpha = 0.28f), content.copy(alpha = 0.02f)),
+                startY = tempTop,
+                endY = tempBottom,
+            ),
+        )
+        drawPath(line, content, style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
 
         // High above its point; low too, unless it sits right next to the high. / 最高温标在点上方；最低温同样，除非紧挨着最高温。
         val highHour = hours[temps.indexOf(high)]

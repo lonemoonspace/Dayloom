@@ -115,4 +115,15 @@ class SettingsViewModelTest {
         vm.finishOnboarding()
         assertTrue(settings.state.value.onboardingDone)
     }
+
+    @Test
+    fun `the theme preset choice is saved and shows up in the state`() = runTest {
+        val vm = vm()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
+
+        assertEquals("", vm.state.value.themePreset)
+        vm.setThemePreset("nordic_dawn")
+        assertEquals("nordic_dawn", settings.state.value.themePreset)
+        assertEquals("nordic_dawn", vm.state.value.themePreset)
+    }
 }

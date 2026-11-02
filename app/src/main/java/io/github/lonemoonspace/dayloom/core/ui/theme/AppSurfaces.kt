@@ -16,6 +16,8 @@ class AppSurfaces(
     val card: Color,
     /** A tile inside a card: halfway between card and surface. / 卡片里再分一层的小块：卡片色与 surface 各半。 */
     val tile: Color,
+    /** Subtle border around cards to give crisp separation. / 卡片外边缘的微光描边，保证清晰分界。 */
+    val cardBorder: Color = Color.Transparent,
 )
 
 /**

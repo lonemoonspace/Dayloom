@@ -5,15 +5,17 @@ import java.time.Instant
 
 /**
  * How often a source should be refreshed. [busyInterval] applies in the daytime (06:00–22:00, `RoutinePolicy.isDaytime`)
- * when [busyByDay] is true; [interval] applies otherwise. [background] = refresh it from the background worker at all.
+ * when [busyByDay] is true; [interval] applies otherwise. [background] = refresh it from the background worker at all;
+ * [meteredBackground] = also on a metered network, which a source that downloads a lot turns off.
  * 来源该多久刷新一次。[busyByDay] 为 true 时，白天（06:00–22:00，`RoutinePolicy.isDaytime`）用 [busyInterval]，其余时间
- * 用 [interval]。[background] = 后台任务是否刷新它。
+ * 用 [interval]。[background] = 后台任务是否刷新它；[meteredBackground] = 计费网络下后台是否也刷新，下载量大的来源把它关掉。
  */
 data class RefreshCadence(
     val interval: Duration,
     val busyInterval: Duration = interval,
     val busyByDay: Boolean = false,
     val background: Boolean = true,
+    val meteredBackground: Boolean = true,
 ) {
     companion object {
         val DEFAULT = RefreshCadence(interval = Duration.ofMinutes(60))

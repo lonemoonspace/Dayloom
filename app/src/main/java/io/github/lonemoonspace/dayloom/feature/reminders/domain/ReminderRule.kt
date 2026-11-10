@@ -9,7 +9,6 @@ import io.github.lonemoonspace.dayloom.core.notify.RuleDecision
 import io.github.lonemoonspace.dayloom.core.notify.RuleInput
 import io.github.lonemoonspace.dayloom.core.notify.StateCodec
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 
 /**
  * Expiry reminders. Reads only the module's own item list; needs no data source. Text stays [UiText] until it is sent.
@@ -45,16 +44,12 @@ class ReminderRule(
             channelId = channelId,
             title = headline(status),
             // Numeric date and time read the same in every language. / 数字日期时间在各语言里写法一致。
-            body = UiText.Res(R.string.reminders_notify_body, listOf(status.until.format(BODY_FORMAT))),
+            body = UiText.Res(R.string.reminders_notify_body, listOf(UiText.DateTime(status.until))),
             deepLink = deepLink,
             // Each stage is a new reminder under the item's id; it must ring even if the previous stage is still shown.
             // 每一档都是该条目 id 下的新提醒；即使上一档还在通知栏，也要响铃。
             alertOnce = false,
         )
-    }
-
-    private companion object {
-        val BODY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
     }
 }
 

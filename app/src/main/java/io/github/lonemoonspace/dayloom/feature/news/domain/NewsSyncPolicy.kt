@@ -15,7 +15,12 @@ data class PushPlan(
     val sentStarred: Map<Long, Boolean>,
 )
 
-data class MergeResult(val upsert: List<StoredArticle>, val delete: List<Long>)
+/**
+ * [clearPending] names articles that only lose their pending flags, so they need not be written back whole (their text may
+ * not even have been loaded).
+ * [clearPending] 是只需清掉待发送标记的文章，不必整篇写回（它们的正文可能根本没有读出来）。
+ */
+data class MergeResult(val upsert: List<StoredArticle>, val delete: List<Long>, val clearPending: List<Long> = emptyList())
 
 /**
  * Pure decisions of the news sync: which local changes to send, and how the server's lists and the local rows combine.
@@ -167,6 +172,32 @@ object NewsSyncPolicy {
     fun isPlainHttp(text: String): Boolean = text.trim().startsWith("http://", ignoreCase = true)
 
     /**
+     * Decodes numeric character references and the named ones feeds actually use, in one pass so `&amp;lt;` becomes `&lt;`
+     * and not `<`. An unknown name is left as written.
+     * 解码数字字符引用与订阅源常用的命名实体；一次扫描完成，所以 `&amp;lt;` 变成 `&lt;` 而不是 `<`。不认识的名字原样保留。
+     */
+    fun decodeEntities(text: String): String = ENTITY.replace(text) { match ->
+        val body = match.groupValues[1]
+        val code = when {
+            body.startsWith("#x", ignoreCase = true) -> body.drop(2).toIntOrNull(16)
+            body.startsWith("#") -> body.drop(1).toIntOrNull()
+            else -> NAMED_ENTITIES[body]
+        }
+        if (code != null && Character.isValidCodePoint(code) && code != 0) String(Character.toChars(code)) else match.value
+    }
+
+    private val ENTITY = Regex("&(#[0-9]{1,7}|#[xX][0-9a-fA-F]{1,6}|[a-zA-Z][a-zA-Z0-9]{1,9});")
+
+    private val NAMED_ENTITIES = mapOf(
+        "nbsp" to 0x20, "amp" to 0x26, "lt" to 0x3C, "gt" to 0x3E, "quot" to 0x22, "apos" to 0x27,
+        "ndash" to 0x2013, "mdash" to 0x2014, "lsquo" to 0x2018, "rsquo" to 0x2019, "ldquo" to 0x201C, "rdquo" to 0x201D,
+        "hellip" to 0x2026, "bull" to 0x2022, "middot" to 0xB7, "laquo" to 0xAB, "raquo" to 0xBB, "copy" to 0xA9,
+        "reg" to 0xAE, "trade" to 0x2122, "deg" to 0xB0, "euro" to 0x20AC, "pound" to 0xA3, "times" to 0xD7,
+        "aring" to 0xE5, "Aring" to 0xC5, "oslash" to 0xF8, "Oslash" to 0xD8, "aelig" to 0xE6, "AElig" to 0xC6,
+        "eacute" to 0xE9, "ouml" to 0xF6, "auml" to 0xE4, "uuml" to 0xFC,
+    )
+
+    /**
      * Plain text for the summarizer: tags dropped, entities decoded, whitespace collapsed, cut to [maxChars] so a long
      * article does not cost a fortune.
      * 给摘要用的纯文本：去掉标签、解码实体、合并空白，截到 [maxChars]，长文章不会花掉一大笔费用。
@@ -175,7 +206,7 @@ object NewsSyncPolicy {
         .replace(Regex("(?is)<(script|style)[^>]*>.*?</\\1>"), " ")
         .replace(Regex("(?i)<br\\s*/?>|</p>|</h[1-6]>|</li>"), "\n")
         .replace(Regex("<[^>]+>"), " ")
-        .replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'")
+        .let(::decodeEntities)
         .replace(Regex("[ \\t\\x0B\\f\\r]+"), " ")
         .replace(Regex("\\s*\\n\\s*"), "\n")
         .trim()
@@ -227,8 +258,8 @@ object NewsSyncPolicy {
             .toList()
 
     /** The article as the list shows it: a one-paragraph preview, and whether its full text is here. / 列表里显示的文章：一段预览，以及全文是否已在本机。 */
-    fun listItem(article: StoredArticle): ArticleItem {
-        val text = plainText(article.contentHtml, Int.MAX_VALUE)
+    fun listItem(article: StoredArticle, html: String = article.contentHtml): ArticleItem {
+        val text = plainText(html, Int.MAX_VALUE)
         return ArticleItem(article, text.replace('\n', ' ').take(PREVIEW_CHARS), text, text.length >= STUB_TEXT_CHARS)
     }
 

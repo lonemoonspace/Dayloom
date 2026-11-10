@@ -87,6 +87,14 @@ internal fun RouteSettingsSection(
         checked = route.notify,
         channelId = channelId,
     ) { on -> updateRoute { it.copy(notify = on) } }
+    if (route.notify) {
+        SwitchRow(
+            label = stringResource(R.string.transit_notify_weekdays_switch),
+            checked = route.notifyWeekdaysOnly,
+            onCheckedChange = { on -> updateRoute { it.copy(notifyWeekdaysOnly = on) } },
+            summary = stringResource(R.string.transit_notify_weekdays_switch_summary),
+        )
+    }
     // Only rail has single-track crossings. / 只有铁路有单线会车。
     if (kind == CommuteKind.TRAIN) {
         SwitchRow(

@@ -164,6 +164,14 @@ class FeedParserTest {
     }
 
     @Test
+    fun `a page is read in the charset its meta tag names`() {
+        val html = "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=gbk\"><title>新闻</title></head></html>"
+        assertTrue(FeedParser.pageText(html.toByteArray(charset("GBK"))).contains("新闻"))
+        assertTrue(FeedParser.pageText("<meta charset=\"utf-8\"><p>新闻</p>".toByteArray()).contains("新闻"))
+        assertTrue("an unknown charset falls back to UTF-8", FeedParser.pageText("<meta charset=\"nope-1\"><p>新闻</p>".toByteArray()).contains("新闻"))
+    }
+
+    @Test
     fun `OPML outlines with a feed address are read, nested ones too`() {
         val xml = """<opml version="2.0"><body>
             <outline text="Tech"><outline type="rss" text="A" title="Site A" xmlUrl="https://a.example.org/rss"/></outline>

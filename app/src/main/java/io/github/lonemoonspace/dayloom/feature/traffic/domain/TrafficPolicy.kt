@@ -38,8 +38,11 @@ data class TrafficStatus(
  */
 object TrafficPolicy {
 
-    /** Mornings to work, from noon homewards ([RoutinePolicy.direction]). / 上午去上班，中午起回家（[RoutinePolicy.direction]）。 */
-    fun direction(now: ZonedDateTime): Direction = when (RoutinePolicy.direction(now)) {
+    /**
+     * Mornings to work, from noon homewards, unless the card was turned round by hand ([RoutinePolicy.direction]).
+     * 上午去上班，中午起回家，除非卡片被手动掉了头（[RoutinePolicy.direction]）。
+     */
+    fun direction(now: ZonedDateTime, flippedAtMillis: Long = 0): Direction = when (RoutinePolicy.direction(now, flippedAtMillis)) {
         CommuteDirection.TO_WORK -> Direction.TO_WORK
         CommuteDirection.BACK_HOME -> Direction.BACK_HOME
     }

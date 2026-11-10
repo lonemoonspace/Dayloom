@@ -26,6 +26,8 @@ data class CommuteRoute(
     val options: Int = TransitPolicy.DEFAULT_OPTIONS,
     /** Opt-in, off by default like every notification (design §7.4). / 选择加入，与所有通知一样默认关闭（设计文档 §7.4）。 */
     val notify: Boolean = false,
+    /** Alerts skip Saturday and Sunday, when most people do not commute. / 周六周日不提醒，多数人这两天不通勤。 */
+    val notifyWeekdaysOnly: Boolean = true,
     /**
      * Train only, opt-in: name the late opposing train the first train waits, or may have to wait, for at a crossing
      * ([OpposingPolicy]).

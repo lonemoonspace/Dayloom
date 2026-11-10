@@ -6,6 +6,31 @@ looks it up literally.
 
 ## Unreleased
 
+- Commute alerts: a new "Weekdays only" switch under the alert switch of the train and bus commutes, on by default, so a
+  late train no longer rings on Saturday and Sunday.
+- Commute cards: a flip button in the title row of the train, bus and traffic cards shows the other direction, for a
+  weekend trip or an afternoon departure. It stays until the direction would change by itself (noon or midnight).
+- Weather: the place can be picked in Settings → Weather (Home by default); the card names it when it is not Home. Heavy
+  snow now says "Heavy snow" instead of "Heavy rain". The days beyond the hourly forecast use MET's six-hour highs and
+  lows, so their range is no longer too narrow. After a refresh that had to fall back to the shorter forecast, the next
+  one fetches the full forecast again instead of being told "not modified".
+- Battery and data: with the app closed, a data source is only refreshed when something will use the result — a module
+  with a notification switched on, or the morning brief in the 45 minutes before it is due. Departure boards and news no
+  longer refresh in the background at all, and traffic asks Google only before the morning brief. News never syncs in
+  the background on a metered network.
+- News: the article list no longer loads every article's full text, and a feed sync reads only the feeds it just fetched,
+  so long lists scroll and sync faster. A newly added feed that posts rarely keeps its three newest articles however old
+  they are. Previews and search decode all HTML entities (`&#8217;`, `&mdash;`…). Finding a feed on a page that is not
+  UTF-8 (GBK and others) no longer garbles its title.
+- Notifications and the morning brief show times in the phone's 12- or 24-hour format, like the cards.
+- Small fixes: a custom place deleted and replaced no longer hands its id to the new place (traffic kept pointing at it);
+  a departure a few seconds late is no longer struck through while labelled "On time"; the "cached" mark on the news and
+  traffic cards appears without touching the screen; a failure to read the phone's own storage says so instead of
+  blaming the network; the source-code link on a phone without a browser no longer crashes; with a 12-hour clock the
+  expiry reminders card no longer cuts off "PM".
+- Project: Dependabot proposes dependency and Actions updates weekly; workflow actions are pinned to commit hashes; the
+  home cards are drawn in tests (`app/src/test/screenshots/`) and CI reports the ones whose look changed.
+
 - Themes: Settings has a new "Theme" card. Besides the wallpaper colours (still the default) there are five hand-picked
   schemes: Nordic Dawn, Warm Linen and Sage Forest in light and dark, and the dark-only OLED Obsidian (pure black page)
   and Aurora Twilight. Each choice shows dots for its page, card and accent colours. In light mode the dark-only schemes
@@ -38,6 +63,23 @@ looks it up literally.
 - News: the AI summary card only appears once the summary endpoint, model and key are set (a summary made earlier still
   shows). Opening the original on a phone with no app for the link no longer crashes.
 
+- 通勤提醒：火车与公交通勤的提醒开关下面新增「仅工作日提醒」，默认打开，周六周日不再因为晚点响铃。
+- 通勤卡片：火车、公交、路况卡片的标题行多了一个掉头按钮，点一下看反方向，周末出门或下午出发时用得上。保持到方向本来就要
+  变的时候（中午或午夜）为止。
+- 天气：可以在「设置 → 天气」里选地点（默认是家）；选的不是家时卡片上会标出地点名。下大雪时提示「雪势较大」，不再是
+  「雨势较大」。逐小时预报之后的那几天用上了 MET 的 6 小时最高、最低温，温度范围不再偏窄。某次刷新退到精简预报之后，下一次会
+  重新取完整预报，不会再被告知「没有更新」。
+- 耗电与流量：App 关着的时候，只有结果有人用的数据源才会刷新——模块开着通知，或者早报在 45 分钟内要用它。发车板和新闻不再
+  在后台刷新，路况只在早报之前请求一次 Google。计费网络下新闻从不在后台同步。
+- 新闻：文章列表不再把每篇文章的全文读进内存，订阅源同步也只读刚抓取的那几个源，文章多时滚动和同步都更快。新加的低频订阅源
+  无论文章多旧都保留最新三篇。预览和搜索能解码所有 HTML 实体（`&#8217;`、`&mdash;` 等）。在非 UTF-8（GBK 等）的网页上
+  查找订阅源时标题不再乱码。
+- 通知和早报里的时间跟随手机的 12/24 小时制，与卡片一致。
+- 小修复：删掉一个自定义地点再新建，新地点不再沿用旧地点的 id（路况原先会悄悄指向它）；只晚几秒的班次不再一边划线一边写
+  「准点」；新闻和路况卡片的「缓存」标记不用碰屏幕也会出现；读取手机本地存储失败时如实提示，不再说成网络问题；手机上没有
+  浏览器时点源码链接不再崩溃；12 小时制下到期提醒卡片不再把「PM」裁掉。
+- 工程：Dependabot 每周提出依赖与 Actions 更新；各 workflow 的 action 固定到提交哈希；测试里会画出首页卡片
+  （`app/src/test/screenshots/`），CI 报告外观有变化的卡片。
 - 主题：设置里新增「外观与主题」卡片。除了默认的壁纸取色，还有五套精选配色：北欧晨曦、暖阳木棉、森林晨露（各有浅色与深色），
   以及只有深色的曜石极夜（页面纯黑）和深空暮紫。每个选项带三个色点，分别是页面、卡片和主色。浅色模式下只有深色的两套置灰，
   App 先用北欧晨曦，手机切到深色时再生效。配色来自 lonemoon84 的贡献（PR #32）；为了让天气卡上的文字看得清，调深了几处主色，

@@ -52,6 +52,28 @@ class DailyForecastBuilderTest {
     }
 
     @Test
+    fun `six-hour extremes widen the range beyond the hourly forecast, in the day that holds most of the window`() {
+        fun sixHourly(time: String, temp: Double, min: Double, max: Double) = point(time, temp, "cloudy").copy(temperatureMin6h = min, temperatureMax6h = max)
+        val series = listOf(
+            sixHourly("2026-09-24T00:00:00Z", 6.0, min = 3.5, max = 6.5),
+            sixHourly("2026-09-24T06:00:00Z", 5.0, min = 5.0, max = 12.0),
+            sixHourly("2026-09-24T12:00:00Z", 12.0, min = 9.0, max = 14.5),
+            // UTC 18:00 is 20:00 → 02:00 in Oslo: four of its six hours are on the 24th. / UTC 18:00 在奥斯陆是 20:00 → 02:00：6 小时里有 4 小时在 24 日。
+            sixHourly("2026-09-24T18:00:00Z", 9.0, min = 2.0, max = 9.0),
+        )
+        val day = build(series, LocalDate.of(2026, 9, 24)).single { it.date == LocalDate.of(2026, 9, 24) }
+        assertEquals(2.0, day.minTemp, 0.0)
+        assertEquals(14.5, day.maxTemp, 0.0)
+
+        // An hourly point's six-hour figures reach into hours its neighbours already cover, so they are left out.
+        // 逐小时点的 6 小时数值伸到了相邻的点已经覆盖的时段，所以不用。
+        val hourly = series.map { it.copy(symbol1h = "cloudy", precipitation1h = 0.0) }
+        val plain = build(hourly, LocalDate.of(2026, 9, 24)).single { it.date == LocalDate.of(2026, 9, 24) }
+        assertEquals(5.0, plain.minTemp, 0.0)
+        assertEquals(12.0, plain.maxTemp, 0.0)
+    }
+
+    @Test
     fun `limits to requested days and skips past days`() {
         val series = (20..30).map { day -> point("2026-09-${day}T10:00:00Z", day.toDouble(), "cloudy") }
         assertEquals(

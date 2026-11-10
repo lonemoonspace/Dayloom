@@ -35,6 +35,7 @@ object DailyForecastBuilder {
         return byDate.toSortedMap().mapNotNull { (date, dayPoints) ->
             val temps = dayPoints.mapNotNull { (_, p) -> p.temperature }
             if (temps.isEmpty()) return@mapNotNull null
+            val (periodMin, periodMax) = sixHourExtremes(timed, date, zone)
             // The six-hour symbol describes a period rather than one hour, so it is preferred.
             // 6 小时符号代表一段时间而非某一小时，所以优先用它。
             val symbol = dayPoints
@@ -42,8 +43,8 @@ object DailyForecastBuilder {
                 .minByOrNull { it.first }?.second.orEmpty()
             DailyForecast(
                 date = date,
-                minTemp = temps.min(),
-                maxTemp = temps.max(),
+                minTemp = minOf(temps.min(), periodMin ?: Double.MAX_VALUE),
+                maxTemp = maxOf(temps.max(), periodMax ?: -Double.MAX_VALUE),
                 symbolCode = symbol,
                 precipMm = precipitationForDay(timed, date, zone),
             )
@@ -70,6 +71,23 @@ object DailyForecastBuilder {
             ).toMinutes()
             if (overlapMinutes <= 0) 0.0 else amount * overlapMinutes / (6 * 60.0)
         }
+    }
+
+    /**
+     * Beyond the hourly range a day has only four instant readings, which miss the afternoon peak and the early-morning low,
+     * so the six-hour minimum and maximum join in. A window counts for the day that holds at least half of it; hourly points
+     * are left out, their instants already cover the day.
+     * 超出逐小时范围后一天只有四个瞬时读数，会漏掉午后的最高与清晨的最低，所以把 6 小时窗口的最低、最高也算进来。窗口至少有一半
+     * 落在哪天就算哪天的；逐小时的点不参与，它们的瞬时值已经覆盖全天。
+     */
+    private fun sixHourExtremes(points: List<Pair<ZonedDateTime, ForecastPoint>>, date: LocalDate, zone: ZoneId): Pair<Double?, Double?> {
+        val dayStart = date.atStartOfDay(zone).toInstant()
+        val dayEnd = date.plusDays(1).atStartOfDay(zone).toInstant()
+        val inDay = points.filter { (t, p) ->
+            p.symbol1h.isEmpty() && p.precipitation1h == null &&
+                Duration.between(maxOf(t.toInstant(), dayStart), minOf(t.plusHours(6).toInstant(), dayEnd)).toMinutes() >= 3 * 60
+        }
+        return inDay.mapNotNull { (_, p) -> p.temperatureMin6h }.minOrNull() to inDay.mapNotNull { (_, p) -> p.temperatureMax6h }.maxOrNull()
     }
 
     private const val NOON = 12 * 60

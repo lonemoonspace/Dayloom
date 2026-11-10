@@ -10,9 +10,9 @@ import io.github.lonemoonspace.dayloom.BuildConfig
 import io.github.lonemoonspace.dayloom.app.work.BackgroundRound
 import io.github.lonemoonspace.dayloom.core.i18n.AppLanguage
 import io.github.lonemoonspace.dayloom.core.i18n.SystemAppLanguage
-import io.github.lonemoonspace.dayloom.core.location.GooglePlacesSearch
 import io.github.lonemoonspace.dayloom.core.location.EnturGeocoder
 import io.github.lonemoonspace.dayloom.core.location.FallbackSearch
+import io.github.lonemoonspace.dayloom.core.location.GooglePlacesSearch
 import io.github.lonemoonspace.dayloom.core.location.NominatimSearch
 import io.github.lonemoonspace.dayloom.core.location.PlaceBook
 import io.github.lonemoonspace.dayloom.core.location.PlaceFinder
@@ -20,6 +20,8 @@ import io.github.lonemoonspace.dayloom.core.location.PlaceSearch
 import io.github.lonemoonspace.dayloom.core.module.FeatureModule
 import io.github.lonemoonspace.dayloom.core.network.ConnectivityMonitor
 import io.github.lonemoonspace.dayloom.core.network.SharedHttpClient
+import io.github.lonemoonspace.dayloom.core.notify.CoreNotifications
+import io.github.lonemoonspace.dayloom.core.notify.LocalDateStateCodec
 import io.github.lonemoonspace.dayloom.core.notify.NotificationEngine
 import io.github.lonemoonspace.dayloom.core.notify.NotificationSender
 import io.github.lonemoonspace.dayloom.core.notify.PrefsNotificationStateStore
@@ -121,8 +123,10 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
 
     private val notifier = NotificationSender(appContext)
 
+    private val notificationState = PrefsNotificationStateStore(appContext.notifyStateDataStore)
+
     val notificationEngine = NotificationEngine(
-        stateStore = PrefsNotificationStateStore(appContext.notifyStateDataStore),
+        stateStore = notificationState,
         notifier = notifier,
         onError = { rule, e -> Log.w(TAG, "notification rule ${rule.stateKey} failed", e) },
     )
@@ -181,8 +185,10 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
         clock = clock,
         coordinator = coordinator,
         engine = notificationEngine,
+        network = connectivity,
         morningBrief = { appSettings.get().morningBrief },
         briefMinute = { appSettings.get().morningBriefMinute },
+        briefLastSent = { LocalDateStateCodec.decode(notificationState.read(CoreNotifications.BRIEF_STATE_KEY)) },
         onBriefError = { Log.w(TAG, "a morning brief line failed", it) },
     )
 

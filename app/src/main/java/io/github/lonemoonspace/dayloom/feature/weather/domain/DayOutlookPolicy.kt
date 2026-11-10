@@ -16,7 +16,7 @@ enum class ClothingLevel { HOT, WARM, MILD, COOL, COLD, FREEZING }
  * Friendly tips, most important first. The UI maps each to one sentence.
  * 温馨提示，按重要性排序；界面把每一项映射为一句话。
  */
-enum class WeatherTip { THUNDER, HEAVY_RAIN, UMBRELLA, SNOW, SLIPPERY, STRONG_WIND, HEAT, SUNSCREEN, LAYERS, PLEASANT }
+enum class WeatherTip { THUNDER, HEAVY_RAIN, HEAVY_SNOW, UMBRELLA, SNOW, SLIPPERY, STRONG_WIND, HEAT, SUNSCREEN, LAYERS, PLEASANT }
 
 /** A stretch of hours with rain worth an umbrella; [end] is exclusive. / 一段需要带伞的降雨时段；[end] 不含。 */
 data class RainSpell(val start: ZonedDateTime, val end: ZonedDateTime)
@@ -167,7 +167,11 @@ object DayOutlookPolicy {
         val wet = s.maxHourlyMm >= UMBRELLA_MM
         val tips = buildList {
             if (s.symbols.any { "thunder" in it } || (s.thunderChance ?: 0.0) >= THUNDER_CHANCE) add(WeatherTip.THUNDER)
-            if (s.maxHourlyMm >= HEAVY_HOURLY_MM || s.precipMm >= HEAVY_DAY_MM) add(WeatherTip.HEAVY_RAIN)
+            // The amounts say nothing about rain or snow; a day whose symbols never mention rain is a snow day.
+            // 降水量本身分不出雨和雪；符号里完全没提到雨的日子按下雪算。
+            if (s.maxHourlyMm >= HEAVY_HOURLY_MM || s.precipMm >= HEAVY_DAY_MM) {
+                add(if (frozen && s.symbols.none { "rain" in it }) WeatherTip.HEAVY_SNOW else WeatherTip.HEAVY_RAIN)
+            }
             // Snow is not an umbrella day; it gets its own tip. / 下雪不算带伞天，单独提示。
             if (wet && !frozen) add(WeatherTip.UMBRELLA)
             if (frozen) add(WeatherTip.SNOW)

@@ -1,6 +1,7 @@
 package io.github.lonemoonspace.dayloom.core.notify
 
 import android.Manifest
+import android.text.format.DateFormat
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -34,11 +35,12 @@ class NotificationSender(private val context: Context) : Notifier {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val resources = context.resources
-        val body = notification.body.resolve(resources)
+        val clock24 = DateFormat.is24HourFormat(context)
+        val body = notification.body.resolve(resources, clock24)
         val built = NotificationCompat.Builder(context, notification.channelId)
             // Must be a single-colour silhouette; the system only uses its alpha. / 必须是单色剪影，系统只取 alpha 通道。
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(notification.title.resolve(resources))
+            .setContentTitle(notification.title.resolve(resources, clock24))
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             // Only an update of the same event stays silent (kick-off → final score); see [AppNotification.alertOnce].

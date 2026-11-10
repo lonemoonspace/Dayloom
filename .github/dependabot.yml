@@ -1,0 +1,29 @@
+# Weekly dependency updates, one pull request per ecosystem so the CI gate checks them together.
+# The workflows pin actions by commit hash; Dependabot moves the hash and the version comment behind it together.
+# 每周检查一次依赖更新，每个生态合并成一个 PR，由 CI 门禁一起把关。
+# 各 workflow 里的 action 固定到提交哈希；Dependabot 会把哈希和后面的版本注释一起更新。
+
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 2
+    groups:
+      gradle:
+        patterns: ['*']
+    ignore:
+      # Pinned on purpose, see gradle/libs.versions.toml. / 有意固定版本，原因见 gradle/libs.versions.toml。
+      - dependency-name: 'androidx.datastore:*'
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 2
+    groups:
+      actions:
+        patterns: ['*']

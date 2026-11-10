@@ -12,6 +12,7 @@ import io.github.lonemoonspace.dayloom.core.i18n.uiText
 fun AppError.userMessage(): UiText = when (this) {
     is AppError.Offline -> uiText(R.string.error_offline)
     is AppError.Network -> uiText(R.string.error_network, detailOf(cause))
+    is AppError.Storage -> uiText(R.string.error_storage, detailOf(cause))
     is AppError.Http -> when (code) {
         401, 403 -> uiText(R.string.error_http_auth, service, code)
         else -> uiText(R.string.error_http, service, code)

@@ -43,12 +43,20 @@ class MetApi(
      * MET 出现过 `complete` 返回的内容在 JSON 中途被截断（Content-Length 与之相符，只有解析时才发现），而 `compact` 完好。
      * 所以 `complete` 读不了时改用 `compact`：这一小时卡片少了体感、阵风、紫外线与降水概率，但不会停在旧预报上。
      * HTTP 错误不切换，`compact` 与它在同一台服务器、同一套限流之后。
+     *
+     * A forecast taken from `compact` carries no `Last-Modified`: both endpoints share it, so sending it back would make
+     * `complete` answer 304 and the reduced forecast would stay until MET's next model run.
+     * 取自 `compact` 的预报不记 `Last-Modified`：两个接口的这个时间相同，回传它会让 `complete` 回 304，缺项的预报就会一直留到 MET
+     * 下一轮更新。
      */
     fun fetch(lat: Double, lon: Double, ifModifiedSince: String?): Result = try {
         fetchFrom(baseUrl, lat, lon, ifModifiedSince)
     } catch (e: AppError.BadData) {
         try {
-            fetchFrom(fallbackUrl, lat, lon, ifModifiedSince)
+            when (val result = fetchFrom(fallbackUrl, lat, lon, ifModifiedSince)) {
+                is Result.Fresh -> Result.Fresh(result.forecast.copy(lastModified = ""))
+                Result.NotModified -> result
+            }
         } catch (fallback: AppError) {
             // Report the original failure: it names the endpoint the app normally reads. / 报告最初的失败：它对应平常读取的接口。
             e.addSuppressed(fallback)
@@ -99,6 +107,8 @@ class MetApi(
                     uvIndex = step.data.instant.details.uvIndex,
                     precipProbability1h = step.data.next1h?.details?.precipitationProbability,
                     thunderProbability1h = step.data.next1h?.details?.thunderProbability,
+                    temperatureMin6h = step.data.next6h?.details?.temperatureMin,
+                    temperatureMax6h = step.data.next6h?.details?.temperatureMax,
                 )
             },
         )
@@ -152,5 +162,7 @@ internal data class MetResponse(val properties: Properties = Properties()) {
         @SerialName("precipitation_amount") val precipitationAmount: Double? = null,
         @SerialName("probability_of_precipitation") val precipitationProbability: Double? = null,
         @SerialName("probability_of_thunder") val thunderProbability: Double? = null,
+        @SerialName("air_temperature_min") val temperatureMin: Double? = null,
+        @SerialName("air_temperature_max") val temperatureMax: Double? = null,
     )
 }

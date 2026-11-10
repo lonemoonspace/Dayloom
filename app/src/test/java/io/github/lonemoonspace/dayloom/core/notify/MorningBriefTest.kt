@@ -10,6 +10,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -40,6 +41,17 @@ class MorningBriefTest {
         assertEquals(monday, MorningBriefPolicy.dueDay(late, at(5, 23, 30), null))
         assertNull("after midnight is the next day, before its own time", MorningBriefPolicy.dueDay(late, at(6, 0, 30), null))
         assertNull("invalid time", MorningBriefPolicy.dueDay(24 * 60, at(5, 7, 10), null))
+    }
+
+    @Test
+    fun `the brief wants data from shortly before its time until it has gone out`() {
+        assertFalse("too early", MorningBriefPolicy.needsData(seven, at(5, 6, 14), null))
+        assertTrue(MorningBriefPolicy.needsData(seven, at(5, 6, 15), null))
+        assertTrue("due and not sent yet", MorningBriefPolicy.needsData(seven, at(5, 7, 20), null))
+        assertFalse("sent today", MorningBriefPolicy.needsData(seven, at(5, 7, 20), monday))
+        assertFalse("given up for today", MorningBriefPolicy.needsData(seven, at(5, 10, 0), null))
+        assertTrue("yesterday's brief does not count", MorningBriefPolicy.needsData(seven, at(6, 6, 30), monday))
+        assertFalse("invalid time", MorningBriefPolicy.needsData(24 * 60, at(5, 7, 0), null))
     }
 
     private fun input(now: ZonedDateTime) = RuleInput(RefreshReport(emptyMap(), Instant.EPOCH), now)

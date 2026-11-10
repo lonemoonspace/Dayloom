@@ -18,6 +18,7 @@ import io.github.lonemoonspace.dayloom.core.notify.AppNotification
 import io.github.lonemoonspace.dayloom.core.notify.BriefContributor
 import io.github.lonemoonspace.dayloom.core.notify.ChannelSpec
 import io.github.lonemoonspace.dayloom.core.notify.CoreNotifications
+import io.github.lonemoonspace.dayloom.core.notify.LocalDateStateCodec
 import io.github.lonemoonspace.dayloom.core.notify.NotificationEngine
 import io.github.lonemoonspace.dayloom.core.notify.NotificationStateStore
 import io.github.lonemoonspace.dayloom.core.notify.Notifier
@@ -103,6 +104,7 @@ class ModuleHostTest {
     private class SampleInstance(ctx: ModuleContext) : ModuleInstance {
         val placement = MutableStateFlow(CardPlacement.NORMAL)
         val source = SampleSource(ctx, flowOf("world"))
+        var ruleEnabled = true
         override val sources = listOf(source)
         override val homeCards = listOf(HomeCard("card", R.string.app_name, defaultOrder = 10, placement = placement) {})
         override val tab = ModuleTab(R.string.app_name, R.drawable.ic_notification) {}
@@ -111,7 +113,7 @@ class ModuleHostTest {
         override val notificationRules = listOf(object : NotificationRule<String?> {
             override val name = "seen"
             override val codec = StringStateCodec
-            override suspend fun isEnabled() = true
+            override suspend fun isEnabled() = ruleEnabled
             override suspend fun evaluate(input: RuleInput, previous: String?) =
                 RuleDecision(if (input.report.succeeded(source.id)) "fresh" else previous)
         })
@@ -297,8 +299,10 @@ class ModuleHostTest {
             clock = clock,
             coordinator = coordinator,
             engine = NotificationEngine(state, sent),
+            network = FakeNetworkStatus(),
             morningBrief = { settings.get().morningBrief },
             briefMinute = { settings.get().morningBriefMinute },
+            briefLastSent = { LocalDateStateCodec.decode(state.read(CoreNotifications.BRIEF_STATE_KEY)) },
         )
         testScheduler.runCurrent()
 
@@ -312,6 +316,43 @@ class ModuleHostTest {
         round.run()
         assertEquals("not due again within its cadence", 1, module.instance.source.fetches)
         assertEquals("the brief goes out once a day", 1, sent.notifications.size)
+    }
+
+    @Test
+    fun `a background round leaves alone what nothing will use while the app is closed`() = runTest {
+        val module = SampleModule()
+        val settings = InMemoryValueStore(AppSettings(morningBrief = false))
+        val (host, coordinator) = backgroundScope.host(listOf(module), settings)
+        val state = MemoryState()
+        fun round(metered: Boolean = false) = BackgroundRound(
+            active = host.active,
+            clock = clock,
+            coordinator = coordinator,
+            engine = NotificationEngine(state, Sent()),
+            network = FakeNetworkStatus(metered = metered),
+            morningBrief = { settings.get().morningBrief },
+            briefMinute = { settings.get().morningBriefMinute },
+            briefLastSent = { LocalDateStateCodec.decode(state.read(CoreNotifications.BRIEF_STATE_KEY)) },
+        )
+        testScheduler.runCurrent()
+        module.instance.ruleEnabled = false
+
+        round().run()
+        assertEquals("no rule on, no brief: nothing to refresh for", 0, module.instance.source.fetches)
+
+        // The brief is due (08:00, past the default time) and quotes this module. / 简报到点了（08:00，已过默认时间），而且会引用这个模块。
+        settings.update { it.copy(morningBrief = true) }
+        round().run()
+        assertEquals(1, module.instance.source.fetches)
+
+        // Sent for today, so the brief asks for nothing more; a rule turned on does.
+        // 今天的已经发过，简报不再需要数据；打开一条规则后又需要了。
+        clock.current = clock.current.plusHours(2)
+        round().run()
+        assertEquals(1, module.instance.source.fetches)
+        module.instance.ruleEnabled = true
+        round().run()
+        assertEquals(2, module.instance.source.fetches)
     }
 
     @Test

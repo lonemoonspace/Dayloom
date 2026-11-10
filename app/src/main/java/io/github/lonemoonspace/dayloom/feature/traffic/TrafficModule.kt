@@ -17,6 +17,7 @@ import io.github.lonemoonspace.dayloom.core.module.ModuleContext
 import io.github.lonemoonspace.dayloom.core.module.ModuleInstance
 import io.github.lonemoonspace.dayloom.core.module.SettingsSection
 import io.github.lonemoonspace.dayloom.core.notify.BriefContributor
+import io.github.lonemoonspace.dayloom.core.routine.RoutinePolicy
 import io.github.lonemoonspace.dayloom.core.secret.SecretState
 import io.github.lonemoonspace.dayloom.core.time.minuteTicks
 import io.github.lonemoonspace.dayloom.core.ui.PlacePicker
@@ -62,6 +63,8 @@ data class TrafficSettings(
     val version: Int = 1,
     val fromPlaceId: String = Place.HOME,
     val toPlaceId: String = Place.WORK,
+    /** When the card was last turned round by hand, epoch millis; 0 for never. / 卡片上次被手动掉头的时刻（毫秒时间戳）；0 表示没有。 */
+    val flippedAtMillis: Long = 0,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -72,9 +75,11 @@ private class TrafficInstance(private val ctx: ModuleContext) : ModuleInstance {
     private val from: Flow<Place?> = store.flow.map { it.fromPlaceId }.distinctUntilChanged().flatMapLatest(ctx.places::observe)
     private val to: Flow<Place?> = store.flow.map { it.toPlaceId }.distinctUntilChanged().flatMapLatest(ctx.places::observe)
 
-    // Re-evaluated every minute but only emits when the direction flips, which then triggers a refresh.
-    // 每分钟重新判断，但只在方向变化时发出，随后触发一次刷新。
-    private val direction: Flow<Direction> = ctx.clock.minuteTicks().map(TrafficPolicy::direction).distinctUntilChanged()
+    private val flippedAt = store.flow.map { it.flippedAtMillis }.distinctUntilChanged()
+
+    // Re-evaluated every minute but only emits when the direction flips (noon, midnight or by hand), which then triggers a refresh.
+    // 每分钟重新判断，但只在方向变化时发出（中午、午夜或手动掉头），随后触发一次刷新。
+    private val direction: Flow<Direction> = combine(ctx.clock.minuteTicks(), flippedAt, TrafficPolicy::direction).distinctUntilChanged()
 
     private val source = TrafficSource(
         id = ctx.sourceId("route"),
@@ -104,7 +109,11 @@ private class TrafficInstance(private val ctx: ModuleContext) : ModuleInstance {
             val status by ctx.coordinator.status.collectAsStateWithLifecycle()
             val fromPlace by from.collectAsStateWithLifecycle(initialValue = null)
             val toPlace by to.collectAsStateWithLifecycle(initialValue = null)
-            TrafficCard(snapshot, status[source.id]?.lastError, source::isStale, fromPlace, toPlace)
+            val flipped by flippedAt.collectAsStateWithLifecycle(initialValue = 0L)
+            TrafficCard(snapshot, status[source.id]?.lastError, source::isStale, fromPlace, toPlace, flipped) {
+                // Saved in appScope so leaving the screen right away does not cancel the write. / 在 appScope 里保存，立刻离开页面也不会取消写入。
+                ctx.appScope.launch { store.update { it.copy(flippedAtMillis = RoutinePolicy.toggleFlip(ctx.clock.now(), it.flippedAtMillis)) } }
+            }
         },
     )
 

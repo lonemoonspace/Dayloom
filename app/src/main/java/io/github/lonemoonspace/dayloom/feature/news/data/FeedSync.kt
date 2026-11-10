@@ -67,7 +67,11 @@ class FeedSync(
                     store.clear()
                     owner.set(FeedPolicy.OWNER)
                 }
-                store.apply(FeedPolicy.merge(store.all(), fetched, feeds, nowMillis))
+                // Only this batch's feeds can have their articles rewritten, so only their text is read.
+                // 只有这一批订阅源的文章可能被改写，所以只读它们的正文。
+                val tags = fetched.keys.mapTo(HashSet()) { FeedPolicy.feedTag(it) }
+                val local = store.all(withText = { FeedPolicy.feedTagOf(it) in tags })
+                store.apply(FeedPolicy.merge(local, fetched, feeds, nowMillis))
             }
         }
         if (offline) throw failure ?: AppError.Offline()
@@ -109,7 +113,7 @@ class FeedFinder(private val fetcher: FeedFetcher) {
     suspend fun find(url: String): Pair<String, ParsedFeed>? {
         val page = fetcher.fetch(url, "", "") as? FetchResult.Fetched ?: return null
         FeedParser.parse(page.bytes)?.let { return url to it }
-        val candidates = FeedParser.discover(String(page.bytes, Charsets.UTF_8), page.finalUrl.ifBlank { url })
+        val candidates = FeedParser.discover(FeedParser.pageText(page.bytes), page.finalUrl.ifBlank { url })
         for (candidate in candidates.take(MAX_CANDIDATES)) {
             val feedUrl = FeedPolicy.normalizeFeedUrl(candidate) ?: continue
             val fetched = try {

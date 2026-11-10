@@ -49,7 +49,9 @@ import androidx.compose.ui.unit.dp
 import io.github.lonemoonspace.dayloom.R
 import io.github.lonemoonspace.dayloom.core.error.AppError
 import io.github.lonemoonspace.dayloom.core.i18n.asString
+import io.github.lonemoonspace.dayloom.core.routine.RoutinePolicy
 import io.github.lonemoonspace.dayloom.core.storage.Snapshot
+import io.github.lonemoonspace.dayloom.core.ui.FlipButton
 import io.github.lonemoonspace.dayloom.core.ui.InfoCard
 import io.github.lonemoonspace.dayloom.core.ui.SkeletonLines
 import io.github.lonemoonspace.dayloom.core.ui.STATUS_CHIP_PADDING
@@ -80,9 +82,10 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 
 /**
- * One commute card (train or bus): the next options towards the destination before noon, back from noon on. One row per
+ * One commute card (train or bus): the next options towards the destination before noon, back from noon on, or the other
+ * way round after a tap on the flip button. One row per
  * option: departure time, its route in aligned columns (see [RouteLine]), and the worst real-time status of its legs.
- * 一张通勤卡片（火车或公交）：中午前显示去程、中午起显示回程的接下来几个方案。每个方案一行：出发时刻、按列对齐的路线（见
+ * 一张通勤卡片（火车或公交）：中午前显示去程、中午起显示回程的接下来几个方案，点掉头按钮则反过来。每个方案一行：出发时刻、按列对齐的路线（见
  * [RouteLine]），以及各段中最差的实时状态。
  */
 @Composable
@@ -92,6 +95,8 @@ internal fun CommuteCard(
     error: AppError?,
     isStale: (Snapshot<CommuteTrips>, Instant) -> Boolean,
     route: CommuteRoute,
+    flippedAtMillis: Long = 0,
+    onFlip: (() -> Unit)? = null,
 ) {
     val now = rememberMinuteTick()
     val origin = route.origin
@@ -99,11 +104,12 @@ internal fun CommuteCard(
     val trips = snapshot?.value?.takeIf { route.isSet }
     // A snapshot fetched before the switch was turned off may still hold departures. / 开关关掉之前抓的快照可能还带着发车数据。
     val opposing = trips?.opposing?.takeIf { kind == CommuteKind.TRAIN && route.opposingHint }.orEmpty()
-    // Before the first snapshot the direction comes from the clock, so the title does not change once data arrives.
-    // 第一份快照到来之前按时钟定方向，数据到了标题也不会变。
+    // Before the first snapshot the direction comes from the clock and the manual flip, so the title does not change once
+    // data arrives.
+    // 第一份快照到来之前按时钟与手动掉头定方向，数据到了标题也不会变。
     val subtitle = when {
         !route.isSet -> null
-        (trips?.mode ?: TransitPolicy.commuteMode(now)) == CommuteMode.OUTBOUND -> stringResource(R.string.transit_to_work, origin.name, destination.name)
+        (trips?.mode ?: TransitPolicy.commuteMode(now, flippedAtMillis)) == CommuteMode.OUTBOUND -> stringResource(R.string.transit_to_work, origin.name, destination.name)
         else -> stringResource(R.string.transit_back_home, destination.name, origin.name)
     }
     InfoCard(
@@ -112,6 +118,11 @@ internal fun CommuteCard(
         subtitle = subtitle,
         meta = if (route.isSet) snapshot?.let { updatedAgo(it.fetchedAt, now) } else null,
         stale = route.isSet && snapshot?.let { isStale(it, now.toInstant()) } == true,
+        titleAction = if (route.isSet && onFlip != null) {
+            { FlipButton(RoutinePolicy.isFlipped(now, flippedAtMillis), onFlip) }
+        } else {
+            null
+        },
     ) {
         if (!route.isSet) {
             Hint(stringResource(R.string.transit_setup_prompt), maxLines = 3)

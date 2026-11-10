@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import io.github.lonemoonspace.dayloom.core.error.readingStorage
 import io.github.lonemoonspace.dayloom.core.storage.retryOnReadError
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -29,7 +30,7 @@ class DataStoreSecretStore(
             .map { SecretField.read(it, cipher::decrypt) }
 
     override suspend fun usable(id: String): String =
-        SecretField.read(store.data.first()[stringPreferencesKey(id)].orEmpty(), cipher::decrypt).display
+        SecretField.read(readingStorage { store.data.first() }[stringPreferencesKey(id)].orEmpty(), cipher::decrypt).display
 
     override suspend fun put(id: String, plain: String) {
         // Encrypt outside the edit block: a failure reaches the caller without opening a write transaction.

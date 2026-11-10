@@ -92,6 +92,8 @@ internal fun WeatherCard(
     snapshot: Snapshot<Forecast>?,
     error: AppError?,
     isStale: (Snapshot<Forecast>, Instant) -> Boolean,
+    /** Named in front of the condition when the weather is not Home's. / 天气不是家的时，写在天气状况前面。 */
+    placeLabel: String? = null,
 ) {
     val now = rememberMinuteTick()
     val forecast = snapshot?.value
@@ -120,7 +122,7 @@ internal fun WeatherCard(
                 .animateContentSize()
                 .padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 8.dp),
         ) {
-            NowRow(current, outlook, stale = isStale(snapshot, now.toInstant()))
+            NowRow(current, outlook, stale = isStale(snapshot, now.toInstant()), placeLabel = placeLabel)
             val chart = outlook?.takeIf { o -> o.hours.count { it.temperature != null } >= MIN_CHART_HOURS }
             if (chart != null) {
                 Spacer(Modifier.height(6.dp))
@@ -164,7 +166,7 @@ private fun heroColors(): HeroColors {
 }
 
 @Composable
-private fun NowRow(current: ForecastPoint, outlook: DayOutlook?, stale: Boolean) {
+private fun NowRow(current: ForecastPoint, outlook: DayOutlook?, stale: Boolean, placeLabel: String?) {
     val content = LocalContentColor.current
     Row(verticalAlignment = Alignment.CenterVertically) {
         WeatherIconImage(current.symbol, size = 40.dp)
@@ -173,8 +175,9 @@ private fun NowRow(current: ForecastPoint, outlook: DayOutlook?, stale: Boolean)
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                val condition = stringResource(conditionText(WeatherSymbolPolicy.condition(current.symbol)))
                 Text(
-                    text = stringResource(conditionText(WeatherSymbolPolicy.condition(current.symbol))),
+                    text = if (placeLabel == null) condition else "$placeLabel · $condition",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
@@ -475,6 +478,7 @@ internal fun clothingText(level: ClothingLevel): Int = when (level) {
 private fun tipText(tip: WeatherTip): Int = when (tip) {
     WeatherTip.THUNDER -> R.string.weather_tip_thunder
     WeatherTip.HEAVY_RAIN -> R.string.weather_tip_heavy_rain
+    WeatherTip.HEAVY_SNOW -> R.string.weather_tip_heavy_snow
     WeatherTip.UMBRELLA -> R.string.weather_tip_umbrella
     WeatherTip.SNOW -> R.string.weather_tip_snow
     WeatherTip.SLIPPERY -> R.string.weather_tip_slippery
@@ -486,7 +490,7 @@ private fun tipText(tip: WeatherTip): Int = when (tip) {
 }
 
 /** Tips about safety get the warning colour. / 与安全有关的提示用警示色。 */
-private val WARNING_TIPS = setOf(WeatherTip.THUNDER, WeatherTip.HEAVY_RAIN, WeatherTip.SLIPPERY, WeatherTip.STRONG_WIND, WeatherTip.HEAT)
+private val WARNING_TIPS = setOf(WeatherTip.THUNDER, WeatherTip.HEAVY_RAIN, WeatherTip.HEAVY_SNOW, WeatherTip.SLIPPERY, WeatherTip.STRONG_WIND, WeatherTip.HEAT)
 
 @StringRes
 internal fun conditionText(condition: WeatherCondition): Int = when (condition) {

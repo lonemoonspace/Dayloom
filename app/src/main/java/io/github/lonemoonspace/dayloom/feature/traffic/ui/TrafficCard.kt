@@ -23,9 +23,11 @@ import io.github.lonemoonspace.dayloom.core.error.AppError
 import io.github.lonemoonspace.dayloom.core.i18n.asString
 import io.github.lonemoonspace.dayloom.core.location.Place
 import io.github.lonemoonspace.dayloom.core.location.PlacesPolicy
+import io.github.lonemoonspace.dayloom.core.routine.RoutinePolicy
 import io.github.lonemoonspace.dayloom.core.storage.Snapshot
+import io.github.lonemoonspace.dayloom.core.ui.rememberMinuteTick
+import io.github.lonemoonspace.dayloom.core.ui.FlipButton
 import io.github.lonemoonspace.dayloom.core.ui.InfoCard
-import io.github.lonemoonspace.dayloom.core.ui.LocalAppClock
 import io.github.lonemoonspace.dayloom.core.ui.SkeletonLines
 import io.github.lonemoonspace.dayloom.core.ui.StatusChip
 import io.github.lonemoonspace.dayloom.core.ui.placeTitle
@@ -50,11 +52,17 @@ internal fun TrafficCard(
     isStale: (Snapshot<TrafficStatus>, Instant) -> Boolean,
     from: Place?,
     to: Place?,
+    flippedAtMillis: Long = 0,
+    onFlip: (() -> Unit)? = null,
 ) {
     val status = snapshot?.value
     val context = LocalContext.current
-    // The direction comes from the data actually shown, which may be from the other window. / 方向以实际显示的数据为准，它可能来自另一个时间窗。
-    val (origin, destination) = if (status?.direction == Direction.BACK_HOME) Pair(to, from) else Pair(from, to)
+    val now = rememberMinuteTick()
+    // The direction comes from the data actually shown; before it arrives, from the clock and the manual flip, so the title
+    // does not change once it does.
+    // 方向以实际显示的数据为准；数据到来之前按时钟与手动掉头定，数据到了标题也不会变。
+    val direction = status?.direction ?: TrafficPolicy.direction(now, flippedAtMillis)
+    val (origin, destination) = if (direction == Direction.BACK_HOME) Pair(to, from) else Pair(from, to)
     val route = if (origin != null && destination != null) {
         stringResource(R.string.traffic_card_title, placeTitle(origin), placeTitle(destination))
     } else {
@@ -65,7 +73,12 @@ internal fun TrafficCard(
         title = stringResource(R.string.traffic_title),
         icon = R.drawable.ic_traffic,
         subtitle = route,
-        stale = snapshot?.let { isStale(it, LocalAppClock.current.instant()) } == true,
+        stale = snapshot?.let { isStale(it, now.toInstant()) } == true,
+        titleAction = if (origin != null && destination != null && onFlip != null) {
+            { FlipButton(RoutinePolicy.isFlipped(now, flippedAtMillis), onFlip) }
+        } else {
+            null
+        },
         modifier = if (status != null && origin != null && destination != null) {
             Modifier.clickable(onClickLabel = openLabel) { openMaps(context, origin, destination) }
         } else {

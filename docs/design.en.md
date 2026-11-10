@@ -267,7 +267,7 @@ Weather, public transport, traffic and the morning brief all need "where is home
 - **Saved places (`core/location`)**: `Place(id, label, name, lat, lon, countryCode?)`. Two preset slots, "Home" and "Work", plus custom places.
   - Search: **Google Places API (New) Text Search** with the user's own key (street addresses and named places); without a key, **Entur Geocoder** first (Norwegian street addresses, places, points of interest and stops; free, no key, addresses from Kartverket), and **Nominatim** (OpenStreetMap, worldwide) when it finds nothing or fails; Nominatim's policy asks for an identifying User-Agent, at most about one request a second and no search-as-you-type, so it is only called when Search is pressed. Google is optional: nobody should need a key just to enter an address (decided after the rc.4 test). Coordinates typed by hand ("59.9139, 10.7522") are always accepted as they are.
   - No device location: the app asks for no location permission at all (decided after the rc.1 test, §19).
-- **The day's rhythm (`core/routine`)**: before 12:00 the cards look to work (home → work), from 12:00 homewards; 06:00–22:00 is daytime, when quickly changing sources refresh more often and commute alerts may go out. The same for everyone and every day, with no settings (replaced user-set commute windows after the rc.6 test).
+- **The day's rhythm (`core/routine`)**: before 12:00 the cards look to work (home → work), from 12:00 homewards; 06:00–22:00 is daytime, when quickly changing sources refresh more often and commute alerts may go out. The same for everyone and every day, with no settings (replaced user-set commute windows after the rc.6 test). The commute cards (train, bus, traffic) have a flip button in the title row: a tap looks the other way until the clock next turns the direction itself (noon or midnight).
 
 Module settings refer to these shared items — weather defaults to "Home", traffic to "Home → Work" — and can point elsewhere.
 
@@ -321,7 +321,7 @@ Module settings refer to these shared items — weather defaults to "Home", traf
 
 - **Features**: the weather at Home now (feels-like, wind and gusts), then the day: until 18:00 today, from 18:00 tomorrow (`DayOutlookPolicy`, daytime hours 06:00–22:00): low/high and feels-like, an hourly temperature curve (high and low marked) with rain bars underneath (rain spells shaded and labelled with amount and chance, the hour marked every three hours), what to wear (from the lowest feels-like temperature) and tips (umbrella, heavy rain, thunder, snow, icy roads, strong wind, heat, sunscreen, layers); then a four-day strip.
 - **Data source**: MET Norway Locationforecast 2.0 `complete` (worldwide; `complete` for feels-like, gusts, UV and rain probability).
-- **Settings**: none — always Home.
+- **Settings**: the place, picked from the saved places, Home by default; the card names the place when it is not Home.
 - **Sources**: `weather.forecast`.
 - **Ported**: `MetApi`, `WeatherPointPicker`, `DailyForecastBuilder`, weather icons (the original project's own `ic_wx_*` vector drawables).
 - **Note**: MET requires contact information in the User-Agent; it becomes `Dayloom/<version> (+https://github.com/lonemoonspace/dayloom)`. The UI must credit the data source (CC BY 4.0).
@@ -476,7 +476,7 @@ After M3 you can start using it on your phone alongside the original app; after 
 - **Architecture test**: the four rules in §3.3.
 - **Registry test**: unique ids, non-overlapping notification ranges.
 - **String-parity test**: §10.5.
-- **Robolectric**: only for DataStore / Room migration tests (which will only exist after v1.0).
+- **Robolectric**: only for DataStore / Room migration tests, and for card screenshots (`CardScreenshotTest`, pictures in `app/src/test/screenshots/`).
 
 ---
 
@@ -510,7 +510,7 @@ Check every file before porting: remove personal information from defaults, test
 | Public transport | Entur only for now; validated before implementation (§11.2). The commute card switches direction at 12:00; favourite-stop boards filter by line code and destination on the client. The disruption rule exists from M3; its opt-in switch arrives with the notification wiring in M4 |
 | The day's rhythm | The working-day selection and commute switch went after the rc.1 test; after the rc.6 test the commute windows went too, replaced by a direction switch at 12:00 (§8). The cards only need to know which way to look, and two time pickers asked more than that was worth. The two other jobs the windows did have their own replacements: the morning brief has its own time, and disruption alerts are limited to trips leaving within 45 minutes and are quiet 22:00–06:00 |
 | Notification switches | No master switch: each kind of notification has its own switch, off by default, and "turn everything off" is left to the system settings. The notification permission is requested only when the user turns a switch on; when the permission or the channel is off the switch says so and links to the system settings |
-| Background refresh | WorkManager every 15 minutes without a network constraint, each source throttled by its own `RefreshCadence`; the visible home screen checks every minute (§12) |
+| Background refresh | WorkManager every 15 minutes without a network constraint, each source throttled by its own `RefreshCadence`; only sources something uses while the app is closed are refreshed (the module has a notification rule switched on, or the morning brief needs its data within 45 minutes), and a source can opt out on metered networks (news); the visible home screen checks every minute (§12) |
 | Morning brief | Sent on the first background round at or after the chosen time (07:00 by default), every day, with a line each from weather, public transport, traffic and expiry reminders; modules whose data is too old are left out (§7.3) |
 | rc.1 test feedback (2026-10-09) | Calendar header: solar term on the clock row, stem-branch year and lunar date on one line beside the date. Weather: always Home, no settings; the commute windows on the card are replaced by the day's outlook with clothing advice and tips, tomorrow's from 18:00. Public transport: train and bus commutes apart (sources, cards, settings, rules). Places: no device location; Google search with a shared key, typed coordinates, Open-Meteo as the keyless fallback. Daily windows apply every day. Settings may now have several cards per module (`ModuleInstance.settingsSections`). The overall look is being discussed separately |
 | Visual design (2026-10-09) | Direction B of three mockups: Material 3 Expressive with colours from the wallpaper (Material You), 20 dp cards, one weather card in the scheme's primary colour that does not change with the weather, cards with a line icon, title, route and "updated" time in one row, one dense row per trip option (departure, lines, arrival, duration, transfers, platform, status pill), three options per commute window by default |

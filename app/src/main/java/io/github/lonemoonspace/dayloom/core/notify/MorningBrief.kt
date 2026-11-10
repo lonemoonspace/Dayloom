@@ -46,6 +46,22 @@ object MorningBriefPolicy {
         if (minute < briefMinute || minute >= minOf(briefMinute + LATE_LIMIT_MINUTES, MINUTES_PER_DAY)) return null
         return now.toLocalDate().takeIf { it != lastSent }
     }
+
+    /**
+     * Whether the brief wants fresh data in this background round: from [LEAD_MINUTES] before the chosen time until it has
+     * gone out (or the day is given up). Outside that window nothing is fetched just for the brief.
+     * 这一轮后台刷新里简报是否需要新数据：从设定时间前 [LEAD_MINUTES] 分钟起，到简报发出（或当天放弃）为止。这个时间窗之外不会
+     * 专门为简报去取数据。
+     */
+    fun needsData(briefMinute: Int, now: ZonedDateTime, lastSent: LocalDate?): Boolean {
+        if (!isValidMinute(briefMinute)) return false
+        val minute = now.hour * 60 + now.minute
+        if (minute in (briefMinute - LEAD_MINUTES) until briefMinute) return now.toLocalDate() != lastSent
+        return dueDay(briefMinute, now, lastSent) != null
+    }
+
+    /** Two background rounds before the brief, so one failed fetch does not leave a line out. / 简报前留出两轮后台刷新，一次抓取失败不至于少一行。 */
+    const val LEAD_MINUTES = 45
 }
 
 /**

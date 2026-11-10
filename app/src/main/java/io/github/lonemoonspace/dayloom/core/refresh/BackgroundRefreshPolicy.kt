@@ -16,4 +16,18 @@ object BackgroundRefreshPolicy {
         val attempted = results.filterNot { it is SourceResult.Skipped }
         return attempted.isNotEmpty() && attempted.all { it is SourceResult.Failed }
     }
+
+    /**
+     * Whether a module's sources are worth refreshing while the app is closed: only when something will use the result
+     * without the user opening the app, i.e. one of its notification rules is on, or the morning brief is about to quote
+     * it. Everything else is refreshed when the app is opened, which costs no battery or data in between.
+     * 应用关着的时候，一个模块的来源值不值得刷新：只有结果会在用户不打开 App 的情况下被用到时才值得，也就是它有通知规则开着，
+     * 或者早间简报马上要引用它。其余的等打开 App 时再刷新，中间不耗电也不耗流量。
+     */
+    fun wanted(anyRuleEnabled: Boolean, hasBriefLine: Boolean, briefNeedsData: Boolean): Boolean =
+        anyRuleEnabled || (hasBriefLine && briefNeedsData)
+
+    /** Whether the source itself takes part in a background round on this network. / 这个来源在当前网络下是否参加后台轮次。 */
+    fun allowed(cadence: RefreshCadence, metered: Boolean): Boolean =
+        cadence.background && (cadence.meteredBackground || !metered)
 }

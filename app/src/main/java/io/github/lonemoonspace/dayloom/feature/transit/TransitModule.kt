@@ -15,6 +15,7 @@ import io.github.lonemoonspace.dayloom.core.module.SettingsSection
 import io.github.lonemoonspace.dayloom.core.notify.BriefContributor
 import io.github.lonemoonspace.dayloom.core.notify.ChannelImportance
 import io.github.lonemoonspace.dayloom.core.notify.ChannelSpec
+import io.github.lonemoonspace.dayloom.core.routine.RoutinePolicy
 import io.github.lonemoonspace.dayloom.core.time.minuteTicks
 import io.github.lonemoonspace.dayloom.feature.transit.data.BoardsSource
 import io.github.lonemoonspace.dayloom.feature.transit.data.CommuteSource
@@ -32,6 +33,7 @@ import io.github.lonemoonspace.dayloom.feature.transit.ui.BoardsSettingsSection
 import io.github.lonemoonspace.dayloom.feature.transit.ui.CommuteCard
 import io.github.lonemoonspace.dayloom.feature.transit.ui.RouteSettingsSection
 import io.github.lonemoonspace.dayloom.feature.transit.ui.kindTitle
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -88,6 +90,8 @@ data class CommuteSettings(
     /** Reserved for migrations after v1.0.0. / 预留给 v1.0.0 之后的迁移。 */
     val version: Int = 1,
     val route: CommuteRoute = CommuteRoute(),
+    /** When the card was last turned round by hand, epoch millis; 0 for never. / 卡片上次被手动掉头的时刻（毫秒时间戳）；0 表示没有。 */
+    val flippedAtMillis: Long = 0,
 )
 
 @Serializable
@@ -119,6 +123,7 @@ private class CommuteInstance(private val ctx: ModuleContext, private val kind: 
         )
     }
     private val route = store.flow.map { it.route }.distinctUntilChanged()
+    private val flippedAt = store.flow.map { it.flippedAtMillis }.distinctUntilChanged()
     private val provider = EnturProvider(ctx.http)
     private val channel = ChannelSpec(
         "disruption",
@@ -137,10 +142,11 @@ private class CommuteInstance(private val ctx: ModuleContext, private val kind: 
         store = ctx.snapshots(ctx.sourceId("commute"), CommuteTrips.serializer()),
         clock = ctx.clock,
         kind = kind,
-        route = route.map { it.copy(notify = false) }.distinctUntilChanged(),
-        // Re-evaluated every minute, emits only when the direction changes at noon or midnight, which then triggers a refresh.
-        // 每分钟重新判断，只在中午或午夜方向变化时发出，随后触发一次刷新。
-        mode = ctx.clock.minuteTicks().map(TransitPolicy::commuteMode).distinctUntilChanged(),
+        route = route.map { it.copy(notify = false, notifyWeekdaysOnly = true) }.distinctUntilChanged(),
+        // Re-evaluated every minute, emits only when the direction changes (noon, midnight or a manual flip), which then
+        // triggers a refresh.
+        // 每分钟重新判断，只在方向变化时发出（中午、午夜或手动掉头），随后触发一次刷新。
+        mode = combine(ctx.clock.minuteTicks(), flippedAt, TransitPolicy::commuteMode).distinctUntilChanged(),
         provider = provider,
     )
 
@@ -153,10 +159,16 @@ private class CommuteInstance(private val ctx: ModuleContext, private val kind: 
             val snapshot by source.observe().collectAsStateWithLifecycle(initialValue = null)
             val status by ctx.coordinator.status.collectAsStateWithLifecycle()
             val saved by route.collectAsStateWithLifecycle(initialValue = null)
+            val flipped by flippedAt.collectAsStateWithLifecycle(initialValue = 0L)
             // Switched on without stops, the card asks for them. / 开启了但没设置站点时，卡片提示去设置。
-            saved?.let { CommuteCard(kind, snapshot, status[source.id]?.lastError, source::isStale, it) }
+            saved?.let { CommuteCard(kind, snapshot, status[source.id]?.lastError, source::isStale, it, flipped, ::flip) }
         },
     )
+
+    // Saved in appScope so leaving the screen right away does not cancel the write. / 在 appScope 里保存，立刻离开页面也不会取消写入。
+    private fun flip() {
+        ctx.appScope.launch { store.update { it.copy(flippedAtMillis = RoutinePolicy.toggleFlip(ctx.clock.now(), it.flippedAtMillis)) } }
+    }
 
     override val settingsSections = listOf(
         SettingsSection {
@@ -180,6 +192,7 @@ private class CommuteInstance(private val ctx: ModuleContext, private val kind: 
         DisruptionRule(
             name = "disruption",
             enabled = { store.get().route.notify },
+            weekdaysOnly = { store.get().route.notifyWeekdaysOnly },
             refreshed = { report -> report.succeeded(source.id) },
             trips = { source.current()?.value },
             channelId = ctx.channelId(channel.name),

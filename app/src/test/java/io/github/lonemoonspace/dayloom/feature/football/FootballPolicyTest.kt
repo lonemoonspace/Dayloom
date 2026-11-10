@@ -21,6 +21,7 @@ import io.github.lonemoonspace.dayloom.feature.football.domain.TeamRef
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
+import java.time.LocalTime
 import java.time.ZonedDateTime
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -171,7 +172,7 @@ class FootballPolicyTest {
         val rule = KickoffRule({ true }, { listOf(soon) }, target)
         val first = rule.evaluate(RuleInput(RefreshReport(emptyMap(), Instant.EPOCH), now), AnnouncedMatches())
         val fixture = UiText.Res(R.string.football_fixture, listOf("Team A", "Team B"))
-        assertEquals(UiText.Res(R.string.football_notify_kickoff_body, listOf(fixture, "18:30", "League")), first.notifications.single().body)
+        assertEquals(UiText.Res(R.string.football_notify_kickoff_body, listOf(fixture, UiText.Time(LocalTime.of(18, 30)), "League")), first.notifications.single().body)
         assertTrue(rule.evaluate(RuleInput(RefreshReport(emptyMap(), Instant.EPOCH), now), first.newState).notifications.isEmpty())
         val remembered = (1L..60L).fold(emptyMap<Long, Long>()) { acc, id -> FootballPolicy.rememberKickoff(acc, match(id, now.plusMinutes(id), MatchStatus.TIMED)) }
         assertEquals("bounded", 40, remembered.size)
@@ -182,7 +183,7 @@ class FootballPolicyTest {
     fun `the brief speaks only on a match day`() {
         val tonight = match(1, now.plusHours(3), MatchStatus.TIMED)
         val fixture = UiText.Res(R.string.football_fixture, listOf("Team A", "Team B"))
-        assertEquals(UiText.Res(R.string.football_brief, listOf(fixture, "21:00")), FootballBrief.line(listOf(tonight), now))
+        assertEquals(UiText.Res(R.string.football_brief, listOf(fixture, UiText.Time(LocalTime.of(21, 0)))), FootballBrief.line(listOf(tonight), now))
         assertNull(FootballBrief.line(listOf(match(2, now.plusDays(1), MatchStatus.TIMED)), now))
     }
 

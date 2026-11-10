@@ -10,7 +10,6 @@ import io.github.lonemoonspace.dayloom.core.notify.RuleInput
 import io.github.lonemoonspace.dayloom.core.notify.StateCodec
 import io.github.lonemoonspace.dayloom.core.refresh.RefreshReport
 import java.time.Instant
-import java.time.format.DateTimeFormatter
 import kotlinx.serialization.Serializable
 
 /**
@@ -48,7 +47,7 @@ class KickoffRule(
 
     override suspend fun evaluate(input: RuleInput, previous: AnnouncedMatches): RuleDecision<AnnouncedMatches> {
         val match = FootballPolicy.kickoffDue(matches().orEmpty(), input.now, previous.kickoffs) ?: return RuleDecision(previous)
-        val at = Instant.ofEpochMilli(match.kickoff).atZone(input.now.zone).format(TIME)
+        val at = UiText.Time(Instant.ofEpochMilli(match.kickoff).atZone(input.now.zone).toLocalTime().withSecond(0).withNano(0))
         val body = UiText.Res(R.string.football_notify_kickoff_body, listOf(fixture(match), at, match.competition))
         val notification = AppNotification(target.notificationId(match.id), target.channelId, UiText.Res(R.string.football_notify_kickoff), body, target.deepLink)
         return RuleDecision(previous.copy(kickoffs = FootballPolicy.rememberKickoff(previous.kickoffs, match)), listOf(notification))
@@ -97,6 +96,3 @@ internal fun resultText(match: Match): UiText {
     val awayPens = match.awayPens
     return if (homePens != null && awayPens != null) UiText.Res(R.string.football_with_penalties, listOf(score, homePens, awayPens)) else score
 }
-
-/** Numeric time reads the same in every language. / 数字时刻在各语言里写法一致。 */
-private val TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")

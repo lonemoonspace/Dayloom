@@ -15,6 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import io.github.lonemoonspace.dayloom.feature.news.domain.ArticleFilter
 import io.github.lonemoonspace.dayloom.feature.news.domain.ArticleStore
 import io.github.lonemoonspace.dayloom.feature.news.domain.Headline
+import io.github.lonemoonspace.dayloom.feature.news.domain.ListedArticle
 import io.github.lonemoonspace.dayloom.feature.news.domain.MergeResult
 import io.github.lonemoonspace.dayloom.feature.news.domain.NewsSyncPolicy
 import io.github.lonemoonspace.dayloom.feature.news.domain.StoredArticle
@@ -57,6 +58,31 @@ data class ArticleHead(val id: Long, val feedTitle: String, val title: String, v
 
 data class ArticleCounts(val total: Int, val unread: Int, val starred: Int)
 
+/**
+ * A row without its text, for lists and for the merge; [textLength] stands in for the text.
+ * 不带正文的一行，供列表与合并使用；[textLength] 代表正文。
+ */
+data class ArticleRow(
+    val id: Long,
+    val feedTitle: String,
+    val title: String,
+    val url: String,
+    val author: String,
+    val publishedAt: Long,
+    val read: Boolean,
+    val starred: Boolean,
+    val readingMinutes: Int,
+    val pendingRead: Boolean?,
+    val pendingStarred: Boolean?,
+    val readAt: Long,
+    val summary: String,
+    val summaryLanguage: String,
+    val fullTextTriedAt: Long,
+    val textLength: Int,
+)
+
+data class ArticleText(val id: Long, val contentHtml: String)
+
 /** Just the pending changes, for the push. / 只取待发送的修改，供推送用。 */
 data class ArticlePending(val id: Long, val pendingRead: Boolean?, val pendingStarred: Boolean?)
 
@@ -74,22 +100,32 @@ interface ArticleDao {
     @Query("DELETE FROM article WHERE id IN (:ids)")
     suspend fun delete(ids: List<Long>)
 
+    @Query("UPDATE article SET pendingRead = NULL, pendingStarred = NULL WHERE id IN (:ids)")
+    suspend fun clearPending(ids: List<Long>)
+
     @Transaction
-    suspend fun apply(upsert: List<ArticleEntity>, delete: List<Long>) {
+    suspend fun apply(upsert: List<ArticleEntity>, delete: List<Long>, clearPending: List<Long>) {
         if (upsert.isNotEmpty()) upsert(upsert)
-        // SQLite caps the number of bound variables, so long lists go in chunks. / SQLite 限制绑定变量数，长列表分批删除。
-        delete.chunked(500).forEach { delete(it) }
+        // SQLite caps the number of bound variables, so long lists go in chunks. / SQLite 限制绑定变量数，长列表分批处理。
+        delete.chunked(ID_CHUNK).forEach { delete(it) }
+        clearPending.chunked(ID_CHUNK).forEach { clearPending(it) }
     }
 
-    @Query("SELECT * FROM article WHERE read = 0 ORDER BY publishedAt DESC")
-    fun unread(): Flow<List<ArticleEntity>>
+    @Query("SELECT $ROW_COLUMNS FROM article")
+    suspend fun rows(): List<ArticleRow>
 
-    @Query("SELECT * FROM article WHERE starred = 1 ORDER BY publishedAt DESC")
-    fun starred(): Flow<List<ArticleEntity>>
+    @Query("SELECT id, contentHtml FROM article WHERE id IN (:ids)")
+    suspend fun texts(ids: List<Long>): List<ArticleText>
+
+    @Query("SELECT $ROW_COLUMNS FROM article WHERE read = 0 ORDER BY publishedAt DESC")
+    fun unread(): Flow<List<ArticleRow>>
+
+    @Query("SELECT $ROW_COLUMNS FROM article WHERE starred = 1 ORDER BY publishedAt DESC")
+    fun starred(): Flow<List<ArticleRow>>
 
     // KSP needs a plain literal here, so the limit repeats [NewsSyncPolicy.RECENT_LIMIT]. / KSP 只接受纯字面量，所以这里重复 [NewsSyncPolicy.RECENT_LIMIT]。
-    @Query("SELECT * FROM article ORDER BY publishedAt DESC LIMIT 300")
-    fun recent(): Flow<List<ArticleEntity>>
+    @Query("SELECT $ROW_COLUMNS FROM article ORDER BY publishedAt DESC LIMIT 300")
+    fun recent(): Flow<List<ArticleRow>>
 
     @Query("SELECT * FROM article WHERE id = :id")
     fun byId(id: Long): Flow<ArticleEntity?>
@@ -121,6 +157,15 @@ interface ArticleDao {
 
     @Query("UPDATE article SET contentHtml = :html WHERE id = :id")
     suspend fun saveContent(id: Long, html: String)
+
+    companion object {
+        /** Every column but the text, whose length takes its place. / 除正文外的所有列，正文用它的长度代替。 */
+        const val ROW_COLUMNS = "id, feedTitle, title, url, author, publishedAt, read, starred, readingMinutes, pendingRead, " +
+            "pendingStarred, readAt, summary, summaryLanguage, fullTextTriedAt, length(contentHtml) AS textLength"
+
+        /** Ids per statement, under SQLite's cap on bound variables. / 每条语句的 id 数，低于 SQLite 对绑定变量数的上限。 */
+        const val ID_CHUNK = 500
+    }
 }
 
 /** `dayloom.db`, version 2; its schema is exported to `app/schemas/`. / `dayloom.db` 第 2 版；schema 导出到 `app/schemas/`。 */
@@ -150,6 +195,17 @@ object Migration1To2 : Migration(1, 2) {
 class RoomArticleStore(private val dao: ArticleDao) : ArticleStore {
     override suspend fun all(): List<StoredArticle> = dao.all().map { it.toArticle() }
 
+    override suspend fun all(withText: (id: Long) -> Boolean): List<StoredArticle> {
+        val rows = dao.rows()
+        val texts = texts(rows.map { it.id }.filter(withText))
+        return rows.map { it.toArticle(texts[it.id].orEmpty()) }
+    }
+
+    // Read a few at a time: one cursor window holds about 2 MB, and whole articles add up quickly.
+    // 分小批读取：一个游标窗口大约只能装 2 MB，整篇文章很快就会超出。
+    override suspend fun texts(ids: List<Long>): Map<Long, String> =
+        ids.chunked(TEXT_CHUNK).flatMap { dao.texts(it) }.associate { it.id to it.contentHtml }
+
     override suspend fun ids(): List<Long> = dao.ids()
 
     override suspend fun pending(): List<StoredArticle> = dao.pending().map { StoredArticle(it.id, pendingRead = it.pendingRead, pendingStarred = it.pendingStarred) }
@@ -160,13 +216,13 @@ class RoomArticleStore(private val dao: ArticleDao) : ArticleStore {
 
     override suspend fun markFullTextTried(id: Long, at: Long) = dao.markFullTextTried(id, at)
 
-    override suspend fun apply(result: MergeResult) = dao.apply(result.upsert.map { it.toEntity() }, result.delete)
+    override suspend fun apply(result: MergeResult) = dao.apply(result.upsert.map { it.toEntity() }, result.delete, result.clearPending)
 
-    override fun observe(filter: ArticleFilter): Flow<List<StoredArticle>> = when (filter) {
+    override fun observe(filter: ArticleFilter): Flow<List<ListedArticle>> = when (filter) {
         ArticleFilter.UNREAD -> dao.unread()
         ArticleFilter.STARRED -> dao.starred()
         ArticleFilter.ALL -> dao.recent()
-    }.map { rows -> rows.map { it.toArticle() } }
+    }.map { rows -> rows.map { ListedArticle(it.toArticle(text = ""), it.textLength) } }
 
     override fun observe(id: Long): Flow<StoredArticle?> = dao.byId(id).map { it?.toArticle() }
 
@@ -186,12 +242,22 @@ class RoomArticleStore(private val dao: ArticleDao) : ArticleStore {
     override suspend fun saveSummary(id: Long, summary: String, language: String) = dao.saveSummary(id, summary, language)
 
     override suspend fun saveContent(id: Long, html: String) = dao.saveContent(id, html)
+
+    private companion object {
+        const val TEXT_CHUNK = 50
+    }
 }
 
 // Named arguments: with positional ones, reordering a field would silently write it into another column.
 // 用具名参数：按位置传参时，调换一个字段的顺序会把它静默写进另一列。
 private fun ArticleEntity.toArticle() = StoredArticle(
     id = id, feedTitle = feedTitle, title = title, url = url, author = author, contentHtml = contentHtml, publishedAt = publishedAt,
+    read = read, starred = starred, readingMinutes = readingMinutes, pendingRead = pendingRead, pendingStarred = pendingStarred,
+    readAt = readAt, summary = summary, summaryLanguage = summaryLanguage, fullTextTriedAt = fullTextTriedAt,
+)
+
+private fun ArticleRow.toArticle(text: String) = StoredArticle(
+    id = id, feedTitle = feedTitle, title = title, url = url, author = author, contentHtml = text, publishedAt = publishedAt,
     read = read, starred = starred, readingMinutes = readingMinutes, pendingRead = pendingRead, pendingStarred = pendingStarred,
     readAt = readAt, summary = summary, summaryLanguage = summaryLanguage, fullTextTriedAt = fullTextTriedAt,
 )

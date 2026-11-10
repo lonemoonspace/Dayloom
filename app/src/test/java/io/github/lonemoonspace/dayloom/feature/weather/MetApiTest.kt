@@ -118,7 +118,7 @@ class MetApiTest {
         val forecast = (api().fetch(59.9, 10.7, ifModifiedSince = "Tue, 22 Sep 2026 04:31:00 GMT") as MetApi.Result.Fresh).forecast
 
         assertEquals(7.5, forecast.points.first().temperature!!, 0.0)
-        assertEquals("Tue, 22 Sep 2026 05:31:00 GMT", forecast.lastModified)
+        assertEquals("not kept, or the next complete request would answer 304 and keep the reduced forecast", "", forecast.lastModified)
         assertTrue(server.takeRequest().path!!.startsWith("/weatherapi/locationforecast/2.0/complete?"))
         val fallback = server.takeRequest()
         assertTrue(fallback.path!!.startsWith("/weatherapi/locationforecast/2.0/compact?lat=59.9000&lon=10.7000"))

@@ -9,6 +9,7 @@
     <string name="language_name_chinese" translatable="false">中文</string>
 
     <string name="common_cached">Cached</string>
+    <string name="common_flip_direction">Switch direction</string>
     <string name="common_loading">Loading</string>
     <string name="common_save">Save</string>
 
@@ -25,7 +26,8 @@
     <string name="places_none_saved">No saved places yet. Add them under Places in Settings.</string>
 
     <string name="weather_title">Weather</string>
-    <string name="weather_summary">Today\'s weather at Home, with what to wear; tomorrow\'s in the evening. From MET Norway</string>
+    <string name="weather_summary">Today\'s weather at a saved place (Home unless you pick another), with what to wear; tomorrow\'s in the evening. From MET Norway</string>
+    <string name="weather_place">Weather for</string>
     <string name="weather_setup_place">Set Home under Places</string>
     <string name="weather_feels_like">Feels like %1$d°</string>
     <string name="weather_range">%1$d° to %2$d°</string>
@@ -43,6 +45,7 @@
     <string name="weather_clothing_freezing">Down jacket, hat and gloves</string>
     <string name="weather_tip_thunder">Thunder possible</string>
     <string name="weather_tip_heavy_rain">Heavy rain</string>
+    <string name="weather_tip_heavy_snow">Heavy snow</string>
     <string name="weather_tip_umbrella">Take an umbrella</string>
     <string name="weather_tip_snow">Snow or sleet</string>
     <string name="weather_tip_slippery">Icy roads</string>
@@ -363,6 +366,8 @@
     <string name="transit_channel_description">When the next departure on your commute is cancelled or heavily delayed</string>
     <string name="transit_notify_switch">Disruption alerts</string>
     <string name="transit_notify_switch_summary">When the next departure, within 45 minutes, is cancelled or at least 5 minutes late; mornings to work, afternoons home, never 22:00–06:00</string>
+    <string name="transit_notify_weekdays_switch">Weekdays only</string>
+    <string name="transit_notify_weekdays_switch_summary">No disruption alerts on Saturdays and Sundays</string>
     <string name="transit_notify_to_work">Disruption on your way to work</string>
     <string name="transit_notify_back_home">Disruption on your way home</string>
     <string name="transit_opposing_switch">Note crossing delays</string>
@@ -454,6 +459,7 @@
 
     <string name="error_offline">You are offline; showing the last saved data.</string>
     <string name="error_network">Network error, check your connection (%1$s)</string>
+    <string name="error_storage">Saved data on this device could not be read (%1$s)</string>
     <string name="error_http">%1$s returned an error (HTTP %2$d)</string>
     <string name="error_http_auth">%1$s rejected the credentials (HTTP %2$d). Check the key in Settings.</string>
     <string name="error_not_configured">Set up first: %1$s</string>

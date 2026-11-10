@@ -28,12 +28,14 @@ class PlacesTest {
     }
 
     @Test
-    fun `upsert replaces by id and custom ids skip used numbers`() {
+    fun `upsert replaces by id and custom ids are never reused`() {
         val moved = home.copy(name = "Town E")
         assertEquals(listOf(moved, gym), PlacesPolicy.upsert(listOf(home, gym), moved))
         assertEquals(listOf(home, gym, work), PlacesPolicy.upsert(listOf(home, gym), work))
-        assertEquals("place3", PlacesPolicy.newCustomId(listOf(gym, cabin)))
-        assertEquals("place1", PlacesPolicy.newCustomId(listOf(cabin)))
+        assertEquals(3, PlacesPolicy.newCustomNumber(listOf(gym, cabin), lastNumber = 0))
+        assertEquals("a deleted place's number stays taken", 3, PlacesPolicy.newCustomNumber(listOf(cabin), lastNumber = 2))
+        assertEquals(1, PlacesPolicy.newCustomNumber(listOf(home, work), lastNumber = 0))
+        assertEquals("place3", PlacesPolicy.customId(3))
     }
 
     @Test

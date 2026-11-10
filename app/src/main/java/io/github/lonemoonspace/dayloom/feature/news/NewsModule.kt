@@ -22,6 +22,7 @@ import io.github.lonemoonspace.dayloom.core.refresh.SourceInput
 import io.github.lonemoonspace.dayloom.core.refresh.SourceResult
 import io.github.lonemoonspace.dayloom.core.refresh.Trigger
 import io.github.lonemoonspace.dayloom.core.secret.SecretState
+import io.github.lonemoonspace.dayloom.core.ui.rememberMinuteTick
 import io.github.lonemoonspace.dayloom.feature.news.data.FeedApi
 import io.github.lonemoonspace.dayloom.feature.news.data.FeedFinder
 import io.github.lonemoonspace.dayloom.feature.news.data.FeedSync
@@ -38,6 +39,7 @@ import io.github.lonemoonspace.dayloom.feature.news.domain.ArticleItem
 import io.github.lonemoonspace.dayloom.feature.news.domain.Feed
 import io.github.lonemoonspace.dayloom.feature.news.domain.FeedPolicy
 import io.github.lonemoonspace.dayloom.feature.news.domain.NewsSourceKind
+import io.github.lonemoonspace.dayloom.feature.news.domain.ListedArticle
 import io.github.lonemoonspace.dayloom.feature.news.domain.NewsSyncPolicy
 import io.github.lonemoonspace.dayloom.feature.news.domain.StoredArticle
 import io.github.lonemoonspace.dayloom.feature.news.domain.SyncSummary
@@ -113,6 +115,9 @@ private const val INPUT_WAIT_MS = 5_000L
 /** Cached list items beyond the current list before the cache is pruned. / 缓存的列表项比当前列表多出这么多时才清理。 */
 private const val ITEM_CACHE_SLACK = 50
 
+/** Articles whose text is read in one go when the list is built. / 生成列表时一次读多少篇文章的正文。 */
+private const val ITEM_TEXT_BATCH = 50
+
 private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
     private val store = ctx.settings(NewsSettings.serializer(), NewsSettings())
     private val token = ctx.secret("miniflux_token")
@@ -175,7 +180,10 @@ private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
             val status by ctx.coordinator.status.collectAsStateWithLifecycle()
             val isReady by ready.collectAsStateWithLifecycle(initialValue = true)
             val k by kind.collectAsStateWithLifecycle(initialValue = NewsSourceKind.RSS)
-            val stale = snapshot?.let { source.isStale(it, ctx.clock.now().toInstant()) } == true
+            // The minute tick makes the card turn "cached" while it is on screen, not only at the next redraw.
+            // 用每分钟跳动的时间，卡片停在屏幕上时也会变成「缓存」，不必等下一次重绘。
+            val now = rememberMinuteTick()
+            val stale = snapshot?.let { source.isStale(it, now.toInstant()) } == true
             NewsCard(
                 summary = summary.takeIf { snapshot != null },
                 configured = isReady,
@@ -306,18 +314,25 @@ private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
         }
     }
 
-    /**
-     * List items by article id; the text is stripped from the HTML only when the HTML changes, not on every read or star.
-     * 按文章 id 缓存的列表项；只有 HTML 变了才重新提取文字，标已读或收藏时不重算。
-     */
-    private val items = ConcurrentHashMap<Long, ArticleItem>()
+    private class CachedItem(val textLength: Int, val item: ArticleItem)
 
-    private fun itemsOf(list: List<StoredArticle>): List<ArticleItem> {
-        if (items.size > list.size + ITEM_CACHE_SLACK) items.keys.retainAll(list.mapTo(HashSet()) { it.id })
-        return list.map { article ->
-            items[article.id]?.takeIf { it.article.contentHtml == article.contentHtml }?.copy(article = article)
-                ?: NewsSyncPolicy.listItem(article).also { items[article.id] = it }
+    /**
+     * List items by article id. An article's text is read from the database and stripped of its HTML only when it is new
+     * or its text changed, not on every read or star: the list itself arrives without text.
+     * 按文章 id 缓存的列表项。只有新文章或正文变了的文章才从数据库读正文并去掉 HTML，标已读或收藏时不重读：列表本身不带正文。
+     */
+    private val items = ConcurrentHashMap<Long, CachedItem>()
+
+    private suspend fun itemsOf(list: List<ListedArticle>): List<ArticleItem> {
+        if (items.size > list.size + ITEM_CACHE_SLACK) items.keys.retainAll(list.mapTo(HashSet()) { it.article.id })
+        val changed = list.filter { items[it.article.id]?.textLength != it.textLength }
+        for (batch in changed.chunked(ITEM_TEXT_BATCH)) {
+            val texts = articles.texts(batch.map { it.article.id })
+            batch.forEach { listed ->
+                items[listed.article.id] = CachedItem(listed.textLength, NewsSyncPolicy.listItem(listed.article, texts[listed.article.id].orEmpty()))
+            }
         }
+        return list.mapNotNull { listed -> items[listed.article.id]?.item?.copy(article = listed.article) }
     }
 
     @Composable
@@ -326,7 +341,7 @@ private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
         var query by rememberSaveable { mutableStateOf("") }
         var openId by rememberSaveable { mutableStateOf<Long?>(null) }
         val isReady by ready.collectAsStateWithLifecycle(initialValue = true)
-        val listItems by remember(filter) { articles.observe(filter).map(::itemsOf).flowOn(Dispatchers.Default) }
+        val listItems by remember(filter) { articles.observe(filter).map { itemsOf(it) }.flowOn(Dispatchers.Default) }
             .collectAsStateWithLifecycle(initialValue = null)
         val list = remember(listItems, query) { listItems?.filter { NewsSyncPolicy.matches(it, query) } }
         val open by remember(openId) { openId?.let { articles.observe(it) } ?: flowOf(null) }.collectAsStateWithLifecycle(initialValue = null)

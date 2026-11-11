@@ -216,8 +216,8 @@ private fun OptionRow(row: CommuteRow, columns: RouteColumns, now: ZonedDateTime
         timeWidth = columns.time,
         badgeWidth = columns.badge,
         badge = { row.status?.let { StatusChip(it.text, it.color, maxLines = 2, shape = RoundedCornerShape(PILL_CORNER)) } },
+        head = { RouteLine(row.option, columns, now, struck = row.cancelled) },
     ) {
-        RouteLine(row.option, columns, now, struck = row.cancelled)
         if (row.folded != null) {
             RouteLine(row.folded, columns, now, struck = false, modifier = Modifier.alpha(FOLDED_ALPHA))
         }
@@ -425,11 +425,13 @@ private val BADGE_GAP = 6.dp
 
 /**
  * The row shared by the train, bus and departure board cards, so the three stay identical: the expected time large on the
- * left (the timetable time struck through under it when late), [content] in the middle, [badge] on the right, and a divider
- * above every row but a group's first. [timeWidth] and [badgeWidth], when given, fix those columns so the middle is the
- * same width on every row of the card.
- * 火车、公交与发车板共用的行，三张卡片才会始终一致：左边大字是预计时刻（晚点时下面划掉时刻表时间），中间是 [content]，
- * 右边是 [badge]，除每组第一行外上方都有分隔线。给了 [timeWidth] 与 [badgeWidth] 时这两列定宽，卡片每一行中间部分一样宽。
+ * left, [head] in the middle and [badge] on the right, all centred on one line; under them the timetable time struck
+ * through when late, and [content] under [head]. Extra lines such as an opposing-train warning therefore never pull the
+ * time or the badge off the line chips. A divider goes above every row but a group's first. [timeWidth] and [badgeWidth],
+ * when given, fix those columns so the middle is the same width on every row and the lines below keep its columns.
+ * 火车、公交与发车板共用的行，三张卡片才会始终一致：左边大字是预计时刻，中间是 [head]，右边是 [badge]，三者在同一行上居中
+ * 对齐；下面是晚点时划掉的时刻表时间，以及 [head] 下方的 [content]。对向车晚点之类的附加行因此不会把时刻和胶囊拉离线路标签。
+ * 除每组第一行外上方都有分隔线。给了 [timeWidth] 与 [badgeWidth] 时这两列定宽，每行中间一样宽，下面的行也保持同样的列。
  */
 @Composable
 private fun TransitRow(
@@ -441,16 +443,16 @@ private fun TransitRow(
     timeWidth: Dp? = null,
     badgeWidth: Dp? = null,
     badge: @Composable () -> Unit,
-    content: @Composable ColumnScope.() -> Unit,
+    head: @Composable () -> Unit,
+    content: @Composable ColumnScope.() -> Unit = {},
 ) {
     val time = rememberTimeFormatter()
     fun at(millis: Long) = Instant.ofEpochMilli(millis).atZone(now.zone).format(time)
     val faint = MaterialTheme.colorScheme.outline
+    val timeModifier = if (timeWidth != null) Modifier.width(timeWidth) else Modifier.widthIn(min = TIME_MIN_WIDTH)
     if (divider) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 5.dp)) {
-        // The timetable time goes under the expected one, which keeps the row narrow enough for 12-hour clocks.
-        // 时刻表时间放在预计时间下面，12 小时制时这一行也放得下。
-        Column(if (timeWidth != null) Modifier.width(timeWidth) else Modifier.widthIn(min = TIME_MIN_WIDTH)) {
+    Column(Modifier.padding(vertical = 5.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = at(expected),
                 fontSize = TIME_SIZE,
@@ -459,18 +461,27 @@ private fun TransitRow(
                 color = if (cancelled) faint else LocalContentColor.current,
                 textDecoration = if (cancelled) TextDecoration.LineThrough else null,
                 maxLines = 1,
+                modifier = timeModifier,
             )
-            // Compared as shown: a delay of a few seconds would otherwise strike "08:24" under "08:24".
-            // 按显示出来的时刻比较：否则晚几秒也会在「08:24」下面划掉「08:24」。
-            val aimedText = at(aimed)
-            if (!cancelled && aimedText != at(expected)) {
-                Text(aimedText, style = MaterialTheme.typography.labelSmall, color = faint, textDecoration = TextDecoration.LineThrough, maxLines = 1)
-            }
+            Spacer(Modifier.width(TIME_GAP))
+            Box(Modifier.weight(1f)) { head() }
+            Spacer(Modifier.width(BADGE_GAP))
+            if (badgeWidth != null) Box(Modifier.width(badgeWidth), contentAlignment = Alignment.CenterEnd) { badge() } else badge()
         }
-        Spacer(Modifier.width(TIME_GAP))
-        Column(Modifier.weight(1f), content = content)
-        Spacer(Modifier.width(BADGE_GAP))
-        if (badgeWidth != null) Box(Modifier.width(badgeWidth), contentAlignment = Alignment.CenterEnd) { badge() } else badge()
+        // The timetable time goes under the expected one, which keeps the row narrow enough for 12-hour clocks.
+        // Compared as shown: a delay of a few seconds would otherwise strike "08:24" under "08:24".
+        // 时刻表时间放在预计时间下面，12 小时制时这一行也放得下。按显示出来的时刻比较：否则晚几秒也会在「08:24」下面划掉「08:24」。
+        val aimedText = at(aimed).takeIf { !cancelled && it != at(expected) }
+        Row {
+            Box(timeModifier) {
+                if (aimedText != null) {
+                    Text(aimedText, style = MaterialTheme.typography.labelSmall, color = faint, textDecoration = TextDecoration.LineThrough, maxLines = 1)
+                }
+            }
+            Spacer(Modifier.width(TIME_GAP))
+            Column(Modifier.weight(1f), content = content)
+            if (badgeWidth != null) Spacer(Modifier.width(BADGE_GAP + badgeWidth))
+        }
     }
 }
 
@@ -567,8 +578,8 @@ internal fun BoardsCard(
 }
 
 /**
- * One departure in a [TransitRow]: the line and destination with the countdown within the hour, the platform under them.
- * 一班车，用 [TransitRow] 排：线路与终点、一小时内再加倒计时，下面是站台。
+ * One departure in a [TransitRow]: [DepartureLine] on the time's line, and for a replacement bus a note under it.
+ * 一班车，用 [TransitRow] 排：[DepartureLine] 与时刻同一行，替代巴士在下面再注明。
  */
 @Composable
 private fun DepartureRow(departure: BoardDeparture, now: ZonedDateTime, timeWidth: Dp, divider: Boolean) {
@@ -582,37 +593,43 @@ private fun DepartureRow(departure: BoardDeparture, now: ZonedDateTime, timeWidt
         divider = divider,
         timeWidth = timeWidth,
         badge = { StatusBadge(status) },
+        head = { DepartureLine(departure, now, cancelled) },
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            LineChip(departure.line, departure.replacementBus)
-            val color = if (cancelled) MaterialTheme.colorScheme.outline else LocalContentColor.current
-            val decoration = if (cancelled) TextDecoration.LineThrough else null
-            // A long destination gives way first, so the countdown stays readable.
-            // 终点名太长时先省略它，倒计时始终看得见。
+        if (departure.replacementBus) Hint(stringResource(R.string.transit_replacement_bus))
+    }
+}
+
+/**
+ * The line, the platform as the same outlined pill as on the train card, the destination, and the countdown within the hour.
+ * 线路、与火车卡片相同的描边站台胶囊、终点，一小时内再加倒计时。
+ */
+@Composable
+private fun DepartureLine(departure: BoardDeparture, now: ZonedDateTime, cancelled: Boolean) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        val color = if (cancelled) MaterialTheme.colorScheme.outline else LocalContentColor.current
+        LineChip(departure.line, departure.replacementBus)
+        if (departure.platform.isNotEmpty()) PlatformPill(departure.platform, color)
+        val decoration = if (cancelled) TextDecoration.LineThrough else null
+        // A long destination gives way first, so the countdown stays readable.
+        // 终点名太长时先省略它，倒计时始终看得见。
+        Text(
+            text = "→ ${departure.frontText}",
+            style = MaterialTheme.typography.bodySmall,
+            color = color,
+            textDecoration = decoration,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        TransitPolicy.minutesUntil(departure.expected, now)?.let { minutes ->
             Text(
-                text = "→ ${departure.frontText}",
+                text = "· " + if (minutes < 1) stringResource(R.string.transit_now) else pluralStringResource(R.plurals.transit_minutes, minutes, minutes),
                 style = MaterialTheme.typography.bodySmall,
                 color = color,
                 textDecoration = decoration,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false),
             )
-            TransitPolicy.minutesUntil(departure.expected, now)?.let { minutes ->
-                Text(
-                    text = "· " + if (minutes < 1) stringResource(R.string.transit_now) else pluralStringResource(R.plurals.transit_minutes, minutes, minutes),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = color,
-                    textDecoration = decoration,
-                    maxLines = 1,
-                )
-            }
         }
-        val detail = listOfNotNull(
-            stringResource(R.string.transit_replacement_bus).takeIf { departure.replacementBus },
-            departure.platform.takeIf { it.isNotEmpty() }?.let { stringResource(R.string.transit_platform, it) },
-        )
-        if (detail.isNotEmpty()) Hint(detail.joinToString(" · "))
     }
 }
 

@@ -13,6 +13,7 @@ import io.github.lonemoonspace.dayloom.feature.football.domain.Standings
 import io.github.lonemoonspace.dayloom.feature.football.domain.TableGroup
 import io.github.lonemoonspace.dayloom.feature.football.domain.TableRow
 import io.github.lonemoonspace.dayloom.feature.football.domain.TeamRef
+import java.io.IOException
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeParseException
@@ -104,7 +105,13 @@ class FootballDataApi(
     private fun <T> get(key: String, url: HttpUrl, serializer: KSerializer<T>, what: String): T {
         val request = Request.Builder().url(url).header("X-Auth-Token", key).build()
         http.newCall(request).executeOrAppError().use { response ->
-            val body = response.body.string()
+            // Reading the body can also time out or be cut off; that is a network failure like any other.
+            // 读响应体也可能超时或被中断；这和其他网络失败一样处理。
+            val body = try {
+                response.body.string()
+            } catch (e: IOException) {
+                throw AppError.Network(e)
+            }
             // The message says what is wrong (restricted competition, bad key), so a short excerpt is kept.
             // 错误信息会说明原因（赛事不在套餐内、Key 不对），所以保留一小段。
             if (!response.isSuccessful) throw AppError.Http(SERVICE, response.code, body.take(200))

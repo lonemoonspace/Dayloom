@@ -10,6 +10,7 @@ import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.SocketPolicy
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -149,6 +150,15 @@ class FootballDataApiTest {
 
         val failed = runCatching { fetchEach(listOf("PD", "CL"), previous) { throw AppError.Http(FootballDataApi.SERVICE, 429, "") } }
         assertTrue(failed.exceptionOrNull() is AppError.Http)
+    }
+
+    @Test
+    fun `a body cut off halfway is a network error, so the next competition can fall back`() = runTest {
+        server.enqueue(MockResponse().setBody("{\"scorers\":[" + " ".repeat(64 * 1024) + "]}").setSocketPolicy(SocketPolicy.DISCONNECT_DURING_RESPONSE_BODY))
+
+        val error = runCatching { api().scorers("k", "CL") }.exceptionOrNull()
+
+        assertTrue("was $error", error is AppError.Network)
     }
 
     @Test

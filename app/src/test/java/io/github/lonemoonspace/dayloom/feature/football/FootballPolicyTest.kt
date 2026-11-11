@@ -62,7 +62,11 @@ class FootballPolicyTest {
     @Test
     fun `competitions put the league first and keep only the free ones in picker order`() {
         assertEquals(listOf("PD", "CL"), FootballPolicy.competitions("PD", listOf("CDR", "CL", "PD", "SCE")))
-        assertEquals(listOf("PL", "PD", "CL"), FootballPolicy.competitions("PL", setOf("CL", "PD")))
+        assertEquals(listOf("PL", "PD", "CL"), FootballPolicy.competitions("PL", setOf("CL", "PD", "PL")))
+        // Relegated: the picked league is no longer the team's, so its table is not fetched. / 降级后挑选时的联赛已不是这支球队的，不再抓它的表。
+        assertEquals(listOf("ELC"), FootballPolicy.competitions("PL", listOf("ELC", "FAC")))
+        // Only cups outside the free tier: the picked one stays. / 只剩免费档以外的杯赛时保留挑选时的赛事。
+        assertEquals(listOf("PL"), FootballPolicy.competitions("PL", listOf("FAC")))
         assertEquals(listOf("SA"), FootballPolicy.competitions("SA", emptyList()))
         assertEquals(emptyList<String>(), FootballPolicy.competitions("", listOf("CDR")))
     }

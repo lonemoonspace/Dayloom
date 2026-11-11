@@ -84,6 +84,12 @@ data class Standings(
     val matchday: Int? = null,
     /** The API's stage of the tables, e.g. `REGULAR_SEASON` or `LEAGUE_STAGE`. / 接口给的积分表阶段，例如 `REGULAR_SEASON` 或 `LEAGUE_STAGE`。 */
     val stage: String = "",
+    /**
+     * When this table was fetched, epoch millis; a table kept from an earlier round after a failed request keeps its own
+     * time, so the tab does not call it fresh.
+     * 这张表的抓取时刻，epoch 毫秒；请求失败后沿用的旧表保留自己的时刻，标签页就不会把它当成新数据。
+     */
+    val fetchedAt: Long = 0,
 )
 
 /**
@@ -112,6 +118,8 @@ data class Scorers(
     val competition: String = "",
     val matchday: Int? = null,
     val scorers: List<Scorer> = emptyList(),
+    /** As [Standings.fetchedAt]. / 同 [Standings.fetchedAt]。 */
+    val fetchedAt: Long = 0,
 )
 
 /**

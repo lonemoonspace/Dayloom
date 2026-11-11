@@ -99,7 +99,8 @@ class ScorersSource(
     id: SourceId,
     store: SnapshotStore<ScorersSet>,
     clock: AppClock,
-    competition: Flow<String>,
+    /** The followed team's id and the competition it was picked from. / 关注球队的 id 与挑选它时所在的赛事。 */
+    params: Flow<StandingsParams>,
     /** Competitions of the current table snapshot, empty before it loads. / 当前积分榜快照里的赛事，加载前为空。 */
     tableCodes: Flow<List<String>>,
     secret: Flow<SecretState>,
@@ -113,15 +114,18 @@ class ScorersSource(
 
     override val cadence = RefreshCadence(interval = Duration.ofHours(6))
 
-    override val inputs: Flow<SourceInput<List<String>>> = combine(competition, tableCodes, secret) { code, codes, s ->
-        val list = FootballPolicy.competitions(code, codes).takeIf { code.isNotBlank() }
-        keyedInput(list, key = "competitions:${list.orEmpty().joinToString(",")}", secret = s, missing = R.string.football_setup_competition)
+    override val inputs: Flow<SourceInput<List<String>>> = combine(params, tableCodes, secret) { p, codes, s ->
+        // Without a team there is no tab to show the scorers in. / 没选球队就没有显示射手榜的标签页。
+        val list = (codes.ifEmpty { FootballPolicy.competitions(p.league, emptyList()) }).takeIf { p.teamId > 0 && it.isNotEmpty() }
+        val missing = if (p.teamId > 0) R.string.football_setup_competition else R.string.football_setup_team
+        keyedInput(list, key = "competitions:${list.orEmpty().joinToString(",")}", secret = s, missing = missing)
     }
 
     override suspend fun fetch(params: List<String>, now: ZonedDateTime, previous: Snapshot<ScorersSet>?): ScorersSet {
         val key = apiKey().ifBlank { throw AppError.NotConfigured(uiText(R.string.football_setup_key)) }
         val before = previous?.value?.tables.orEmpty().associateBy { it.competitionCode }
-        return ScorersSet(fetchEach(params, before) { code -> api.scorers(key, code) })
+        val at = now.toInstant().toEpochMilli()
+        return ScorersSet(fetchEach(params, before) { code -> api.scorers(key, code).copy(fetchedAt = at) })
     }
 }
 
@@ -166,6 +170,8 @@ class StandingsSource(
             before.map { it.competitionCode }
         }
         val codes = FootballPolicy.competitions(params.league, running)
-        return StandingsSet(params.teamId, fetchEach(codes, before.associateBy { it.competitionCode }) { code -> api.standings(key, code) })
+        val at = now.toInstant().toEpochMilli()
+        val tables = fetchEach(codes, before.associateBy { it.competitionCode }) { code -> api.standings(key, code).copy(fetchedAt = at) }
+        return StandingsSet(params.teamId, tables)
     }
 }

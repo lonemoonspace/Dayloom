@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.lonemoonspace.dayloom.R
 import io.github.lonemoonspace.dayloom.core.error.AppError
+import io.github.lonemoonspace.dayloom.core.i18n.UiText
 import io.github.lonemoonspace.dayloom.core.i18n.uiText
 import io.github.lonemoonspace.dayloom.core.module.ConfigState
 import io.github.lonemoonspace.dayloom.core.module.FeatureModule
@@ -164,6 +165,13 @@ private class NewsInstance(private val ctx: ModuleContext) : ModuleInstance {
             isReady -> ConfigState.Ready
             k == NewsSourceKind.RSS -> ConfigState.NeedsSetup(uiText(R.string.news_setup_feeds))
             else -> ConfigState.NeedsSetup(uiText(R.string.news_setup_server))
+        }
+    }
+
+    override val settingsStatus: Flow<UiText?> = store.flow.map { s ->
+        when (s.kind()) {
+            NewsSourceKind.RSS -> s.feeds.size.takeIf { it > 0 }?.let { UiText.Plural(R.plurals.news_settings_status_feeds, it) }
+            NewsSourceKind.MINIFLUX -> uiText(R.string.news_source_miniflux)
         }
     }
 

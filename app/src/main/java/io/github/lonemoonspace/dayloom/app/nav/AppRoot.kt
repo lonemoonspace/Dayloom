@@ -55,6 +55,9 @@ import io.github.lonemoonspace.dayloom.app.home.HomeScreen
 import io.github.lonemoonspace.dayloom.app.home.HomeViewModel
 import io.github.lonemoonspace.dayloom.app.onboarding.OnboardingScreen
 import io.github.lonemoonspace.dayloom.app.settings.PlacesCard
+import io.github.lonemoonspace.dayloom.app.settings.ModuleSettingsScreen
+import io.github.lonemoonspace.dayloom.app.settings.SettingsPage
+import io.github.lonemoonspace.dayloom.app.settings.SettingsPageScreen
 import io.github.lonemoonspace.dayloom.app.settings.SettingsScreen
 import io.github.lonemoonspace.dayloom.app.settings.SettingsViewModel
 import io.github.lonemoonspace.dayloom.app.settings.SharedDataViewModel
@@ -87,8 +90,23 @@ internal object Routes {
     const val HOME = "home"
     const val SETTINGS = "settings"
     private const val MODULE_PREFIX = "module/"
+    private const val SETTINGS_PAGE_PREFIX = "settings/"
+    private const val SETTINGS_MODULE_PREFIX = "settings/module/"
     fun module(id: String) = MODULE_PREFIX + id
     fun moduleIdOf(route: String?): String? = route?.takeIf { it.startsWith(MODULE_PREFIX) }?.removePrefix(MODULE_PREFIX)
+
+    /**
+     * Settings pages sit on the settings tab's own back stack, so leaving the tab and coming back returns to the same page.
+     * 设置的子页面在设置标签页自己的返回栈上，离开标签页再回来仍停在同一页。
+     */
+    fun settingsPage(page: SettingsPage) = SETTINGS_PAGE_PREFIX + page.segment
+    fun settingsModule(id: String) = SETTINGS_MODULE_PREFIX + id
+    fun settingsPageOf(route: String?): SettingsPage? =
+        route?.takeIf { it.startsWith(SETTINGS_PAGE_PREFIX) && !it.startsWith(SETTINGS_MODULE_PREFIX) }
+            ?.removePrefix(SETTINGS_PAGE_PREFIX)
+            ?.let(SettingsPage::of)
+    fun settingsModuleOf(route: String?): String? = route?.takeIf { it.startsWith(SETTINGS_MODULE_PREFIX) }?.removePrefix(SETTINGS_MODULE_PREFIX)
+    fun isSettings(route: String?): Boolean = route == SETTINGS || route?.startsWith(SETTINGS_PAGE_PREFIX) == true
 }
 
 /**
@@ -145,6 +163,8 @@ private fun settingsViewModel(graph: AppGraph): SettingsViewModel = viewModel(
                 modules = graph.host.modules,
                 settings = graph.appSettings,
                 sectionsOf = { graph.host.instanceOf(it).settingsSections },
+                statusOf = { graph.host.instanceOf(it).settingsStatus },
+                configOf = { graph.host.instanceOf(it).configured },
                 zone = graph.zone,
                 language = graph.language,
             )
@@ -244,8 +264,24 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?, weave: Boolean) {
                     }
                     Routes.SETTINGS -> CompactTopBar(title = stringResource(R.string.nav_settings))
                     else -> {
-                        val module = tabModules.firstOrNull { it.module.id == currentModuleId }
-                        CompactTopBar(title = module?.let { stringResource(it.module.title) }.orEmpty())
+                        val settingsPage = Routes.settingsPageOf(route)
+                        val settingsModule = Routes.settingsModuleOf(route)?.let { id -> graph.host.modules.firstOrNull { it.id == id } }
+                        when {
+                            settingsPage != null -> CompactTopBar(title = stringResource(settingsPage.title), onBack = { navController.popBackStack() })
+                            settingsModule != null -> CompactTopBar(title = stringResource(settingsModule.title), onBack = { navController.popBackStack() })
+                            else -> {
+                                val module = tabModules.firstOrNull { it.module.id == currentModuleId }
+                                CompactTopBar(title = module?.let { stringResource(it.module.title) }.orEmpty()) {
+                                    // Straight to this module's settings; Back returns to the tab. / 直接打开这个模块的设置；返回键回到标签页。
+                                    if (module != null) {
+                                        val label = stringResource(R.string.settings_module_settings, stringResource(module.module.title))
+                                        IconButton(onClick = { navController.navigate(Routes.settingsModule(module.module.id)) }) {
+                                            Icon(Icons.Default.Settings, contentDescription = label)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             },
@@ -263,7 +299,7 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?, weave: Boolean) {
                             tab.iconContent?.invoke(tint) ?: Icon(painterResource(tab.icon), contentDescription = null, tint = tint)
                         })
                     }
-                    add(NavTab(route == Routes.SETTINGS, settings, { navController.navigateToTab(Routes.SETTINGS) }) { tint ->
+                    add(NavTab(Routes.isSettings(route), settings, { navController.openSettingsTab(route) }) { tint ->
                         Icon(Icons.Default.Settings, contentDescription = null, tint = tint)
                     })
                 }
@@ -311,19 +347,43 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?, weave: Boolean) {
                             val vm = settingsViewModel(graph)
                             val sharedVm = sharedDataViewModel(graph)
                             val state by vm.state.collectAsStateWithLifecycle()
+                            val places by sharedVm.placeList.collectAsStateWithLifecycle()
                             SettingsScreen(
                                 state = state,
-                                onLanguage = vm::setLanguage,
-                                onTimeZone = vm::setTimeZone,
+                                places = places,
+                                onOpenPage = { navController.navigate(Routes.settingsPage(it)) { launchSingleTop = true } },
+                                onOpenModule = { navController.navigate(Routes.settingsModule(it)) { launchSingleTop = true } },
                                 onModuleEnabled = vm::setModuleEnabled,
-                                onMorningBrief = vm::setMorningBrief,
-                                onMorningBriefTime = vm::setMorningBriefTime,
-                                onThemePreset = vm::setThemePreset,
-                                onWeaveBackground = vm::setWeaveBackground,
-                            ) {
-                                val places by sharedVm.placeList.collectAsStateWithLifecycle()
-                                val editor by sharedVm.editor.collectAsStateWithLifecycle()
-                                PlacesCard(places, editor, sharedVm)
+                            )
+                        }
+                        SettingsPage.entries.forEach { page ->
+                            composable(Routes.settingsPage(page)) {
+                                val vm = settingsViewModel(graph)
+                                val sharedVm = sharedDataViewModel(graph)
+                                val state by vm.state.collectAsStateWithLifecycle()
+                                SettingsPageScreen(
+                                    page = page,
+                                    state = state,
+                                    onLanguage = vm::setLanguage,
+                                    onTimeZone = vm::setTimeZone,
+                                    onMorningBrief = vm::setMorningBrief,
+                                    onMorningBriefTime = vm::setMorningBriefTime,
+                                    onThemePreset = vm::setThemePreset,
+                                    onWeaveBackground = vm::setWeaveBackground,
+                                ) {
+                                    val places by sharedVm.placeList.collectAsStateWithLifecycle()
+                                    val editor by sharedVm.editor.collectAsStateWithLifecycle()
+                                    PlacesCard(places, editor, sharedVm)
+                                }
+                            }
+                        }
+                        moduleIds.forEach { id ->
+                            composable(Routes.settingsModule(id)) {
+                                val vm = settingsViewModel(graph)
+                                val state by vm.state.collectAsStateWithLifecycle()
+                                // Before the first read the list is empty; the page fills in a moment later. / 第一次读到之前列表为空，稍后页面就会填上。
+                                val toggle = state.modules.firstOrNull { it.module.id == id } ?: return@composable
+                                ModuleSettingsScreen(toggle, vm::setModuleEnabled)
                             }
                         }
                         moduleIds.forEach { id ->
@@ -365,6 +425,15 @@ private fun ModuleRefresh(coordinator: RefreshCoordinator, active: ActiveModule,
         },
         content = content,
     )
+}
+
+/**
+ * Tapping Settings while on one of its pages goes back to the list, like other apps; from elsewhere it switches tabs.
+ * 在设置的某个子页面上再点「设置」回到设置列表，与其他 App 一致；在别处点则切换标签页。
+ */
+private fun NavHostController.openSettingsTab(route: String) {
+    if (route != Routes.SETTINGS && Routes.isSettings(route) && popBackStack(Routes.SETTINGS, inclusive = false)) return
+    navigateToTab(Routes.SETTINGS)
 }
 
 /** Switches tabs keeping each tab's own back stack and state. / 切换标签页，并保留每个标签页自己的返回栈与状态。 */

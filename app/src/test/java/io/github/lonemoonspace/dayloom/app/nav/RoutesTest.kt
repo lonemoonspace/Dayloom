@@ -41,4 +41,13 @@ class RoutesTest {
         assertFalse(Routes.isSettings(Routes.module("news")))
         assertNull(Routes.settingsPageOf(Routes.SETTINGS))
     }
+
+    @Test
+    fun `a module page opened with the gear belongs to that module's tab`() {
+        val page = Routes.settingsModule("news")
+        assertEquals("news", Routes.gearPageOf(page, Routes.module("news")))
+        assertNull("opened from the settings list", Routes.gearPageOf(page, Routes.SETTINGS))
+        assertNull("another module's tab", Routes.gearPageOf(page, Routes.module("football")))
+        assertNull("not a module page", Routes.gearPageOf(Routes.settingsPage(SettingsPage.ABOUT), Routes.module("news")))
+    }
 }

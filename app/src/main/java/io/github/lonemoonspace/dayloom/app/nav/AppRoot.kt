@@ -96,8 +96,10 @@ internal object Routes {
     fun moduleIdOf(route: String?): String? = route?.takeIf { it.startsWith(MODULE_PREFIX) }?.removePrefix(MODULE_PREFIX)
 
     /**
-     * Settings pages sit on the settings tab's own back stack, so leaving the tab and coming back returns to the same page.
-     * 设置的子页面在设置标签页自己的返回栈上，离开标签页再回来仍停在同一页。
+     * Settings pages opened from the settings list sit on the settings tab's back stack; a module's page opened with the gear
+     * on its own tab sits on that tab's stack instead, and that tab stays selected ([gearPageOf]).
+     * 从设置列表打开的子页面在设置标签页的返回栈上；在模块自己的标签页上点齿轮打开的模块设置页，则在那个标签页的栈上，
+     * 底栏也仍选中那个标签页（[gearPageOf]）。
      */
     fun settingsPage(page: SettingsPage) = SETTINGS_PAGE_PREFIX + page.segment
     fun settingsModule(id: String) = SETTINGS_MODULE_PREFIX + id
@@ -107,6 +109,12 @@ internal object Routes {
             ?.let(SettingsPage::of)
     fun settingsModuleOf(route: String?): String? = route?.takeIf { it.startsWith(SETTINGS_MODULE_PREFIX) }?.removePrefix(SETTINGS_MODULE_PREFIX)
     fun isSettings(route: String?): Boolean = route == SETTINGS || route?.startsWith(SETTINGS_PAGE_PREFIX) == true
+
+    /**
+     * The module whose settings page [route] is when it was opened from that module's tab ([previous] is the tab), else null.
+     * [route] 是从模块标签页（[previous]）点齿轮打开的那个模块的设置页时，返回模块 id；否则返回 null。
+     */
+    fun gearPageOf(route: String?, previous: String?): String? = settingsModuleOf(route)?.takeIf { previous == module(it) }
 }
 
 /**
@@ -212,6 +220,11 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?, weave: Boolean) {
         }
     }
 
+    // One pair for all settings pages instead of one per page, each of which would read every module's status line.
+    // 所有设置页共用这一对，而不是每页各建一份——那样每一页都要读一遍所有模块的状态行。
+    val settingsVm = settingsViewModel(graph)
+    val sharedVm = sharedDataViewModel(graph)
+
     val homeVm: HomeViewModel = viewModel(
         factory = viewModelFactory {
             initializer { HomeViewModel(graph.host.active, graph.appSettings, graph.coordinator, graph.clock) }
@@ -222,7 +235,8 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?, weave: Boolean) {
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val route = backStackEntry?.destination?.route ?: Routes.HOME
-    val currentModuleId = Routes.moduleIdOf(route)
+    val gearModuleId = Routes.gearPageOf(route, navController.previousBackStackEntry?.destination?.route)
+    val currentModuleId = Routes.moduleIdOf(route) ?: gearModuleId
     // Routes for every registered module, enabled or not, so the graph never loses a destination that is on the back stack.
     // 为每个已登记的模块建路由（不论是否开启），图里就不会缺少返回栈上的目的地。
     val moduleIds = remember(graph) { graph.host.modules.map { it.id } }
@@ -295,11 +309,16 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?, weave: Boolean) {
                     tabModules.forEach { m ->
                         val tab = m.instance.tab ?: return@forEach
                         val label = stringResource(tab.label)
-                        add(NavTab(currentModuleId == m.module.id, label, { navController.navigateToTab(Routes.module(m.module.id)) }) { tint ->
+                        val onClick = {
+                            // On this tab's settings page, the tab goes back to the tab itself. / 在这个标签页的设置页上，点标签页回到标签页本身。
+                            if (gearModuleId == m.module.id) navController.popBackStack() else navController.navigateToTab(Routes.module(m.module.id))
+                            Unit
+                        }
+                        add(NavTab(currentModuleId == m.module.id, label, onClick) { tint ->
                             tab.iconContent?.invoke(tint) ?: Icon(painterResource(tab.icon), contentDescription = null, tint = tint)
                         })
                     }
-                    add(NavTab(Routes.isSettings(route), settings, { navController.openSettingsTab(route) }) { tint ->
+                    add(NavTab(Routes.isSettings(route) && gearModuleId == null, settings, { navController.openSettingsTab(route) }) { tint ->
                         Icon(Icons.Default.Settings, contentDescription = null, tint = tint)
                     })
                 }
@@ -344,32 +363,28 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?, weave: Boolean) {
                             }
                         }
                         composable(Routes.SETTINGS) {
-                            val vm = settingsViewModel(graph)
-                            val sharedVm = sharedDataViewModel(graph)
-                            val state by vm.state.collectAsStateWithLifecycle()
+                            val state by settingsVm.state.collectAsStateWithLifecycle()
                             val places by sharedVm.placeList.collectAsStateWithLifecycle()
                             SettingsScreen(
                                 state = state,
                                 places = places,
                                 onOpenPage = { navController.navigate(Routes.settingsPage(it)) { launchSingleTop = true } },
                                 onOpenModule = { navController.navigate(Routes.settingsModule(it)) { launchSingleTop = true } },
-                                onModuleEnabled = vm::setModuleEnabled,
+                                onModuleEnabled = settingsVm::setModuleEnabled,
                             )
                         }
                         SettingsPage.entries.forEach { page ->
                             composable(Routes.settingsPage(page)) {
-                                val vm = settingsViewModel(graph)
-                                val sharedVm = sharedDataViewModel(graph)
-                                val state by vm.state.collectAsStateWithLifecycle()
+                                val state by settingsVm.state.collectAsStateWithLifecycle()
                                 SettingsPageScreen(
                                     page = page,
                                     state = state,
-                                    onLanguage = vm::setLanguage,
-                                    onTimeZone = vm::setTimeZone,
-                                    onMorningBrief = vm::setMorningBrief,
-                                    onMorningBriefTime = vm::setMorningBriefTime,
-                                    onThemePreset = vm::setThemePreset,
-                                    onWeaveBackground = vm::setWeaveBackground,
+                                    onLanguage = settingsVm::setLanguage,
+                                    onTimeZone = settingsVm::setTimeZone,
+                                    onMorningBrief = settingsVm::setMorningBrief,
+                                    onMorningBriefTime = settingsVm::setMorningBriefTime,
+                                    onThemePreset = settingsVm::setThemePreset,
+                                    onWeaveBackground = settingsVm::setWeaveBackground,
                                 ) {
                                     val places by sharedVm.placeList.collectAsStateWithLifecycle()
                                     val editor by sharedVm.editor.collectAsStateWithLifecycle()
@@ -379,11 +394,10 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?, weave: Boolean) {
                         }
                         moduleIds.forEach { id ->
                             composable(Routes.settingsModule(id)) {
-                                val vm = settingsViewModel(graph)
-                                val state by vm.state.collectAsStateWithLifecycle()
+                                val state by settingsVm.state.collectAsStateWithLifecycle()
                                 // Before the first read the list is empty; the page fills in a moment later. / 第一次读到之前列表为空，稍后页面就会填上。
                                 val toggle = state.modules.firstOrNull { it.module.id == id } ?: return@composable
-                                ModuleSettingsScreen(toggle, vm::setModuleEnabled)
+                                ModuleSettingsScreen(toggle, settingsVm::setModuleEnabled)
                             }
                         }
                         moduleIds.forEach { id ->

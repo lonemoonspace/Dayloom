@@ -438,7 +438,7 @@
     <string name="settings_notifications">Notifications</string>
     <string name="settings_notifications_note">Every notification is off until you turn it on. Module notifications are on each module\'s own settings page.</string>
     <string name="settings_group_general">General</string>
-    <string name="settings_group_other">More</string>
+    <string name="settings_group_other">Other</string>
     <string name="settings_language_time">Language and time zone</string>
     <string name="settings_status_pair">%1$s · %2$s</string>
     <string name="settings_status_list_separator">", "</string>

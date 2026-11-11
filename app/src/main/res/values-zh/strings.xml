@@ -513,6 +513,9 @@
     <string name="football_matchday">第 %1$d 轮</string>
     <string name="football_updated_at">更新于 %1$s</string>
     <string name="football_table_team">球队</string>
+    <string name="football_stage_league">联赛阶段</string>
+    <string name="football_zone_qualify">%1$d–%2$d 名直接进十六强</string>
+    <string name="football_zone_playoff">%1$d–%2$d 名打附加赛</string>
     <string name="football_table_won">胜</string>
     <string name="football_table_drawn">平</string>
     <string name="football_table_lost">负</string>

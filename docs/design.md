@@ -373,7 +373,7 @@ val allModules: List<FeatureModule> = listOf(
 - **功能**：独立标签页，显示所关注球队的最近赛果、未来赛程、所在联赛积分榜；比赛进行中静默轮询比分。
 - **数据源**：football-data.org v4，**用户自己的 Key**（免费档即可）。
 - **设置**：关注的球队（先选赛事、再从该赛事的球队列表里选，因为免费档没有全局球队搜索）、Key。
-- **来源**：`football.matches`、`football.standings`。
+- **来源**：`football.matches`、`football.standings`、`football.scorers`。积分榜与射手榜覆盖球队本赛季参加的、免费档内的全部赛事（`/teams/{id}` 的 `runningCompetitions` 与十二项免费赛事取交集，挑选球队时的赛事排在最前），标签页用赛事小标签切换；欧战联赛阶段用色条标出 1–8 与 9–24 名。
 - **通知**：开赛提醒、终场比分。
 - **移植**：`FootballDataOrgApi`、`FootballStatusBuilder`、比分/点球大战判定、实时轮询策略；`isRealMadrid` 改为 `isFollowedTeam`。
 - **不移植**：皇马队徽图片（商标）；队徽改为从接口返回的 URL 加载。

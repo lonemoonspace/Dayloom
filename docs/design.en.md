@@ -374,7 +374,7 @@ Three modules in one package (`feature/transit`), each with its own switch. They
 - **Features**: its own tab with the followed team's recent results, upcoming fixtures and league table; silent polling of the score while a match is live.
 - **Data source**: football-data.org v4 with **the user's own key** (the free tier is enough).
 - **Settings**: followed team (pick a competition first, then a team from that competition, because the free tier has no global team search), key.
-- **Sources**: `football.matches`, `football.standings`.
+- **Sources**: `football.matches`, `football.standings`, `football.scorers`. Tables and scorers cover every free competition the team plays in this season (`runningCompetitions` of `/teams/{id}` intersected with the twelve free ones, the competition it was picked from first); chips in the tab switch between them, and a UEFA league phase marks places 1–8 and 9–24 with a coloured edge.
 - **Notifications**: kick-off reminder, final score.
 - **Ported**: `FootballDataOrgApi`, `FootballStatusBuilder`, score / penalty shoot-out logic, live polling policy; `isRealMadrid` becomes `isFollowedTeam`.
 - **Not ported**: the Real Madrid crest image (trademark); crests are loaded from the URLs the API returns.

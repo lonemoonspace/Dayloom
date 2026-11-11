@@ -4,6 +4,17 @@ Each version has an English section followed by a Chinese one. The heading must 
 looks it up literally.
 每个版本先写英文、再写中文。标题必须恰好是 `## X.Y.Z`：发版 workflow 按字面查找。
 
+## Unreleased
+
+- Football: the table and top scorers tabs also cover the other competitions the followed team plays in this season,
+  as far as the free tier of football-data.org reaches (for most top clubs, the Champions League). A row of chips under
+  the tab switch picks the competition; it starts on the league and is shared by both tabs. Fixtures stay one list. In
+  a UEFA league phase a coloured edge marks places 1–8 (round of 16) and 9–24 (play-offs), with a legend under the table.
+
+- 足球：积分榜和射手榜也能看关注球队本赛季参加的其他赛事，只要 football-data.org 免费档覆盖（多数豪门就是欧冠）。分段按钮下面
+  多了一排赛事小标签用来切换，默认停在联赛，两页共用同一个选择；赛程仍是一张汇总列表。欧战联赛阶段的积分榜左侧用色条标出
+  1–8 名（直接进十六强）与 9–24 名（附加赛），表下有图例。
+
 ## 0.3.0
 
 - Commute alerts: a new "Weekdays only" switch under the alert switch of the train and bus commutes, on by default, so a

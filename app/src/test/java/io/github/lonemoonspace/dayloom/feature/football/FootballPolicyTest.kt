@@ -17,6 +17,7 @@ import io.github.lonemoonspace.dayloom.feature.football.domain.MatchStatus
 import io.github.lonemoonspace.dayloom.feature.football.domain.Outcome
 import io.github.lonemoonspace.dayloom.feature.football.domain.ResultRule
 import io.github.lonemoonspace.dayloom.feature.football.domain.Scorer
+import io.github.lonemoonspace.dayloom.feature.football.domain.TableZone
 import io.github.lonemoonspace.dayloom.feature.football.domain.TeamRef
 import java.time.Duration
 import java.time.Instant
@@ -57,6 +58,29 @@ class FootballPolicyTest {
         homePens = pens?.first,
         awayPens = pens?.second,
     )
+
+    @Test
+    fun `competitions put the league first and keep only the free ones in picker order`() {
+        assertEquals(listOf("PD", "CL"), FootballPolicy.competitions("PD", listOf("CDR", "CL", "PD", "SCE")))
+        assertEquals(listOf("PL", "PD", "CL"), FootballPolicy.competitions("PL", setOf("CL", "PD")))
+        assertEquals(listOf("SA"), FootballPolicy.competitions("SA", emptyList()))
+        assertEquals(emptyList<String>(), FootballPolicy.competitions("", listOf("CDR")))
+    }
+
+    @Test
+    fun `zones only in a league phase`() {
+        assertEquals(TableZone.QUALIFY, FootballPolicy.zone("LEAGUE_STAGE", 8))
+        assertEquals(TableZone.PLAYOFF, FootballPolicy.zone("LEAGUE_STAGE", 9))
+        assertEquals(TableZone.PLAYOFF, FootballPolicy.zone("LEAGUE_STAGE", 24))
+        assertEquals(TableZone.NONE, FootballPolicy.zone("LEAGUE_STAGE", 25))
+        assertEquals(TableZone.NONE, FootballPolicy.zone("REGULAR_SEASON", 1))
+        assertEquals(TableZone.NONE, FootballPolicy.zone("", 1))
+    }
+
+    @Test
+    fun `previous tables fill gaps in code order`() {
+        assertEquals(listOf("a2", "b1"), FootballPolicy.withPrevious(listOf("a", "b", "c"), mapOf("a" to "a2"), mapOf("a" to "a1", "b" to "b1")))
+    }
 
     @Test
     fun `the shoot-out is taken out of football-data's full-time score`() {

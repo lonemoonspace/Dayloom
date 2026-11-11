@@ -47,6 +47,15 @@ class FootballDataApi(
         get(key, url, TeamsDto.serializer(), "teams response").teams.map { it.toRef() }.sortedBy { it.label }
     }
 
+    /**
+     * Codes of the competitions the team plays in this season, including ones outside the free tier.
+     * 球队本赛季参加的赛事代码，包括免费档以外的赛事。
+     */
+    suspend fun runningCompetitions(key: String, teamId: Int): List<String> = withContext(io) {
+        val url = baseUrl.newBuilder().addPathSegment("teams").addPathSegment(teamId.toString()).build()
+        get(key, url, TeamDetailDto.serializer(), "team response").runningCompetitions.map { it.code }.filter { it.isNotBlank() }
+    }
+
     suspend fun teamMatches(key: String, teamId: Int, from: LocalDate, to: LocalDate): List<Match> = withContext(io) {
         val url = baseUrl.newBuilder()
             .addPathSegment("teams").addPathSegment(teamId.toString()).addPathSegment("matches")
@@ -60,7 +69,8 @@ class FootballDataApi(
         val url = baseUrl.newBuilder().addPathSegment("competitions").addPathSegment(competition).addPathSegment("standings").build()
         val dto = get(key, url, StandingsDto.serializer(), "standings response")
         // Only the overall tables; home and away tables repeat the same teams. / 只取总表；主场表、客场表是同一批球队的重复。
-        val groups = dto.standings.filter { it.type == "TOTAL" }.map { s ->
+        val totals = dto.standings.filter { it.type == "TOTAL" }
+        val groups = totals.map { s ->
             TableGroup(
                 group = s.group.orEmpty(),
                 rows = s.table.map { r ->
@@ -73,6 +83,7 @@ class FootballDataApi(
             competition = dto.competition.name,
             groups = groups,
             matchday = dto.season?.currentMatchday,
+            stage = totals.firstOrNull()?.stage.orEmpty(),
         )
     }
 
@@ -135,6 +146,9 @@ internal data class TeamDto(
 ) {
     fun toRef() = TeamRef(id, name.orEmpty(), shortName.orEmpty(), tla.orEmpty(), crest.orEmpty())
 }
+
+@Serializable
+internal data class TeamDetailDto(val runningCompetitions: List<CompetitionDto> = emptyList())
 
 @Serializable
 internal data class TeamsDto(val teams: List<TeamDto> = emptyList())
@@ -216,7 +230,12 @@ internal data class TableRowDto(
 )
 
 @Serializable
-internal data class StandingDto(val type: String? = null, val group: String? = null, val table: List<TableRowDto> = emptyList())
+internal data class StandingDto(
+    val stage: String? = null,
+    val type: String? = null,
+    val group: String? = null,
+    val table: List<TableRowDto> = emptyList(),
+)
 
 @Serializable
 internal data class SeasonDto(val currentMatchday: Int? = null)

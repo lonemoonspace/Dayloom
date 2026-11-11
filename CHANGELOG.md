@@ -4,7 +4,7 @@ Each version has an English section followed by a Chinese one. The heading must 
 looks it up literally.
 每个版本先写英文、再写中文。标题必须恰好是 `## X.Y.Z`：发版 workflow 按字面查找。
 
-## Unreleased
+## 0.3.1
 
 - Settings: the long page is now a short list. "General" has Theme, Language and time zone, Places and
   Notifications; "Modules" has one row per module with its switch; "Other" has About. Each row says how it is set now

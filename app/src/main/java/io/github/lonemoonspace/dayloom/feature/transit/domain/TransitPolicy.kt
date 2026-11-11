@@ -3,6 +3,7 @@ package io.github.lonemoonspace.dayloom.feature.transit.domain
 import io.github.lonemoonspace.dayloom.core.refresh.RefreshCadence
 import io.github.lonemoonspace.dayloom.core.routine.CommuteDirection
 import io.github.lonemoonspace.dayloom.core.routine.RoutinePolicy
+import java.time.DayOfWeek
 import java.time.Duration
 import java.time.Instant
 import java.time.ZonedDateTime
@@ -44,7 +45,10 @@ object TransitPolicy {
     val ALERT_AHEAD: Duration = Duration.ofMinutes(45)
 
     fun legStatus(cancelled: Boolean, realtime: Boolean, aimed: Long, expected: Long): LegStatus {
-        val delay = Duration.ofMillis(expected - aimed).toMinutes().toInt().coerceAtLeast(0)
+        // Counted between the minutes the card shows, like its struck-out time: 08:24:30 → 08:25:10 reads "08:24" and
+        // "08:25", so it is one minute late, not on time.
+        // 按卡片显示的分钟来数，与划线的时间一致：08:24:30 → 08:25:10 显示为「08:24」与「08:25」，所以是晚 1 分，不是准点。
+        val delay = (Math.floorDiv(expected, MINUTE_MILLIS) - Math.floorDiv(aimed, MINUTE_MILLIS)).toInt().coerceAtLeast(0)
         return when {
             cancelled -> LegStatus(LegState.CANCELLED, 0)
             !realtime -> LegStatus(LegState.NO_REALTIME, 0)
@@ -73,8 +77,11 @@ object TransitPolicy {
         LegState.CANCELLED -> 3
     }
 
-    /** Mornings to work, from noon homewards ([RoutinePolicy.direction]). / 上午去上班，中午起回家（[RoutinePolicy.direction]）。 */
-    fun commuteMode(now: ZonedDateTime): CommuteMode = when (RoutinePolicy.direction(now)) {
+    /**
+     * Mornings to work, from noon homewards, unless the card was turned round by hand ([RoutinePolicy.direction]).
+     * 上午去上班，中午起回家，除非卡片被手动掉了头（[RoutinePolicy.direction]）。
+     */
+    fun commuteMode(now: ZonedDateTime, flippedAtMillis: Long = 0): CommuteMode = when (RoutinePolicy.direction(now, flippedAtMillis)) {
         CommuteDirection.TO_WORK -> CommuteMode.OUTBOUND
         CommuteDirection.BACK_HOME -> CommuteMode.INBOUND
     }
@@ -86,8 +93,8 @@ object TransitPolicy {
      * [option] 的异常现在是否值得通知：只在白天，且只在它 [ALERT_AHEAD] 内发车时。没有通勤时间窗后方向总是确定的，靠这两个
      * 限制把提醒留给用户可能马上要坐的车，而不是全天每一次异常。
      */
-    fun isAlertable(option: TripOption, now: ZonedDateTime): Boolean =
-        RoutinePolicy.isDaytime(now) && (option.departure - now.toInstant().toEpochMilli()).let { it >= 0 && it <= ALERT_AHEAD.toMillis() }
+    fun isAlertable(option: TripOption, now: ZonedDateTime, weekdaysOnly: Boolean = false): Boolean =
+        RoutinePolicy.isDaytime(now) && !(weekdaysOnly && now.dayOfWeek >= DayOfWeek.SATURDAY) && (option.departure - now.toInstant().toEpochMilli()).let { it >= 0 && it <= ALERT_AHEAD.toMillis() }
 
     /**
      * How long after its expected departure an option stays while no fetch since then has confirmed it left. Long enough
@@ -301,4 +308,6 @@ object TransitPolicy {
         val used = boards.mapTo(mutableSetOf()) { it.id }
         return generateSequence(1) { it + 1 }.map { "board$it" }.first { it !in used }
     }
+
+    private const val MINUTE_MILLIS = 60_000L
 }

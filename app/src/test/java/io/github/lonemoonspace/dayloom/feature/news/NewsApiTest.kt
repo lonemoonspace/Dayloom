@@ -8,6 +8,7 @@ import io.github.lonemoonspace.dayloom.feature.news.data.NewsSync
 import io.github.lonemoonspace.dayloom.feature.news.domain.ArticleFilter
 import io.github.lonemoonspace.dayloom.feature.news.domain.ArticleOwner
 import io.github.lonemoonspace.dayloom.feature.news.domain.ArticleStore
+import io.github.lonemoonspace.dayloom.feature.news.domain.ListedArticle
 import io.github.lonemoonspace.dayloom.feature.news.domain.MergeResult
 import io.github.lonemoonspace.dayloom.feature.news.domain.NewsSyncPolicy
 import io.github.lonemoonspace.dayloom.feature.news.domain.StoredArticle
@@ -127,9 +128,14 @@ class NewsApiTest {
         }
         override suspend fun markFullTextTried(id: Long, at: Long) = edit(id) { it.copy(fullTextTriedAt = at) }
         override suspend fun apply(result: MergeResult) {
-            rows.value = rows.value - result.delete.toSet() + result.upsert.associateBy { it.id }
+            val kept = (rows.value - result.delete.toSet()).mapValues { (id, a) ->
+                if (id in result.clearPending) a.copy(pendingRead = null, pendingStarred = null) else a
+            }
+            rows.value = kept + result.upsert.associateBy { it.id }
         }
-        override fun observe(filter: ArticleFilter): Flow<List<StoredArticle>> = rows.map { it.values.toList() }
+        override fun observe(filter: ArticleFilter): Flow<List<ListedArticle>> =
+            rows.map { all -> all.values.map { ListedArticle(it.copy(contentHtml = ""), it.contentHtml.length) } }
+        override suspend fun texts(ids: List<Long>) = ids.mapNotNull { id -> rows.value[id]?.let { id to it.contentHtml } }.toMap()
         override fun observe(id: Long): Flow<StoredArticle?> = rows.map { it[id] }
         override fun observeSummary(): Flow<io.github.lonemoonspace.dayloom.feature.news.domain.SyncSummary> =
             rows.map { io.github.lonemoonspace.dayloom.feature.news.domain.NewsSyncPolicy.summary(it.values.toList()) }

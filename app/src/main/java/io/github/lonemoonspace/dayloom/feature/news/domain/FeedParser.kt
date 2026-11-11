@@ -3,6 +3,7 @@ package io.github.lonemoonspace.dayloom.feature.news.domain
 import java.io.ByteArrayInputStream
 import java.io.StringReader
 import java.net.URI
+import java.nio.charset.Charset
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
@@ -72,6 +73,27 @@ object FeedParser {
             null
         }
     }.distinct().toList()
+
+    /**
+     * The text of a web page for [discover]: in the charset its `<meta>` names, else UTF-8. The tag is ASCII in every
+     * charset a page is likely to use, so the first bytes are read as Latin-1 to find it.
+     * 给 [discover] 用的网页文本：按 `<meta>` 声明的编码解码，没有声明则按 UTF-8。这个标签在网页常用的各种编码里都是 ASCII，
+     * 所以先把开头的字节按 Latin-1 读出来找它。
+     */
+    fun pageText(bytes: ByteArray): String {
+        val head = String(bytes, 0, minOf(bytes.size, META_SCAN_BYTES), Charsets.ISO_8859_1)
+        val charset = META_CHARSET.find(head)?.groupValues?.get(1)?.let { name ->
+            try {
+                Charset.forName(name)
+            } catch (_: IllegalArgumentException) {
+                null
+            }
+        }
+        return String(bytes, charset ?: Charsets.UTF_8)
+    }
+
+    private val META_CHARSET = Regex("(?i)<meta[^>]*charset\\s*=\\s*[\"']?\\s*([a-z0-9_.:-]+)")
+    private const val META_SCAN_BYTES = 4096
 
     /**
      * Epoch millis of an RSS (RFC 822, often loosely written) or Atom (ISO 8601) date; 0 when it cannot be read. A time

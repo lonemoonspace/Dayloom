@@ -91,6 +91,24 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
+            // Card screenshots (CardScreenshotTest) are only drawn when asked for with -Pscreenshots=record or
+            // -Pscreenshots=compare; in the plain gate those tests do nothing, so it stays fast and identical on every OS.
+            // 卡片截图（CardScreenshotTest）只有带 -Pscreenshots=record 或 -Pscreenshots=compare 时才会画；普通门禁里这些
+            // 用例什么都不做，所以门禁仍然快，而且在各系统上结果一致。
+            all { test ->
+                val mode = providers.gradleProperty("screenshots").orNull
+                if (mode != null) {
+                    check(mode == "record" || mode == "compare") { "-Pscreenshots must be record or compare, was: $mode" }
+                    test.systemProperty("roborazzi.test.$mode", "true")
+                    // Named here rather than left to Roborazzi's default, because CI looks for the changed cards in it.
+                    // 在这里写明而不依赖 Roborazzi 的默认值，因为 CI 要到这个目录里找有变化的卡片。
+                    test.systemProperty("roborazzi.output.dir", "build/outputs/roborazzi")
+                    test.inputs.property("screenshots", mode)
+                    // Screenshots are files outside build/, so a cached run must not skip drawing them.
+                    // 截图是 build/ 之外的文件，命中缓存的运行不能跳过绘制。
+                    test.outputs.upToDateWhen { false }
+                }
+            }
         }
     }
 }
@@ -215,4 +233,6 @@ dependencies {
     testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
 }

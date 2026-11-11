@@ -10,4 +10,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class SharedData(
     val places: List<Place> = emptyList(),
+    /** The highest `place<n>` number ever handed out, so ids of deleted places are not reused. / 发出过的最大 `place<n>` 编号，删掉的地点的 id 不再复用。 */
+    val lastPlaceNumber: Int = 0,
 )

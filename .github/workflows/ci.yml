@@ -1,6 +1,7 @@
 # Runs `verifyRelease` on every push: the local `verify` gate (test + lintDebug + assembleDebug + compileReleaseKotlin) plus
-# the release R8 pass.
+# the release R8 pass. Then draws the home cards and reports the ones that changed.
 # 每次 push 运行 `verifyRelease`：本地 `verify` 门禁（test + lintDebug + assembleDebug + compileReleaseKotlin）加上 Release 的 R8 处理。
+# 随后画出首页卡片，报告有变化的那些。
 
 name: CI
 
@@ -27,16 +28,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
 
       # One Gradle task, so CI cannot drift from the local gate it extends. / 只调用一个 Gradle 任务，CI 不会与它扩展的本地门禁走样。
       - name: Gate (verify + R8)
@@ -44,7 +45,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: test-results
           path: app/build/reports/tests/
@@ -52,8 +53,37 @@ jobs:
 
       - name: Upload lint report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: lint-report
           path: app/build/reports/lint-results-debug.*
+          if-no-files-found: ignore
+
+      # Last, after the gate's test report is uploaded: this run of the test task writes its own report over it.
+      # Draws every home card and compares it with its committed picture. A difference does not fail the build, because a
+      # layout change is usually meant; it is listed in the run summary and uploaded, so it is seen before merging. To accept
+      # it, copy <name>_actual.png from the artifact over app/src/test/screenshots/<name>.png, or record again on Linux.
+      # 放在最后、门禁的测试报告上传之后：这一次运行测试任务会用自己的报告覆盖它。
+      # 画出每张首页卡片并与入库的图片比较。有差别不算构建失败，因为布局改动通常是有意的；差别会列在运行摘要里并上传，合并前能看到。
+      # 要接受改动，把 artifact 里的 <名字>_actual.png 覆盖到 app/src/test/screenshots/<名字>.png，或在 Linux 上重新录制。
+      - name: Card screenshots
+        run: |
+          ./gradlew :app:testDebugUnitTest --tests '*CardScreenshotTest' -Pscreenshots=compare --stacktrace
+          changed=$(find app/build/outputs/roborazzi -name '*_compare.png' 2>/dev/null | sort)
+          {
+            echo "### Card screenshots"
+            if [ -z "$changed" ]; then
+              echo "All cards match app/src/test/screenshots."
+            else
+              echo "Cards that no longer match their picture (see the card-screenshots artifact):"
+              for file in $changed; do echo "- $(basename "$file" _compare.png)"; done
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload changed card screenshots
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: card-screenshots
+          path: app/build/outputs/roborazzi/
           if-no-files-found: ignore

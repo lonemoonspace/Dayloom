@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.tag || github.ref }}
           # The versionCode check needs the tag history. / versionCode 递增校验需要 tag 历史。
@@ -47,13 +47,13 @@ jobs:
           fetch-tags: true
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
 
       # Tag and versionName must match, or the file name and the app would disagree about the version.
       # tag 与 versionName 必须一致，否则文件名与 App 里的版本号会对不上。
@@ -223,7 +223,7 @@ jobs:
 
       - name: Upload gate reports
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-gate-reports
           path: |
@@ -234,7 +234,7 @@ jobs:
       # Without the mapping, crash traces of this version can never be retraced. / 没有 mapping，这个版本的崩溃堆栈永远无法还原。
       - name: Archive R8 mapping
         if: steps.creds.outputs.ready == 'true'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-mapping-${{ steps.meta.outputs.version }}
           path: release/mapping-v${{ steps.meta.outputs.version }}.txt

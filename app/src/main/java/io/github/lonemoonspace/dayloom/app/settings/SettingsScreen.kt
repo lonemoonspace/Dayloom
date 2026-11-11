@@ -308,7 +308,14 @@ private fun AboutCard() {
             TextButton(onClick = { showing = AboutPage.SOURCES }) { Text(stringResource(R.string.about_data_sources)) }
             TextButton(onClick = { showing = AboutPage.PRIVACY }) { Text(stringResource(R.string.about_privacy)) }
             TextButton(onClick = { showing = AboutPage.LICENSES }) { Text(stringResource(R.string.about_licenses)) }
-            TextButton(onClick = { uriHandler.openUri(SharedHttpClient.REPO_URL) }) { Text(stringResource(R.string.settings_source_code)) }
+            TextButton(onClick = {
+                // Compose rethrows "no app can open this" as IllegalArgumentException. / 没有 App 能打开链接时，Compose 会抛出 IllegalArgumentException。
+                try {
+                    uriHandler.openUri(SharedHttpClient.REPO_URL)
+                } catch (_: IllegalArgumentException) {
+                    // Nothing to open with. / 没有可以打开的 App。
+                }
+            }) { Text(stringResource(R.string.settings_source_code)) }
         }
     }
     showing?.let { page -> AboutDialog(page) { showing = null } }

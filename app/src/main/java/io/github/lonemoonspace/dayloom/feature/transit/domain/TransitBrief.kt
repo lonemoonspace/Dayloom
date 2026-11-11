@@ -4,7 +4,6 @@ import io.github.lonemoonspace.dayloom.R
 import io.github.lonemoonspace.dayloom.core.i18n.UiText
 import java.time.Instant
 import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
 
 /**
  * The morning-brief line of a commute (train or bus): the next trip to work, with the worst status of its legs, named by line when
@@ -31,7 +30,7 @@ object TransitBrief {
         } else {
             statusText
         }
-        val at = Instant.ofEpochMilli(first.aimedDeparture).atZone(now.zone).format(TIME)
+        val at = UiText.Time(Instant.ofEpochMilli(first.aimedDeparture).atZone(now.zone).toLocalTime().withSecond(0).withNano(0))
         return UiText.Res(R.string.transit_brief, listOf(first.line, at, shown))
     }
 
@@ -42,6 +41,4 @@ object TransitBrief {
         LegState.CANCELLED -> UiText.Res(R.string.transit_cancelled)
     }
 
-    /** Numeric time reads the same in every language. / 数字时刻在各语言里写法一致。 */
-    private val TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 }

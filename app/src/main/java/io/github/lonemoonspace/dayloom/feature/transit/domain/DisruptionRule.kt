@@ -10,7 +10,6 @@ import io.github.lonemoonspace.dayloom.core.notify.StateCodec
 import io.github.lonemoonspace.dayloom.core.notify.StringStateCodec
 import io.github.lonemoonspace.dayloom.core.refresh.RefreshReport
 import java.time.Instant
-import java.time.format.DateTimeFormatter
 
 /**
  * Commute disruptions: tells the user when the next option is cancelled or heavily delayed, in the daytime and when it
@@ -23,6 +22,7 @@ class DisruptionRule(
     /** One rule per commute route, e.g. `train_disruption`. / 每条通勤路线一条规则，如 `train_disruption`。 */
     override val name: String,
     private val enabled: suspend () -> Boolean,
+    private val weekdaysOnly: suspend () -> Boolean,
     private val refreshed: (RefreshReport) -> Boolean,
     private val trips: suspend () -> CommuteTrips?,
     private val channelId: String,
@@ -40,7 +40,7 @@ class DisruptionRule(
         val next = TransitPolicy.visibleOptions(snapshot.current, input.now, 1).firstOrNull()
         // A trip that is not alertable yet counts as no trip; once it comes within reach it is told once.
         // 还不该提醒的班次视同没有；进入范围后提醒一次。
-        val option = next?.takeIf { TransitPolicy.isAlertable(it, input.now) }
+        val option = next?.takeIf { TransitPolicy.isAlertable(it, input.now, weekdaysOnly()) }
         if (option == null && previous != null) {
             // No fetchedAt: the rule only runs right after this round refreshed the snapshot, so nothing past is unconfirmed
             // beyond the time the round itself took.
@@ -61,7 +61,7 @@ class DisruptionRule(
             // 提醒过的异常已经结束（或那班车已开走、下一班正常）：它的通知不能一直留着。
             cancel = if (previous != null && decision.newFingerprint == null) listOf(notificationId) else emptyList(),
         )
-        val at = Instant.ofEpochMilli(leg.aimedDeparture).atZone(input.now.zone).format(TIME)
+        val at = UiText.Time(Instant.ofEpochMilli(leg.aimedDeparture).atZone(input.now.zone).toLocalTime().withSecond(0).withNano(0))
         val body = if (status.state == LegState.CANCELLED) {
             UiText.Res(R.string.transit_notify_cancelled, listOf(leg.line, at))
         } else {
@@ -74,10 +74,5 @@ class DisruptionRule(
             // 新指纹就是新的异常（另一班车，或延误加重），即使上一条还在也要响铃。
             listOf(AppNotification(id = notificationId, channelId = channelId, title = title, body = body, deepLink = deepLink, alertOnce = false)),
         )
-    }
-
-    private companion object {
-        /** Numeric time reads the same in every language. / 数字时刻在各语言里写法一致。 */
-        val TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     }
 }

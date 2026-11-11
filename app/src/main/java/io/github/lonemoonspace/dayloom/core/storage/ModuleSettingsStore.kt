@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import io.github.lonemoonspace.dayloom.core.error.readingStorage
 import io.github.lonemoonspace.dayloom.core.json.AppJson
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -54,7 +55,7 @@ class ModuleSettingsStore(
             .map { (raw, formerRaw) -> decode(raw, formerRaw) }
 
         // A one-off read fails instead of waiting out a broken file; only observers wait. / 单次读取直接失败，不去等坏掉的文件；只有观察者等待。
-        override suspend fun get(): T = dataStore.data.first().let { decode(it[key], formerKey?.let(it::get)) }
+        override suspend fun get(): T = readingStorage { dataStore.data.first() }.let { decode(it[key], formerKey?.let(it::get)) }
 
         override suspend fun update(transform: (T) -> T) {
             dataStore.edit { prefs ->

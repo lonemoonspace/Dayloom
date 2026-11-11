@@ -23,6 +23,7 @@ import io.github.lonemoonspace.dayloom.feature.transit.domain.TripOption
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
+import java.time.LocalTime
 import java.time.ZonedDateTime
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -412,9 +413,11 @@ class TransitPolicyTest {
         val fresh = RefreshReport(mapOf(id to SourceResult.Success(Instant.EPOCH)), Instant.EPOCH)
         val failed = RefreshReport(mapOf(id to SourceResult.Failed(io.github.lonemoonspace.dayloom.core.error.AppError.Offline())), Instant.EPOCH)
         var trips = CommuteTrips(CommuteMode.OUTBOUND, outbound = listOf(option(leg(line = "R1", delay = 12))))
+        var weekdaysOnly = false
         val rule = DisruptionRule(
             name = "train_disruption",
             enabled = { true },
+            weekdaysOnly = { weekdaysOnly },
             refreshed = { it.succeeded(id) },
             trips = { trips },
             channelId = "transit.disruption",
@@ -426,14 +429,14 @@ class TransitPolicyTest {
         val decision = rule.evaluate(RuleInput(fresh, now), null)
         val notification = decision.notifications.single()
         assertEquals(UiText.Res(R.string.transit_notify_to_work), notification.title)
-        assertEquals(UiText.Plural(R.plurals.transit_notify_delayed, 12, listOf("R1", "07:40", 12)), notification.body)
+        assertEquals(UiText.Plural(R.plurals.transit_notify_delayed, 12, listOf("R1", UiText.Time(LocalTime.of(7, 40)), 12)), notification.body)
         assertTrue(rule.evaluate(RuleInput(fresh, now), decision.newState).notifications.isEmpty())
 
         // A cancellation added to an already notified delay is the news, so the body names it.
         // 已通知过的延误之外又有一段被取消，取消才是新消息，正文要说它。
         trips = trips.copy(outbound = listOf(option(leg(line = "R1", delay = 12), leg(line = "B2", dep = now.plusMinutes(45), cancelled = true))))
         val worse = rule.evaluate(RuleInput(fresh, now), decision.newState)
-        assertEquals(UiText.Res(R.string.transit_notify_cancelled, listOf("B2", "08:15")), worse.notifications.single().body)
+        assertEquals(UiText.Res(R.string.transit_notify_cancelled, listOf("B2", UiText.Time(LocalTime.of(8, 15)))), worse.notifications.single().body)
 
         // Further ahead than 45 minutes, or at night, nothing is said; once it comes close it is told once.
         // 超过 45 分钟之后的班次或夜里都不提醒；临近时提醒一次。
@@ -444,6 +447,17 @@ class TransitPolicyTest {
         val night = t(5, 22, 30)
         trips = CommuteTrips(CommuteMode.INBOUND, inbound = listOf(option(leg(line = "R5", dep = night.plusMinutes(10), cancelled = true))))
         assertTrue(rule.evaluate(RuleInput(fresh, night), null).notifications.isEmpty())
+
+        // With "weekdays only" a Saturday trip says nothing; the same trip on Monday does.
+        // 打开「仅工作日」后周六的班次不提醒；同样的班次在周一会提醒。
+        weekdaysOnly = true
+        val saturday = now.with(java.time.temporal.TemporalAdjusters.nextOrSame(java.time.DayOfWeek.SATURDAY))
+        val monday = saturday.plusDays(2)
+        trips = CommuteTrips(CommuteMode.OUTBOUND, outbound = listOf(option(leg(line = "R1", dep = saturday.plusMinutes(10), cancelled = true))))
+        assertTrue(rule.evaluate(RuleInput(fresh, saturday), null).notifications.isEmpty())
+        trips = CommuteTrips(CommuteMode.OUTBOUND, outbound = listOf(option(leg(line = "R1", dep = monday.plusMinutes(10), cancelled = true))))
+        assertEquals(1, rule.evaluate(RuleInput(fresh, monday), null).notifications.size)
+        weekdaysOnly = false
 
         // Once the delay is over, the alert about it is taken down; with nothing told, nothing is.
         // 延误结束后撤下关于它的通知；没提醒过的就什么都不撤。
@@ -463,6 +477,7 @@ class TransitPolicyTest {
         val rule = DisruptionRule(
             name = "train_disruption",
             enabled = { true },
+            weekdaysOnly = { false },
             refreshed = { it.succeeded(id) },
             trips = { trips },
             channelId = "transit.disruption",
@@ -504,14 +519,14 @@ class TransitPolicyTest {
     fun `the brief names the next trip to work and its worst leg`() {
         val onTime = CommuteTrips(CommuteMode.OUTBOUND, outbound = listOf(option(leg(line = "R1", dep = t(5, 7, 42)))))
         val onTimeText = UiText.Res(R.string.transit_on_time)
-        assertEquals(UiText.Res(R.string.transit_brief, listOf("R1", "07:42", onTimeText)), TransitBrief.line(onTime, now))
+        assertEquals(UiText.Res(R.string.transit_brief, listOf("R1", UiText.Time(LocalTime.of(7, 42)), onTimeText)), TransitBrief.line(onTime, now))
 
         val late = CommuteTrips(
             CommuteMode.OUTBOUND,
             outbound = listOf(option(leg(line = "R1", dep = t(5, 7, 42)), leg(line = "L2", dep = t(5, 8, 20), delay = 6))),
         )
         val lateText = UiText.Res(R.string.transit_line_status, listOf("L2", UiText.Plural(R.plurals.transit_late, 6)))
-        assertEquals(UiText.Res(R.string.transit_brief, listOf("R1", "07:42", lateText)), TransitBrief.line(late, now))
+        assertEquals(UiText.Res(R.string.transit_brief, listOf("R1", UiText.Time(LocalTime.of(7, 42)), lateText)), TransitBrief.line(late, now))
 
         assertNull("nothing left today", TransitBrief.line(CommuteTrips(CommuteMode.OUTBOUND), now))
     }
@@ -519,6 +534,6 @@ class TransitPolicyTest {
     @Test
     fun `a brief set for the afternoon reads the way home`() {
         val home = CommuteTrips(CommuteMode.INBOUND, inbound = listOf(option(leg(line = "R1", dep = t(5, 7, 42)))))
-        assertEquals(UiText.Res(R.string.transit_brief, listOf("R1", "07:42", UiText.Res(R.string.transit_on_time))), TransitBrief.line(home, now))
+        assertEquals(UiText.Res(R.string.transit_brief, listOf("R1", UiText.Time(LocalTime.of(7, 42)), UiText.Res(R.string.transit_on_time))), TransitBrief.line(home, now))
     }
 }

@@ -67,6 +67,16 @@ class FeedPolicyTest {
     }
 
     @Test
+    fun `articles of a feed that was not read this round are never written back`() {
+        // They reach the merge without their text, so writing one back would erase it. / 它们进入合并时不带正文，写回去就会把正文抹掉。
+        val other = stored(b, "kept").copy(pendingRead = true)
+        val result = FeedPolicy.merge(listOf(other), mapOf(a.url to ParsedFeed("A", listOf(item("new")))), listOf(a, b), now)
+        assertEquals(listOf(FeedPolicy.articleId(a.url, "new")), result.upsert.map { it.id })
+        assertEquals(listOf(other.id), result.clearPending)
+        assertTrue(result.delete.isEmpty())
+    }
+
+    @Test
     fun `new items come in unread, known ones keep their state and take the feed's new text`() {
         val known = stored(a, "1", read = true, starred = true, readAt = now - hour).copy(summary = "S", summaryLanguage = "en", pendingRead = true)
         val result = FeedPolicy.merge(
@@ -110,12 +120,14 @@ class FeedPolicyTest {
     fun `articles go when their feed is dropped, read long ago or too old unread, unless starred`() {
         val dropped = stored(b, "1")
         val droppedStarred = stored(b, "2", starred = true)
-        val readLongAgo = stored(a, "3", read = true, readAt = now - NewsSyncPolicy.KEEP_READ.toMillis() - 1)
+        val readLongAgo = stored(a, "3", ageHours = 2, read = true, readAt = now - NewsSyncPolicy.KEEP_READ.toMillis() - 1)
         val readRecently = stored(a, "4", read = true, readAt = now - hour)
         val staleUnread = stored(a, "5", ageHours = FeedPolicy.MAX_AGE.toHours() + 1)
         val staleStarred = stored(a, "6", ageHours = FeedPolicy.MAX_AGE.toHours() + 1, starred = true)
+        val fresh = stored(a, "7")
+        val fresher = stored(a, "8")
         val result = FeedPolicy.merge(
-            listOf(dropped, droppedStarred, readLongAgo, readRecently, staleUnread, staleStarred),
+            listOf(dropped, droppedStarred, readLongAgo, readRecently, fresh, fresher, staleUnread, staleStarred),
             fetched = emptyMap(),
             feeds = listOf(a),
             nowMillis = now,
@@ -127,14 +139,38 @@ class FeedPolicyTest {
     @Test
     fun `an old unread article still in the feed goes and is not added back, a read one stays while listed`() {
         val stale = item("s", ageHours = FeedPolicy.MAX_AGE.toHours() + 1)
+        val recent = (1..FeedPolicy.KEEP_LATEST).map { item("r$it", ageHours = it.toLong()) }
+        val kept = (1..FeedPolicy.KEEP_LATEST).map { stored(a, "r$it", ageHours = it.toLong()) }
         val unread = stored(a, "s", ageHours = FeedPolicy.MAX_AGE.toHours() + 1)
-        val first = FeedPolicy.merge(listOf(unread), mapOf(a.url to ParsedFeed("", listOf(stale))), listOf(a), now)
+        val listing = mapOf(a.url to ParsedFeed("", recent + stale))
+        val first = FeedPolicy.merge(kept + unread, listing, listOf(a), now)
         assertEquals(listOf(unread.id), first.delete)
-        assertTrue(FeedPolicy.merge(emptyList(), mapOf(a.url to ParsedFeed("", listOf(stale))), listOf(a), now).upsert.isEmpty())
+        assertTrue(FeedPolicy.merge(kept, listing, listOf(a), now).upsert.none { it.id == unread.id })
 
         val read = stored(a, "s", ageHours = FeedPolicy.MAX_AGE.toHours() + 1, read = true, readAt = now - NewsSyncPolicy.KEEP_READ.toMillis() - 1)
-        val listed = FeedPolicy.merge(listOf(read), mapOf(a.url to ParsedFeed("", listOf(stale))), listOf(a), now)
+        val listed = FeedPolicy.merge(kept + read, listing, listOf(a), now)
         assertTrue("deleting it would bring it back unread", listed.delete.isEmpty())
+    }
+
+    @Test
+    fun `a feed's newest articles are kept whatever their age`() {
+        val months = 24L * 90
+        val items = (1..5).map { item("m$it", ageHours = months + it) }
+        val added = FeedPolicy.merge(emptyList(), mapOf(a.url to ParsedFeed("", items)), listOf(a), now)
+        assertEquals((1..FeedPolicy.KEEP_LATEST).map { FeedPolicy.articleId(a.url, "m$it") }, added.upsert.map { it.id })
+
+        // The next sync finds the feed unchanged; what was kept must not be cleaned up again.
+        // 下一次同步时订阅源没有变化；刚才保留的不能又被清掉。
+        val unchanged = FeedPolicy.merge(added.upsert, fetched = emptyMap(), feeds = listOf(a), nowMillis = now + hour)
+        assertTrue(unchanged.delete.isEmpty())
+
+        // Read long ago, they still stay: once deleted, the next sync that reads the feed would add them again as unread.
+        // 很久以前读过的也留着：一旦删掉，下一次读到这个源时又会把它们当未读加回来。
+        val later = now + NewsSyncPolicy.KEEP_READ.toMillis() + 2 * hour
+        val read = added.upsert.map { it.copy(read = true, readAt = now + hour) }
+        assertTrue(FeedPolicy.merge(read, fetched = emptyMap(), feeds = listOf(a), nowMillis = later).delete.isEmpty())
+        val again = FeedPolicy.merge(read, mapOf(a.url to ParsedFeed("", items)), listOf(a), later)
+        assertTrue("still listed and still read", again.delete.isEmpty() && again.upsert.none { !it.read })
     }
 
     @Test

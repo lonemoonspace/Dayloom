@@ -21,6 +21,13 @@ sealed class AppError(message: String, cause: Throwable? = null) : Exception(mes
     class Network(cause: Throwable) : AppError(cause.message ?: "network", cause)
 
     /**
+     * The app's own saved data could not be read. Kept apart from [Network]: both start as an IOException, and telling
+     * the user to check the connection would send them the wrong way.
+     * App 自己保存的数据读不出来。与 [Network] 分开：两者起因都是 IOException，而让用户去检查网络是指错了方向。
+     */
+    class Storage(cause: Throwable) : AppError(cause.message ?: "storage", cause)
+
+    /**
      * [detail] is a response excerpt for display, possibly empty.
      * [detail] 是用于展示的响应片段，可以为空。
      */
@@ -46,6 +53,16 @@ sealed class AppError(message: String, cause: Throwable? = null) : Exception(mes
     class BadData(val service: String, detail: String, cause: Throwable? = null) : AppError(detail, cause)
 
     class Unexpected(cause: Throwable) : AppError(cause.message ?: cause.javaClass.simpleName, cause)
+}
+
+/**
+ * Runs a one-off read of saved data and reports a failed read as [AppError.Storage].
+ * 执行一次对已保存数据的读取，读取失败时报告为 [AppError.Storage]。
+ */
+suspend fun <T> readingStorage(read: suspend () -> T): T = try {
+    read()
+} catch (e: IOException) {
+    throw AppError.Storage(e)
 }
 
 /**

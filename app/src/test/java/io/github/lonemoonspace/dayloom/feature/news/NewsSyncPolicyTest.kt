@@ -135,6 +135,14 @@ class NewsSyncPolicyTest {
     }
 
     @Test
+    fun `entities are decoded once, numeric and named, and unknown ones are left alone`() {
+        assertEquals("It’s — “fine” … 5 < 6 & Å", NewsSyncPolicy.decodeEntities("It&#8217;s &mdash; &ldquo;fine&rdquo; &hellip; 5 &lt; 6 &amp; &#xC5;"))
+        assertEquals("a double-escaped entity is unwrapped one level only", "&lt;b&gt;", NewsSyncPolicy.decodeEntities("&amp;lt;b&amp;gt;"))
+        assertEquals("&bogus; &#0; AT&T", NewsSyncPolicy.decodeEntities("&bogus; &#0; AT&T"))
+        assertEquals("😀", NewsSyncPolicy.decodeEntities("&#128512;"))
+    }
+
+    @Test
     fun `the summary counts unread and starred and lists the newest unread`() {
         val summary = NewsSyncPolicy.summary(listOf(stored(1, age = 3 * day), stored(2, age = day), stored(3, read = true, starred = true)))
         assertEquals(2, summary.unread)

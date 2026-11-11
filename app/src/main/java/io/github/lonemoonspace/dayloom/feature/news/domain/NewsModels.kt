@@ -80,5 +80,17 @@ data class SyncSummary(
     val feeds: List<FeedState> = emptyList(),
 )
 
+/**
+ * An article as the lists read it from storage: everything but its text, which is megabytes across a long list and must
+ * not be read again on every tap, so [article]'s `contentHtml` is always empty here; whoever needs the text reads it by
+ * id. The preview is rebuilt when [textLength] changes. An edit that keeps the length exactly keeps the old preview
+ * until the app restarts, which is cheaper than hashing every text on every read; the reader always shows the stored
+ * text.
+ * 列表从存储里读到的文章：除正文以外的一切。长列表的正文加起来有好几 MB，不能每点一下就重读一遍，所以这里 [article] 的
+ * `contentHtml` 恒为空，要正文的地方按 id 去读。[textLength] 变了才重新生成预览。长度恰好不变的修改会让旧预览留到 App 重启，
+ * 这比每次读取都给所有正文算哈希便宜；阅读页显示的始终是存储里的正文。
+ */
+data class ListedArticle(val article: StoredArticle, val textLength: Int)
+
 /** An article with what the list shows of it; [text] is its plain text, for search. / 文章及其在列表里显示的内容；[text] 是纯文本，供搜索用。 */
 data class ArticleItem(val article: StoredArticle, val preview: String, val text: String, val fullText: Boolean)

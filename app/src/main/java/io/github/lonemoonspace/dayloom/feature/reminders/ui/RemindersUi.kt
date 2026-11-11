@@ -80,11 +80,15 @@ internal fun RemindersCard(settings: Flow<RemindersSettings>) {
                     modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.width(8.dp))
+                // Two lines at most: with a 12-hour clock the date and "11:59 PM" do not fit on one, and a clipped line would
+                // drop the "PM" without a trace.
+                // 最多两行：12 小时制下日期加「11:59 PM」一行放不下，裁掉的话「PM」会无声无息地消失。
                 Text(
                     untilText(status.until),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.width(8.dp))
@@ -277,8 +281,13 @@ private fun chipColor(state: ReminderPolicy.State): Color = when (state) {
     ReminderPolicy.State.EXPIRED -> MaterialTheme.statusColors.red
 }
 
+/**
+ * The time keeps its "PM" on the same line (no-break space), so a narrow column breaks between date and time.
+ * 时间和它的「PM」之间用不换行空格连着，窄列里只会在日期与时间之间换行。
+ */
 @Composable
-private fun untilText(until: LocalDateTime): String = "${untilDate(until.toLocalDate())} ${until.format(rememberTimeFormatter())}"
+private fun untilText(until: LocalDateTime): String =
+    "${untilDate(until.toLocalDate())} ${until.format(rememberTimeFormatter()).replace(' ', '\u00A0')}"
 
 @Composable
 private fun untilDate(date: LocalDate): String = date.format(rememberPatternFormatter("yMMMd"))

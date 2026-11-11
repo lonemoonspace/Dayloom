@@ -5,6 +5,7 @@
     <string name="app_slogan">千丝万缕，织成一日</string>
 
     <string name="common_cached">缓存</string>
+    <string name="common_flip_direction">切换方向</string>
     <string name="common_loading">加载中</string>
     <string name="common_save">保存</string>
 
@@ -20,7 +21,8 @@
     <string name="places_none_saved">还没有保存的地点。请先在设置的「地点」里添加。</string>
 
     <string name="weather_title">天气</string>
-    <string name="weather_summary">家所在地今天的天气与穿衣建议，晚上改看明天；数据来自挪威气象局</string>
+    <string name="weather_summary">所选地点（默认是家）今天的天气与穿衣建议，晚上改看明天；数据来自挪威气象局</string>
+    <string name="weather_place">天气地点</string>
     <string name="weather_setup_place">请在「地点」里设置家</string>
     <string name="weather_feels_like">体感 %1$d°</string>
     <string name="weather_range">%1$d° ~ %2$d°</string>
@@ -38,6 +40,7 @@
     <string name="weather_clothing_freezing">羽绒服、帽子和手套</string>
     <string name="weather_tip_thunder">可能有雷暴</string>
     <string name="weather_tip_heavy_rain">雨势较大</string>
+    <string name="weather_tip_heavy_snow">雪势较大</string>
     <string name="weather_tip_umbrella">记得带伞</string>
     <string name="weather_tip_snow">有雨雪</string>
     <string name="weather_tip_slippery">小心路滑</string>
@@ -350,6 +353,8 @@
     <string name="transit_channel_description">通勤的下一班被取消或严重延误时</string>
     <string name="transit_notify_switch">异常提醒</string>
     <string name="transit_notify_switch_summary">45 分钟内的下一班被取消或晚点 5 分钟以上时提醒；上午看去程，下午看返程，22:00–06:00 不提醒</string>
+    <string name="transit_notify_weekdays_switch">仅工作日提醒</string>
+    <string name="transit_notify_weekdays_switch_summary">周六、周日不发异常提醒</string>
     <string name="transit_notify_to_work">上班路上有异常</string>
     <string name="transit_notify_back_home">回家路上有异常</string>
     <string name="transit_opposing_switch">注明会车晚点</string>
@@ -439,6 +444,7 @@
 
     <string name="error_offline">当前离线，显示的是上次保存的数据。</string>
     <string name="error_network">网络错误，请检查连接（%1$s）</string>
+    <string name="error_storage">读取本机保存的数据失败（%1$s）</string>
     <string name="error_http">%1$s 返回错误（HTTP %2$d）</string>
     <string name="error_http_auth">%1$s 拒绝了凭据（HTTP %2$d），请检查设置里的 Key。</string>
     <string name="error_not_configured">请先设置：%1$s</string>

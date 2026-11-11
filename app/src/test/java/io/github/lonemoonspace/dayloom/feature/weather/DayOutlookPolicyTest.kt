@@ -96,6 +96,22 @@ class DayOutlookPolicyTest {
     }
 
     @Test
+    fun `heavy precipitation is called snow on a day whose symbols never mention rain`() {
+        val blizzard = points { t, p -> p.copy(temperature = -3.0, symbol1h = "heavysnow", precipitation1h = if (t.hour == 9) 6.0 else 1.0) }
+        val snowTips = DayOutlookPolicy.outlook(blizzard, at(5, 7))!!.tips
+        assertTrue(WeatherTip.HEAVY_SNOW in snowTips)
+        assertFalse(WeatherTip.HEAVY_RAIN in snowTips)
+
+        val downpour = points { t, p -> p.copy(symbol1h = "heavyrain", precipitation1h = if (t.hour == 9) 6.0 else 1.0) }
+        val rainTips = DayOutlookPolicy.outlook(downpour, at(5, 7))!!.tips
+        assertTrue(WeatherTip.HEAVY_RAIN in rainTips)
+        assertFalse(WeatherTip.HEAVY_SNOW in rainTips)
+
+        val mixed = points { t, p -> p.copy(symbol1h = if (t.hour < 10) "heavyrain" else "sleet", precipitation1h = if (t.hour == 9) 6.0 else 1.0) }
+        assertTrue("rain turning to sleet is still a wet day", WeatherTip.HEAVY_RAIN in DayOutlookPolicy.outlook(mixed, at(5, 7))!!.tips)
+    }
+
+    @Test
     fun `a mild dry day is pleasant`() {
         val mild = points { _, p -> p.copy(temperature = 18.0) }
         assertEquals(listOf(WeatherTip.PLEASANT), DayOutlookPolicy.outlook(mild, at(5, 7))!!.tips)

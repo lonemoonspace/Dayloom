@@ -1,6 +1,7 @@
 package io.github.lonemoonspace.dayloom.core.storage
 
 import androidx.datastore.core.DataStore
+import io.github.lonemoonspace.dayloom.core.error.readingStorage
 import java.io.IOException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -25,7 +26,7 @@ internal class DataStoreValueStore<T>(private val dataStore: DataStore<T>) : Val
     override val flow: Flow<T> = dataStore.data.retryOnReadError()
 
     // A one-off read fails instead of waiting out a broken file; only observers wait. / 单次读取直接失败，不去等坏掉的文件；只有观察者等待。
-    override suspend fun get(): T = dataStore.data.first()
+    override suspend fun get(): T = readingStorage { dataStore.data.first() }
 
     override suspend fun update(transform: (T) -> T) {
         dataStore.updateData { transform(it) }

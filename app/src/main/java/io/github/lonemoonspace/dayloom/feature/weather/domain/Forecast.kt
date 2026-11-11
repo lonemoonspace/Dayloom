@@ -47,6 +47,9 @@ data class ForecastPoint(
     val precipProbability1h: Double? = null,
     /** 0–100 %, next hour. / 0–100 %，未来一小时。 */
     val thunderProbability1h: Double? = null,
+    /** °C, lowest and highest in the next six hours; only `complete` has them. / °C，未来 6 小时内的最低与最高；只有 `complete` 提供。 */
+    val temperatureMin6h: Double? = null,
+    val temperatureMax6h: Double? = null,
 ) {
     /** The most detailed symbol available. / 可用的最细粒度符号。 */
     val symbol: String get() = symbol1h.ifEmpty { symbol6h }

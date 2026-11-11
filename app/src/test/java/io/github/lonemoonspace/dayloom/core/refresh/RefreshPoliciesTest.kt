@@ -64,6 +64,14 @@ class RefreshPoliciesTest {
     }
 
     @Test
+    fun `the background refreshes a module only for an enabled rule or a brief that is about to quote it`() {
+        assertTrue(BackgroundRefreshPolicy.wanted(anyRuleEnabled = true, hasBriefLine = false, briefNeedsData = false))
+        assertTrue(BackgroundRefreshPolicy.wanted(anyRuleEnabled = false, hasBriefLine = true, briefNeedsData = true))
+        assertFalse("the brief is not near", BackgroundRefreshPolicy.wanted(anyRuleEnabled = false, hasBriefLine = true, briefNeedsData = false))
+        assertFalse("nothing in the brief", BackgroundRefreshPolicy.wanted(anyRuleEnabled = false, hasBriefLine = false, briefNeedsData = true))
+    }
+
+    @Test
     fun `source ids are namespaced and name their snapshot file`() {
         val id = SourceId("weather.forecast")
         assertEquals("weather", id.moduleId)

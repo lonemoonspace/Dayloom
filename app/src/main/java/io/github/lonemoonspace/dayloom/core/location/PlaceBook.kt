@@ -34,8 +34,9 @@ class PlaceBook(private val store: ValueStore<SharedData>) : Places {
         // id 在原子更新内部选定，所以同时新增的两个地点不会拿到同一个 id；先读列表再写入就会有竞态。
         var id = ""
         store.update {
-            id = PlacesPolicy.newCustomId(it.places)
-            it.copy(places = PlacesPolicy.upsert(it.places, candidate.toPlace(id, label)))
+            val number = PlacesPolicy.newCustomNumber(it.places, it.lastPlaceNumber)
+            id = PlacesPolicy.customId(number)
+            it.copy(places = PlacesPolicy.upsert(it.places, candidate.toPlace(id, label)), lastPlaceNumber = number)
         }
         return id
     }

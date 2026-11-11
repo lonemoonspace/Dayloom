@@ -23,8 +23,8 @@ import kotlinx.coroutines.flow.map
 data class WeatherParams(val lat: Double, val lon: Double)
 
 /**
- * `weather.forecast`: the MET forecast for Home.
- * `weather.forecast`：家所在地的 MET 预报。
+ * `weather.forecast`: the MET forecast for the place the weather module shows.
+ * `weather.forecast`：天气模块所显示地点的 MET 预报。
  */
 class WeatherSource(
     id: SourceId,

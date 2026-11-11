@@ -25,14 +25,19 @@ object PlacesPolicy {
     fun remove(places: List<Place>, id: String): List<Place> = places.filterNot { it.id == id }
 
     /**
-     * A fresh id for a custom place: `place<n>` with the smallest unused n. Ids are never derived from the label, so renaming
-     * keeps every module's reference.
-     * 自定义地点的新 id：`place<n>`，n 取最小未用的数。id 不由标签生成，改名后各模块的引用照样有效。
+     * The number of a fresh custom place, whose id is `place<n>` ([customId]): one above every number in use and above
+     * [lastNumber], the highest ever handed out. A deleted place's id is never given to a new one, or a module still
+     * pointing at the old place would silently follow the new one. Ids are never derived from the label, so renaming keeps
+     * every module's reference.
+     * 新自定义地点的编号，id 为 `place<n>`（[customId]）：比在用的所有编号、也比历史上发过的最大编号 [lastNumber] 都大一。
+     * 删掉的地点的 id 不会再发给新地点，否则还指着旧地点的模块会悄悄跟到新地点上。id 不由标签生成，改名后各模块的引用照样有效。
      */
-    fun newCustomId(places: List<Place>): String {
-        val used = places.mapTo(mutableSetOf()) { it.id }
-        return generateSequence(1) { it + 1 }.map { "place$it" }.first { it !in used }
-    }
+    fun newCustomNumber(places: List<Place>, lastNumber: Int): Int =
+        maxOf(lastNumber, places.maxOfOrNull { it.id.removePrefix(CUSTOM_PREFIX).toIntOrNull() ?: 0 } ?: 0) + 1
+
+    fun customId(number: Int): String = CUSTOM_PREFIX + number
+
+    private const val CUSTOM_PREFIX = "place"
 
     /**
      * Coordinates with at most four decimals (about 11 m): MET Norway rejects more, and finer precision says nothing more

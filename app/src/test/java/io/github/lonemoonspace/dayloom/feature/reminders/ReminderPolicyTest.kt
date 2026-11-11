@@ -139,7 +139,7 @@ class ReminderPolicyTest {
         assertEquals(4_002, tomorrow.id)
         assertEquals(UiText.Res(R.string.reminders_notify_tomorrow, listOf("Pass")), tomorrow.title)
         assertEquals(UiText.Plural(R.plurals.reminders_notify_days, 2, listOf("Pass", 2)), inTwoDays.title)
-        assertEquals(UiText.Res(R.string.reminders_notify_body, listOf("2026-09-17 23:59")), inTwoDays.body)
+        assertEquals(UiText.Res(R.string.reminders_notify_body, listOf(UiText.DateTime(LocalDateTime.of(2026, 9, 17, 23, 59)))), inTwoDays.body)
         assertEquals("reminders.expiry", inTwoDays.channelId)
         // Every stage reuses the item's id, so each must ring rather than silently replace the last one.
         // 每一档都复用条目的 id，所以每条都要响铃，而不是静默替换上一条。

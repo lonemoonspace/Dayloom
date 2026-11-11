@@ -4,7 +4,6 @@ import io.github.lonemoonspace.dayloom.R
 import io.github.lonemoonspace.dayloom.core.i18n.UiText
 import java.time.Instant
 import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
 
 /**
  * The football line of the morning brief: only on a match day, "Real Madrid – Barcelona at 21:00".
@@ -17,10 +16,8 @@ object FootballBrief {
             .filter { it.status.isUpcoming || it.status.isLive }
             .filter { Instant.ofEpochMilli(it.kickoff).atZone(now.zone).toLocalDate() == today }
             .minByOrNull { it.kickoff } ?: return null
-        val at = Instant.ofEpochMilli(match.kickoff).atZone(now.zone).format(TIME)
+        val at = UiText.Time(Instant.ofEpochMilli(match.kickoff).atZone(now.zone).toLocalTime().withSecond(0).withNano(0))
         return UiText.Res(R.string.football_brief, listOf(fixture(match), at))
     }
 
-    /** Numeric time reads the same in every language. / 数字时刻在各语言里写法一致。 */
-    private val TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 }

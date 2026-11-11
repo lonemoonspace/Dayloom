@@ -9,6 +9,14 @@ import kotlinx.coroutines.flow.Flow
 interface ArticleStore {
     suspend fun all(): List<StoredArticle>
 
+    /**
+     * Every article, with its text only where [withText] asks for it; the others come with an empty text and must not be
+     * written back.
+     * 全部文章，只有 [withText] 要求的才带正文；其余的正文为空，不能再写回去。
+     */
+    suspend fun all(withText: (id: Long) -> Boolean): List<StoredArticle> =
+        all().map { if (withText(it.id)) it else it.copy(contentHtml = "") }
+
     /** Just the ids, without loading every article's text. / 只取 id，不把每篇文章的正文都读出来。 */
     suspend fun ids(): List<Long> = all().map { it.id }
 
@@ -26,7 +34,11 @@ interface ArticleStore {
 
     suspend fun apply(result: MergeResult)
 
-    fun observe(filter: ArticleFilter): Flow<List<StoredArticle>>
+    /** The list for [filter], live, without the articles' text; see [texts]. / [filter] 对应的实时列表，不带正文；正文见 [texts]。 */
+    fun observe(filter: ArticleFilter): Flow<List<ListedArticle>>
+
+    /** The text (HTML) of these articles, by id. / 这些文章的正文（HTML），按 id。 */
+    suspend fun texts(ids: List<Long>): Map<Long, String>
 
     fun observe(id: Long): Flow<StoredArticle?>
 

@@ -59,8 +59,10 @@ internal fun TrafficCard(
     val context = LocalContext.current
     val now = rememberMinuteTick()
     // The direction comes from the data actually shown; before it arrives, from the clock and the manual flip, so the title
-    // does not change once it does.
-    // 方向以实际显示的数据为准；数据到来之前按时钟与手动掉头定，数据到了标题也不会变。
+    // does not change once it does. A flip turns at once: the direction is part of the source's key, so the snapshot of
+    // the other direction stops being offered the moment the setting changes.
+    // 方向以实际显示的数据为准；数据到来之前按时钟与手动掉头定，数据到了标题也不会变。掉头立刻生效：方向是来源 key 的一部分，
+    // 设置一变，另一个方向的快照就不再提供。
     val direction = status?.direction ?: TrafficPolicy.direction(now, flippedAtMillis)
     val (origin, destination) = if (direction == Direction.BACK_HOME) Pair(to, from) else Pair(from, to)
     val route = if (origin != null && destination != null) {

@@ -54,6 +54,19 @@ class MorningBriefTest {
         assertFalse("invalid time", MorningBriefPolicy.needsData(24 * 60, at(5, 7, 0), null))
     }
 
+    @Test
+    fun `the lead-up to a brief just after midnight starts the evening before`() {
+        val justAfterMidnight = 20
+        assertFalse("too early", MorningBriefPolicy.needsData(justAfterMidnight, at(5, 23, 34), null))
+        assertTrue(MorningBriefPolicy.needsData(justAfterMidnight, at(5, 23, 35), null))
+        assertTrue("today's brief went out, tomorrow's is next", MorningBriefPolicy.needsData(justAfterMidnight, at(5, 23, 50), monday))
+        assertTrue(MorningBriefPolicy.needsData(justAfterMidnight, at(6, 0, 10), monday))
+        assertTrue("due", MorningBriefPolicy.needsData(justAfterMidnight, at(6, 0, 20), monday))
+        assertFalse("sent", MorningBriefPolicy.needsData(justAfterMidnight, at(6, 0, 30), monday.plusDays(1)))
+        assertTrue("a brief at midnight", MorningBriefPolicy.needsData(0, at(5, 23, 15), monday))
+        assertFalse(MorningBriefPolicy.needsData(0, at(5, 23, 14), monday))
+    }
+
     private fun input(now: ZonedDateTime) = RuleInput(RefreshReport(emptyMap(), Instant.EPOCH), now)
 
     private fun rule(vararg lines: BriefContributor, errors: MutableList<Exception> = mutableListOf()) = MorningBriefRule(

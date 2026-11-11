@@ -102,14 +102,17 @@ object FeedPolicy {
      * the feed's current text; a new one comes in unread unless it is older than [MAX_AGE] and not among the feed's
      * [KEEP_LATEST] newest. Unstarred articles go: all of a feed no longer followed; unread ones older than [MAX_AGE], even
      * while the feed still lists them (they are not added back); read ones [NewsSyncPolicy.KEEP_READ] after reading once
-     * the feed has dropped them, since deleting one it still lists would bring it back unread. Feeds missing from [fetched]
-     * (failed or unchanged) leave their articles as they are. Pending flags are cleared: there is no server to send them
-     * to. Only the articles of the feeds in [fetched] need their text in [local]; the others are never written back.
+     * the feed has dropped them, since deleting one it still lists would bring it back unread. A feed's [KEEP_LATEST]
+     * newest stored articles stay either way, read or not: an old one deleted here would be added again, unread, by the
+     * rule above. Feeds missing from [fetched] (failed or unchanged) are cleaned up by the same rules but get nothing
+     * written. Pending flags are cleared: there is no server to send them to. Only the articles of the feeds in [fetched]
+     * need their text in [local]; the others are never written back.
      * 把刚读到的订阅源合并进本地文章。已有的条目保留已读、收藏与摘要，正文换成订阅源当前的内容；新条目以未读加入，早于 [MAX_AGE]
      * 且不在该源最新 [KEEP_LATEST] 篇之内的除外。未收藏的文章会删除：不再订阅的源的全部文章；超过 [MAX_AGE] 的未读文章，即使
      * 订阅源还列着（之后也不会再加回来）；已读的在订阅源不再列出、且读过 [NewsSyncPolicy.KEEP_READ] 之后——订阅源还列着时删掉，
-     * 下次会以未读的身份回来。不在 [fetched] 里的源（失败或没有变化）文章保持不动。待发送标记一律清除：没有服务器可发。
-     * [local] 里只有 [fetched] 中那些源的文章需要带正文；其余的不会被写回。
+     * 下次会以未读的身份回来。每个源本地最新的 [KEEP_LATEST] 篇不论已读未读都留着：旧文章在这里删掉，会被上面那条规则当成
+     * 新文章以未读加回来。不在 [fetched] 里的源（失败或没有变化）按同样的规则清理，但不写入任何内容。待发送标记一律清除：
+     * 没有服务器可发。[local] 里只有 [fetched] 中那些源的文章需要带正文；其余的不会被写回。
      */
     fun merge(local: List<StoredArticle>, fetched: Map<String, ParsedFeed>, feeds: List<Feed>, nowMillis: Long): MergeResult {
         val byId = local.associateBy { it.id }
@@ -150,15 +153,16 @@ object FeedPolicy {
             }
         }
 
-        // The same exemption for feeds not read this round: without it the next unchanged sync would drop what was kept.
-        // 本轮没读到的源也按同样的规则豁免：否则下一次内容没变的同步会把刚才保留的删掉。
+        // The same exemption for feeds not read this round: without it the next unchanged sync would drop what was kept,
+        // and the sync after that would add it again as unread.
+        // 本轮没读到的源也按同样的规则豁免：否则下一次内容没变的同步会把刚才保留的删掉，再下一次又把它当未读加回来。
         val latest = local.groupBy { feedTagOf(it.id) }.values
             .flatMapTo(HashSet()) { articles -> articles.sortedByDescending { it.publishedAt }.take(KEEP_LATEST).map { it.id } }
 
         for (old in local) {
             if (old.id in seen) continue
             val unfollowed = feedTagOf(old.id) !in followed
-            val readExpired = old.read && nowMillis - old.readAt > NewsSyncPolicy.KEEP_READ.toMillis()
+            val readExpired = old.read && old.id !in latest && nowMillis - old.readAt > NewsSyncPolicy.KEEP_READ.toMillis()
             val unreadExpired = !old.read && old.id !in latest && nowMillis - old.publishedAt > maxAge
             when {
                 !old.starred && (unfollowed || readExpired || unreadExpired) -> delete += old.id

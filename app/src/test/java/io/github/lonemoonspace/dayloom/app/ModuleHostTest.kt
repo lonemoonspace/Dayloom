@@ -299,7 +299,6 @@ class ModuleHostTest {
             clock = clock,
             coordinator = coordinator,
             engine = NotificationEngine(state, sent),
-            network = FakeNetworkStatus(),
             morningBrief = { settings.get().morningBrief },
             briefMinute = { settings.get().morningBriefMinute },
             briefLastSent = { LocalDateStateCodec.decode(state.read(CoreNotifications.BRIEF_STATE_KEY)) },
@@ -324,12 +323,11 @@ class ModuleHostTest {
         val settings = InMemoryValueStore(AppSettings(morningBrief = false))
         val (host, coordinator) = backgroundScope.host(listOf(module), settings)
         val state = MemoryState()
-        fun round(metered: Boolean = false) = BackgroundRound(
+        fun round() = BackgroundRound(
             active = host.active,
             clock = clock,
             coordinator = coordinator,
             engine = NotificationEngine(state, Sent()),
-            network = FakeNetworkStatus(metered = metered),
             morningBrief = { settings.get().morningBrief },
             briefMinute = { settings.get().morningBriefMinute },
             briefLastSent = { LocalDateStateCodec.decode(state.read(CoreNotifications.BRIEF_STATE_KEY)) },

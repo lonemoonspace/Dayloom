@@ -2,7 +2,6 @@ package io.github.lonemoonspace.dayloom.app.work
 
 import io.github.lonemoonspace.dayloom.app.ActiveModule
 import io.github.lonemoonspace.dayloom.app.ModuleHost
-import io.github.lonemoonspace.dayloom.core.network.NetworkStatus
 import io.github.lonemoonspace.dayloom.core.notify.CoreNotifications
 import io.github.lonemoonspace.dayloom.core.notify.MorningBriefPolicy
 import io.github.lonemoonspace.dayloom.core.notify.MorningBriefRule
@@ -34,7 +33,6 @@ class BackgroundRound(
     private val clock: AppClock,
     private val coordinator: RefreshCoordinator,
     private val engine: NotificationEngine,
-    private val network: NetworkStatus,
     private val morningBrief: suspend () -> Boolean,
     private val briefMinute: suspend () -> Int,
     /** The day the last brief went out, from the brief rule's saved state. / 上一条简报是哪天发的，取自简报规则保存的状态。 */
@@ -46,13 +44,14 @@ class BackgroundRound(
         val modules = active.filterNotNull().first()
         val now = clock.now()
         val briefNeedsData = morningBrief() && MorningBriefPolicy.needsData(briefMinute(), now, briefLastSent())
-        val metered = network.isMetered()
         val ids = modules
             .filter { BackgroundRefreshPolicy.wanted(anyRuleEnabled(it), it.instance.brief != null, briefNeedsData) }
             .flatMap { it.instance.sources }
-            .filter { BackgroundRefreshPolicy.allowed(it.cadence, metered) }
+            .filter { it.cadence.background }
             .mapTo(mutableSetOf()) { it.id }
         val report = coordinator.refreshDue(ids, Trigger.BACKGROUND, RoutinePolicy.isDaytime(now), throttleFailures = false)
+        // Read again on purpose: the refresh may have taken a while, and the rules compare its data with the clock.
+        // 特意重新取一次时间：刷新可能花了一阵子，而规则要拿刷新到的数据和时钟比。
         engine.run(rules(modules), RuleInput(report, clock.now()))
         return BackgroundRefreshPolicy.shouldRetry(report.results.values)
     }

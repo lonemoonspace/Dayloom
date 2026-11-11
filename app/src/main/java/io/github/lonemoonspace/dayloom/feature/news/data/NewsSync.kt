@@ -209,9 +209,7 @@ class NewsSyncSource(
 
     override val maxAge: Duration = Duration.ofHours(3)
 
-    // Article bodies add up to megabytes, so the background leaves them alone on mobile data; opening the app still syncs.
-    // 文章正文加起来有好几 MB，用移动数据时后台不去下载；打开 App 时照样同步。
-    override val cadence = RefreshCadence(interval = Duration.ofMinutes(30), meteredBackground = false)
+    override val cadence = RefreshCadence(interval = Duration.ofMinutes(30))
 
     override val inputs: Flow<SourceInput<NewsParams>> = combine(settings, secret) { settings, s ->
         when (settings.kind) {

@@ -26,8 +26,4 @@ object BackgroundRefreshPolicy {
      */
     fun wanted(anyRuleEnabled: Boolean, hasBriefLine: Boolean, briefNeedsData: Boolean): Boolean =
         anyRuleEnabled || (hasBriefLine && briefNeedsData)
-
-    /** Whether the source itself takes part in a background round on this network. / 这个来源在当前网络下是否参加后台轮次。 */
-    fun allowed(cadence: RefreshCadence, metered: Boolean): Boolean =
-        cadence.background && (cadence.meteredBackground || !metered)
 }

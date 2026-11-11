@@ -16,8 +16,7 @@ looks it up literally.
   one fetches the full forecast again instead of being told "not modified".
 - Battery and data: with the app closed, a data source is only refreshed when something will use the result — a module
   with a notification switched on, or the morning brief in the 45 minutes before it is due. Departure boards and news no
-  longer refresh in the background at all, and traffic asks Google only before the morning brief. News never syncs in
-  the background on a metered network.
+  longer refresh in the background at all, and traffic asks Google only before the morning brief.
 - News: the article list no longer loads every article's full text, and a feed sync reads only the feeds it just fetched,
   so long lists scroll and sync faster. A newly added feed that posts rarely keeps its three newest articles however old
   they are. Previews and search decode all HTML entities (`&#8217;`, `&mdash;`…). Finding a feed on a page that is not
@@ -70,7 +69,7 @@ looks it up literally.
   「雨势较大」。逐小时预报之后的那几天用上了 MET 的 6 小时最高、最低温，温度范围不再偏窄。某次刷新退到精简预报之后，下一次会
   重新取完整预报，不会再被告知「没有更新」。
 - 耗电与流量：App 关着的时候，只有结果有人用的数据源才会刷新——模块开着通知，或者早报在 45 分钟内要用它。发车板和新闻不再
-  在后台刷新，路况只在早报之前请求一次 Google。计费网络下新闻从不在后台同步。
+  在后台刷新，路况只在早报之前请求一次 Google。
 - 新闻：文章列表不再把每篇文章的全文读进内存，订阅源同步也只读刚抓取的那几个源，文章多时滚动和同步都更快。新加的低频订阅源
   无论文章多旧都保留最新三篇。预览和搜索能解码所有 HTML 实体（`&#8217;`、`&mdash;` 等）。在非 UTF-8（GBK 等）的网页上
   查找订阅源时标题不再乱码。

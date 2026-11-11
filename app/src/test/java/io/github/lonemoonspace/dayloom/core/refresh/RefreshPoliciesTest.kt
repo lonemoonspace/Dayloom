@@ -72,15 +72,6 @@ class RefreshPoliciesTest {
     }
 
     @Test
-    fun `a source can stay out of background rounds altogether or only on metered networks`() {
-        val heavy = RefreshCadence(interval = Duration.ofMinutes(30), meteredBackground = false)
-        assertTrue(BackgroundRefreshPolicy.allowed(heavy, metered = false))
-        assertFalse(BackgroundRefreshPolicy.allowed(heavy, metered = true))
-        assertTrue(BackgroundRefreshPolicy.allowed(RefreshCadence.DEFAULT, metered = true))
-        assertFalse(BackgroundRefreshPolicy.allowed(RefreshCadence.DEFAULT.copy(background = false), metered = false))
-    }
-
-    @Test
     fun `source ids are namespaced and name their snapshot file`() {
         val id = SourceId("weather.forecast")
         assertEquals("weather", id.moduleId)

@@ -105,8 +105,10 @@ internal fun CommuteCard(
     // A snapshot fetched before the switch was turned off may still hold departures. / 开关关掉之前抓的快照可能还带着发车数据。
     val opposing = trips?.opposing?.takeIf { kind == CommuteKind.TRAIN && route.opposingHint }.orEmpty()
     // Before the first snapshot the direction comes from the clock and the manual flip, so the title does not change once
-    // data arrives.
-    // 第一份快照到来之前按时钟与手动掉头定方向，数据到了标题也不会变。
+    // data arrives. A flip turns at once: the direction is part of the source's key, so the snapshot of the other
+    // direction stops being offered the moment the setting changes.
+    // 第一份快照到来之前按时钟与手动掉头定方向，数据到了标题也不会变。掉头立刻生效：方向是来源 key 的一部分，设置一变，
+    // 另一个方向的快照就不再提供。
     val subtitle = when {
         !route.isSet -> null
         (trips?.mode ?: TransitPolicy.commuteMode(now, flippedAtMillis)) == CommuteMode.OUTBOUND -> stringResource(R.string.transit_to_work, origin.name, destination.name)

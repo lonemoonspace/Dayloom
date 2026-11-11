@@ -185,7 +185,6 @@ class AppGraph(context: Context, modules: List<FeatureModule> = ModuleRegistry.m
         clock = clock,
         coordinator = coordinator,
         engine = notificationEngine,
-        network = connectivity,
         morningBrief = { appSettings.get().morningBrief },
         briefMinute = { appSettings.get().morningBriefMinute },
         briefLastSent = { LocalDateStateCodec.decode(notificationState.read(CoreNotifications.BRIEF_STATE_KEY)) },

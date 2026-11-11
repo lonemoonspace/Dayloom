@@ -49,15 +49,20 @@ object MorningBriefPolicy {
 
     /**
      * Whether the brief wants fresh data in this background round: from [LEAD_MINUTES] before the chosen time until it has
-     * gone out (or the day is given up). Outside that window nothing is fetched just for the brief.
+     * gone out (or the day is given up). Outside that window nothing is fetched just for the brief. The lead-up to a
+     * brief just after midnight starts the evening before. While no module has a line the brief keeps asking until the
+     * day is given up, because a later round can still send it; each source's own cadence bounds what that costs.
      * 这一轮后台刷新里简报是否需要新数据：从设定时间前 [LEAD_MINUTES] 分钟起，到简报发出（或当天放弃）为止。这个时间窗之外不会
-     * 专门为简报去取数据。
+     * 专门为简报去取数据。设在午夜刚过的简报，提前量从前一天晚上算起。所有模块都没有内容时，简报会一直要数据到当天放弃为止，
+     * 因为稍后的一轮仍可能发得出去；代价以每个来源自己的刷新间隔为上限。
      */
     fun needsData(briefMinute: Int, now: ZonedDateTime, lastSent: LocalDate?): Boolean {
         if (!isValidMinute(briefMinute)) return false
+        if (dueDay(briefMinute, now, lastSent) != null) return true
         val minute = now.hour * 60 + now.minute
-        if (minute in (briefMinute - LEAD_MINUTES) until briefMinute) return now.toLocalDate() != lastSent
-        return dueDay(briefMinute, now, lastSent) != null
+        if (Math.floorMod(briefMinute - minute, MINUTES_PER_DAY) !in 1..LEAD_MINUTES) return false
+        val briefDay = if (minute < briefMinute) now.toLocalDate() else now.toLocalDate().plusDays(1)
+        return briefDay != lastSent
     }
 
     /** Two background rounds before the brief, so one failed fetch does not leave a line out. / 简报前留出两轮后台刷新，一次抓取失败不至于少一行。 */

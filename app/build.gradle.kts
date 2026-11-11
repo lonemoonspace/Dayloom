@@ -100,6 +100,9 @@ android {
                 if (mode != null) {
                     check(mode == "record" || mode == "compare") { "-Pscreenshots must be record or compare, was: $mode" }
                     test.systemProperty("roborazzi.test.$mode", "true")
+                    // Named here rather than left to Roborazzi's default, because CI looks for the changed cards in it.
+                    // 在这里写明而不依赖 Roborazzi 的默认值，因为 CI 要到这个目录里找有变化的卡片。
+                    test.systemProperty("roborazzi.output.dir", "build/outputs/roborazzi")
                     test.inputs.property("screenshots", mode)
                     // Screenshots are files outside build/, so a cached run must not skip drawing them.
                     // 截图是 build/ 之外的文件，命中缓存的运行不能跳过绘制。

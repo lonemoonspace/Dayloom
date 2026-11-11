@@ -20,13 +20,6 @@ interface NetworkStatus {
     val online: Flow<Boolean>
 
     suspend fun isOnline(): Boolean
-
-    /**
-     * Whether the current network is metered. When unsure, answer "metered": wrongly saving data is cheap, wrongly
-     * spending the user's mobile data is not. (Opposite direction to [isOnline] on purpose.)
-     * 当前网络是否计费。拿不准时按「计费」：误省流量代价小，误用用户的移动数据代价大。（与 [isOnline] 的方向刻意相反。）
-     */
-    suspend fun isMetered(): Boolean
 }
 
 class ConnectivityMonitor(context: Context) : NetworkStatus {
@@ -75,13 +68,6 @@ class ConnectivityMonitor(context: Context) : NetworkStatus {
     override suspend fun isOnline(): Boolean {
         val cm = connectivityManager ?: return true
         return currentlyOnline(cm)
-    }
-
-    override suspend fun isMetered(): Boolean {
-        val cm = connectivityManager ?: return true
-        val network = cm.activeNetwork ?: return true
-        val capabilities = cm.getNetworkCapabilities(network) ?: return true
-        return !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
     }
 
     private fun currentlyOnline(cm: ConnectivityManager): Boolean {

@@ -120,13 +120,14 @@ class FeedPolicyTest {
     fun `articles go when their feed is dropped, read long ago or too old unread, unless starred`() {
         val dropped = stored(b, "1")
         val droppedStarred = stored(b, "2", starred = true)
-        val readLongAgo = stored(a, "3", read = true, readAt = now - NewsSyncPolicy.KEEP_READ.toMillis() - 1)
+        val readLongAgo = stored(a, "3", ageHours = 2, read = true, readAt = now - NewsSyncPolicy.KEEP_READ.toMillis() - 1)
         val readRecently = stored(a, "4", read = true, readAt = now - hour)
         val staleUnread = stored(a, "5", ageHours = FeedPolicy.MAX_AGE.toHours() + 1)
         val staleStarred = stored(a, "6", ageHours = FeedPolicy.MAX_AGE.toHours() + 1, starred = true)
         val fresh = stored(a, "7")
+        val fresher = stored(a, "8")
         val result = FeedPolicy.merge(
-            listOf(dropped, droppedStarred, readLongAgo, readRecently, fresh, staleUnread, staleStarred),
+            listOf(dropped, droppedStarred, readLongAgo, readRecently, fresh, fresher, staleUnread, staleStarred),
             fetched = emptyMap(),
             feeds = listOf(a),
             nowMillis = now,
@@ -162,6 +163,14 @@ class FeedPolicyTest {
         // 下一次同步时订阅源没有变化；刚才保留的不能又被清掉。
         val unchanged = FeedPolicy.merge(added.upsert, fetched = emptyMap(), feeds = listOf(a), nowMillis = now + hour)
         assertTrue(unchanged.delete.isEmpty())
+
+        // Read long ago, they still stay: once deleted, the next sync that reads the feed would add them again as unread.
+        // 很久以前读过的也留着：一旦删掉，下一次读到这个源时又会把它们当未读加回来。
+        val later = now + NewsSyncPolicy.KEEP_READ.toMillis() + 2 * hour
+        val read = added.upsert.map { it.copy(read = true, readAt = now + hour) }
+        assertTrue(FeedPolicy.merge(read, fetched = emptyMap(), feeds = listOf(a), nowMillis = later).delete.isEmpty())
+        val again = FeedPolicy.merge(read, mapOf(a.url to ParsedFeed("", items)), listOf(a), later)
+        assertTrue("still listed and still read", again.delete.isEmpty() && again.upsert.none { !it.read })
     }
 
     @Test

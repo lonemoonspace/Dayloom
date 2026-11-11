@@ -6,11 +6,12 @@ looks it up literally.
 
 ## Unreleased
 
-- Train, bus and departure board rows: the departure time, arrival and status pill line up with the line chips; the
-  opposing-train warning, the folded direct option and the struck timetable time sit below without pulling them down.
+- Train, bus and departure board rows: the departure time, the status pill and, on the train and bus cards, the
+  arrival line up with the line chips; the opposing-train warning, the folded direct option and the struck timetable
+  time sit below without pulling them down.
   The departure board shows the platform as the same outlined pill as the train card, right after the line.
 
-- 火车、公交与发车板的行：出发时刻、到达时刻和状态胶囊与线路标签对齐；对向车晚点提示、叠在下面的直达方案和划掉的时刻表
+- 火车、公交与发车板的行：出发时刻、状态胶囊，以及火车与公交卡片上的到达时刻，都与线路标签对齐；对向车晚点提示、叠在下面的直达方案和划掉的时刻表
   时间放在下面，不再把它们往下拉。发车板的站台改成与火车卡片相同的描边胶囊，紧跟在线路后面。
 
 ## 0.3.1

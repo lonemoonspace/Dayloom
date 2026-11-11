@@ -42,6 +42,7 @@ import io.github.lonemoonspace.dayloom.core.ui.updatedAgo
 import io.github.lonemoonspace.dayloom.feature.football.data.FootballDataApi
 import io.github.lonemoonspace.dayloom.feature.football.data.MatchesSource
 import io.github.lonemoonspace.dayloom.feature.football.data.ScorersSource
+import io.github.lonemoonspace.dayloom.feature.football.data.StandingsParams
 import io.github.lonemoonspace.dayloom.feature.football.data.StandingsSource
 import io.github.lonemoonspace.dayloom.feature.football.domain.FootballBrief
 import io.github.lonemoonspace.dayloom.feature.football.domain.FootballNotifyTarget
@@ -49,8 +50,8 @@ import io.github.lonemoonspace.dayloom.feature.football.domain.FootballPolicy
 import io.github.lonemoonspace.dayloom.feature.football.domain.KickoffRule
 import io.github.lonemoonspace.dayloom.feature.football.domain.Match
 import io.github.lonemoonspace.dayloom.feature.football.domain.ResultRule
-import io.github.lonemoonspace.dayloom.feature.football.domain.Scorers
-import io.github.lonemoonspace.dayloom.feature.football.domain.Standings
+import io.github.lonemoonspace.dayloom.feature.football.domain.ScorersSet
+import io.github.lonemoonspace.dayloom.feature.football.domain.StandingsSet
 import io.github.lonemoonspace.dayloom.feature.football.domain.TeamMatches
 import io.github.lonemoonspace.dayloom.feature.football.domain.TeamRef
 import io.github.lonemoonspace.dayloom.feature.football.ui.Crest
@@ -118,9 +119,9 @@ private class FootballInstance(private val ctx: ModuleContext) : ModuleInstance 
 
     private val standings = StandingsSource(
         id = ctx.sourceId("standings"),
-        store = ctx.snapshots(ctx.sourceId("standings"), Standings.serializer()),
+        store = ctx.snapshots(ctx.sourceId("standings"), StandingsSet.serializer()),
         clock = ctx.clock,
-        competition = store.flow.map { it.competition }.distinctUntilChanged(),
+        params = store.flow.map { StandingsParams(it.team.id, it.competition) }.distinctUntilChanged(),
         secret = key.observe(),
         apiKey = key::usable,
         api = api,
@@ -140,9 +141,10 @@ private class FootballInstance(private val ctx: ModuleContext) : ModuleInstance 
 
     private val scorers = ScorersSource(
         id = ctx.sourceId("scorers"),
-        store = ctx.snapshots(ctx.sourceId("scorers"), Scorers.serializer()),
+        store = ctx.snapshots(ctx.sourceId("scorers"), ScorersSet.serializer()),
         clock = ctx.clock,
-        competition = store.flow.map { it.competition }.distinctUntilChanged(),
+        params = store.flow.map { StandingsParams(it.team.id, it.competition) }.distinctUntilChanged(),
+        tableCodes = standings.observe().map { it?.value?.codes.orEmpty() }.distinctUntilChanged(),
         secret = key.observe(),
         apiKey = key::usable,
         api = api,
@@ -277,11 +279,14 @@ private class FootballInstance(private val ctx: ModuleContext) : ModuleInstance 
             }
             return
         }
-        val table = tableSnapshot?.takeIf { it.value.competitionCode == s.competition }
-        val top = scorersSnapshot?.takeIf { it.value.competitionCode == s.competition }
+        // Both snapshots only match the current team and competitions, so a previous team's tables never show.
+        // 两份快照只在球队与赛事都对得上时才匹配，所以不会显示上一支球队的表。
+        val table = tableSnapshot
+        val top = scorersSnapshot
         FootballTab(
             data = FootballTabData(
                 teamId = s.team.id,
+                league = s.competition,
                 matches = matchSnapshot?.value?.takeIf { it.teamId == s.team.id }?.matches,
                 matchesError = status[matches.id]?.lastError,
                 matchesStale = matchSnapshot?.let { matches.isStale(it, now.toInstant()) } == true,
@@ -293,6 +298,7 @@ private class FootballInstance(private val ctx: ModuleContext) : ModuleInstance 
                 scorersFetchedAt = top?.fetchedAt,
                 scorersError = status[scorers.id]?.lastError,
                 scorersStale = top?.let { scorers.isStale(it, now.toInstant()) } == true,
+                tableMaxAge = standings.maxAge,
             ),
             now = now,
             crests = crests,

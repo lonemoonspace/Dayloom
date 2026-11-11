@@ -14,6 +14,42 @@ object FootballPolicy {
     /** The free competitions of football-data.org, in the order the picker lists them. / football-data.org 的免费赛事，按选择列表的顺序。 */
     val FREE_COMPETITIONS = listOf("PL", "PD", "BL1", "SA", "FL1", "CL", "DED", "PPL", "ELC", "BSA", "EC", "WC")
 
+    /**
+     * Competitions shown for the team: the one it was picked from first, then every other competition it plays in that the
+     * free tier covers (a cup outside it would only fail), in the free list's order. When the API lists the team's
+     * competitions and the picked one is not among them (a new season after promotion or relegation), it is dropped, so
+     * a table without the team is never shown; with no free competition left, it is kept.
+     * 为球队显示的赛事：挑选球队时的那项排在最前，然后是它参加的、免费档覆盖的其他赛事（不在免费档里的杯赛只会请求失败），按免费列表的顺序。
+     * 接口列出了球队的赛事、而挑选时的那项不在其中时（升降级后的新赛季），去掉它，免得显示一张没有这支球队的表；去掉后一项免费赛事
+     * 都不剩时仍保留它。
+     */
+    fun competitions(league: String, running: Collection<String>): List<String> {
+        val free = FREE_COMPETITIONS.filter { it in running }
+        val first = league.takeIf { it.isNotBlank() && (running.isEmpty() || it in running || free.isEmpty()) }
+        return (listOfNotNull(first) + free).distinct()
+    }
+
+    /** The UEFA league phase: 1–8 go straight to the round of 16, 9–24 to the play-offs. / 欧战联赛阶段：1–8 名直接进十六强，9–24 名打附加赛。 */
+    val QUALIFY_PLACES = 1..8
+    val PLAYOFF_PLACES = 9..24
+
+    fun zone(stage: String, position: Int): TableZone = when {
+        stage != LEAGUE_STAGE -> TableZone.NONE
+        position in QUALIFY_PLACES -> TableZone.QUALIFY
+        position in PLAYOFF_PLACES -> TableZone.PLAYOFF
+        else -> TableZone.NONE
+    }
+
+    const val LEAGUE_STAGE = "LEAGUE_STAGE"
+
+    /**
+     * Fresh tables where they came, the previous ones where a request failed, in [codes] order; a competition with neither
+     * is left out until it loads.
+     * 按 [codes] 的顺序：拿到新表的用新表，请求失败的沿用上一份；两者都没有的赛事先不显示，等加载出来。
+     */
+    fun <T> withPrevious(codes: List<String>, fresh: Map<String, T>, previous: Map<String, T>): List<T> =
+        codes.mapNotNull { fresh[it] ?: previous[it] }
+
     /** Matches fetched around today: four weeks back for the form, five ahead for the fixtures. / 抓取今天前后的比赛：往前四周看状态，往后五周看赛程。 */
     const val PAST_DAYS = 28L
     const val FUTURE_DAYS = 35L

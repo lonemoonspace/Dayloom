@@ -82,7 +82,24 @@ data class Standings(
     val groups: List<TableGroup> = emptyList(),
     /** The season's current matchday, when the competition has one. / 本赛季当前轮次（赛事有轮次时）。 */
     val matchday: Int? = null,
+    /** The API's stage of the tables, e.g. `REGULAR_SEASON` or `LEAGUE_STAGE`. / 接口给的积分表阶段，例如 `REGULAR_SEASON` 或 `LEAGUE_STAGE`。 */
+    val stage: String = "",
+    /**
+     * When this table was fetched, epoch millis; a table kept from an earlier round after a failed request keeps its own
+     * time, so the tab does not call it fresh.
+     * 这张表的抓取时刻，epoch 毫秒；请求失败后沿用的旧表保留自己的时刻，标签页就不会把它当成新数据。
+     */
+    val fetchedAt: Long = 0,
 )
+
+/**
+ * The snapshot of `football.standings`: one table per competition the team plays in, its league first.
+ * `football.standings` 的快照：球队参加的每项赛事各一张表，联赛排在最前。
+ */
+@Serializable
+data class StandingsSet(val teamId: Int = 0, val tables: List<Standings> = emptyList()) {
+    val codes: List<String> get() = tables.map { it.competitionCode }
+}
 
 /** One line of the scorers list; missing counts stay null rather than zero. / 射手榜的一行；缺失的数字保持为空而不是 0。 */
 @Serializable
@@ -101,7 +118,22 @@ data class Scorers(
     val competition: String = "",
     val matchday: Int? = null,
     val scorers: List<Scorer> = emptyList(),
+    /** As [Standings.fetchedAt]. / 同 [Standings.fetchedAt]。 */
+    val fetchedAt: Long = 0,
 )
+
+/**
+ * The snapshot of `football.scorers`: one scorers list per competition, in the order of [StandingsSet].
+ * `football.scorers` 的快照：每项赛事一张射手榜，顺序与 [StandingsSet] 相同。
+ */
+@Serializable
+data class ScorersSet(val tables: List<Scorers> = emptyList())
+
+/**
+ * Where a table position leads in a UEFA league phase; leagues get [NONE] because their places differ by country and year.
+ * 欧战联赛阶段里某个名次的去向；国内联赛一律 [NONE]，因为各国、各年的名额都不同。
+ */
+enum class TableZone { QUALIFY, PLAYOFF, NONE }
 
 /** How a finished match went for the followed team. / 已结束的比赛对关注球队而言的结果。 */
 enum class Outcome { WIN, DRAW, LOSS }

@@ -2,6 +2,7 @@ package io.github.lonemoonspace.dayloom.feature.football
 
 import io.github.lonemoonspace.dayloom.core.error.AppError
 import io.github.lonemoonspace.dayloom.feature.football.data.FootballDataApi
+import io.github.lonemoonspace.dayloom.feature.football.data.fetchEach
 import io.github.lonemoonspace.dayloom.feature.football.domain.MatchStatus
 import io.github.lonemoonspace.dayloom.feature.football.ui.CrestLoader
 import java.time.LocalDate
@@ -9,6 +10,7 @@ import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.SocketPolicy
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -118,6 +120,45 @@ class FootballDataApiTest {
         assertNull(scorers.scorers[1].playedMatches)
         server.takeRequest()
         assertEquals("/v4/competitions/PL/scorers?limit=${FootballDataApi.SCORERS_LIMIT}", server.takeRequest().path)
+    }
+
+    @Test
+    fun `running competitions come from the team, and a league phase table keeps its stage`() = runTest {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"id":1,"runningCompetitions":[{"name":"League A","code":"PD"},{"name":"Cup","code":"CDR"},{"name":"Europe","code":"CL"},{"name":"x"}]}""",
+            ),
+        )
+        server.enqueue(
+            MockResponse().setBody(
+                """{"competition":{"name":"Europe","code":"CL"},"standings":[{"stage":"LEAGUE_STAGE","type":"TOTAL","table":[]}]}""",
+            ),
+        )
+
+        assertEquals(listOf("PD", "CDR", "CL"), api().runningCompetitions("k", 1))
+        assertEquals("/v4/teams/1", server.takeRequest().path)
+        assertEquals("LEAGUE_STAGE", api().standings("k", "CL").stage)
+    }
+
+    @Test
+    fun `the league must load, other competitions fall back to their previous entry`() = runTest {
+        val previous = mapOf("CL" to "old CL", "EC" to "old EC")
+        val result = fetchEach(listOf("PD", "CL", "BL1"), previous) { code ->
+            if (code == "PD") "new PD" else throw AppError.Http(FootballDataApi.SERVICE, 429, "")
+        }
+        assertEquals(listOf("new PD", "old CL"), result)
+
+        val failed = runCatching { fetchEach(listOf("PD", "CL"), previous) { throw AppError.Http(FootballDataApi.SERVICE, 429, "") } }
+        assertTrue(failed.exceptionOrNull() is AppError.Http)
+    }
+
+    @Test
+    fun `a body cut off halfway is a network error, so the next competition can fall back`() = runTest {
+        server.enqueue(MockResponse().setBody("{\"scorers\":[" + " ".repeat(64 * 1024) + "]}").setSocketPolicy(SocketPolicy.DISCONNECT_DURING_RESPONSE_BODY))
+
+        val error = runCatching { api().scorers("k", "CL") }.exceptionOrNull()
+
+        assertTrue("was $error", error is AppError.Network)
     }
 
     @Test

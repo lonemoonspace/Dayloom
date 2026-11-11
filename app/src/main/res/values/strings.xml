@@ -552,6 +552,9 @@
     <string name="football_matchday">Matchday %1$d</string>
     <string name="football_updated_at">Updated %1$s</string>
     <string name="football_table_team">Team</string>
+    <string name="football_stage_league">League phase</string>
+    <string name="football_zone_qualify">%1$d–%2$d: round of 16</string>
+    <string name="football_zone_playoff">%1$d–%2$d: play-offs</string>
     <string name="football_table_won">W</string>
     <string name="football_table_drawn">D</string>
     <string name="football_table_lost">L</string>

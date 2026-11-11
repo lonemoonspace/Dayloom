@@ -2,6 +2,7 @@ package io.github.lonemoonspace.dayloom.feature.football.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,9 +20,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -36,6 +39,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,26 +61,32 @@ import io.github.lonemoonspace.dayloom.core.ui.theme.statusColors
 import io.github.lonemoonspace.dayloom.feature.football.domain.FootballPolicy
 import io.github.lonemoonspace.dayloom.feature.football.domain.Match
 import io.github.lonemoonspace.dayloom.feature.football.domain.Outcome
-import io.github.lonemoonspace.dayloom.feature.football.domain.Scorers
-import io.github.lonemoonspace.dayloom.feature.football.domain.Standings
+import io.github.lonemoonspace.dayloom.feature.football.domain.ScorersSet
+import io.github.lonemoonspace.dayloom.feature.football.domain.StandingsSet
+import io.github.lonemoonspace.dayloom.feature.football.domain.TableZone
 import io.github.lonemoonspace.dayloom.feature.football.domain.TeamRef
+import java.time.Duration
 import java.time.Instant
 import java.time.ZonedDateTime
 
 /** What the football tab shows, kept per source so each part loads and fails on its own. / 足球标签页的数据，按来源分开，各部分各自加载、各自出错。 */
 internal class FootballTabData(
     val teamId: Int,
+    /** Competition the team was picked from: the default of the competition chips. / 挑选球队时所在的赛事，也是赛事小标签的默认项。 */
+    val league: String,
     val matches: List<Match>?,
     val matchesError: AppError?,
     val matchesStale: Boolean,
-    val standings: Standings?,
+    val standings: StandingsSet?,
     val standingsFetchedAt: Long?,
     val standingsError: AppError?,
     val standingsStale: Boolean,
-    val scorers: Scorers?,
+    val scorers: ScorersSet?,
     val scorersFetchedAt: Long?,
     val scorersError: AppError?,
     val scorersStale: Boolean,
+    /** Older than this, a single table is marked as cached too. / 单张表超过这个时长也标注「缓存」。 */
+    val tableMaxAge: Duration,
 )
 
 private enum class FootballSection(val label: Int) {
@@ -92,6 +103,10 @@ private enum class FootballSection(val label: Int) {
 @Composable
 internal fun FootballTab(data: FootballTabData, now: ZonedDateTime, crests: CrestLoader) {
     var section by rememberSaveable { mutableStateOf(FootballSection.FIXTURES) }
+    // One choice for both the table and the scorers, starting on the league. / 积分榜与射手榜共用一个选择，从联赛开始。
+    var chosen by rememberSaveable(data.league) { mutableStateOf(data.league) }
+    val codes = data.standings?.codes.orEmpty()
+    val competition = chosen.takeIf { it in codes } ?: data.league.takeIf { it in codes } ?: codes.firstOrNull() ?: data.league
     Column(Modifier.fillMaxSize()) {
         SingleChoiceSegmentedButtonRow(
             Modifier
@@ -107,6 +122,27 @@ internal fun FootballTab(data: FootballTabData, now: ZonedDateTime, crests: Cres
                 ) { Text(stringResource(entry.label), maxLines = 1) }
             }
         }
+        // Fixtures stay one list across competitions; each card already names its competition.
+        // 赛程不按赛事拆开；每张卡片上本来就写着赛事。
+        if (section != FootballSection.FIXTURES && codes.size > 1) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                // Scrolls sideways when long names do not fit. / 名称太长放不下时可以横向滑动。
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp),
+            ) {
+                val tables = data.standings?.tables.orEmpty()
+                tables.forEach { t ->
+                    FilterChip(
+                        selected = t.competitionCode == competition,
+                        onClick = { chosen = t.competitionCode },
+                        label = { Text(competitionLabel(t.competitionCode, t.competition), maxLines = 1) },
+                    )
+                }
+            }
+        }
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 12.dp).plusBars(),
@@ -114,8 +150,8 @@ internal fun FootballTab(data: FootballTabData, now: ZonedDateTime, crests: Cres
         ) {
             when (section) {
                 FootballSection.FIXTURES -> fixtures(data, now, crests)
-                FootballSection.TABLE -> table(data, now, crests)
-                FootballSection.SCORERS -> scorers(data, now, crests)
+                FootballSection.TABLE -> table(data, competition, now, crests)
+                FootballSection.SCORERS -> scorers(data, competition, now, crests)
             }
         }
     }
@@ -148,17 +184,27 @@ private fun LazyListScope.fixtures(data: FootballTabData, now: ZonedDateTime, cr
     item(key = "attribution") { Attribution() }
 }
 
-private fun LazyListScope.table(data: FootballTabData, now: ZonedDateTime, crests: CrestLoader) {
+private fun LazyListScope.table(data: FootballTabData, competition: String, now: ZonedDateTime, crests: CrestLoader) {
     data.standingsError?.let { error -> item(key = "error") { ErrorLine(error) } }
-    val standings = data.standings
+    val standings = data.standings?.tables?.firstOrNull { it.competitionCode == competition }
     val group = standings?.groups?.let { groups -> groups.firstOrNull { g -> g.rows.any { it.team.id == data.teamId } } ?: groups.firstOrNull() }
     if (standings == null || group == null || group.rows.isEmpty()) {
         if (data.standingsError == null) item(key = "empty") { Hint(stringResource(R.string.football_no_table)) }
         return
     }
     item(key = "header") {
-        LeagueHeader(competitionLabel(standings.competitionCode, standings.competition), standings.matchday, data.standingsFetchedAt, data.standingsStale, now)
+        LeagueHeader(
+            competitionLabel(standings.competitionCode, standings.competition),
+            standings.matchday,
+            standings.fetchedAt.takeIf { it > 0 } ?: data.standingsFetchedAt,
+            data.standingsStale || isOld(standings.fetchedAt, data.tableMaxAge, now),
+            now,
+            stage = if (standings.stage == FootballPolicy.LEAGUE_STAGE) stringResource(R.string.football_stage_league) else null,
+        )
     }
+    // Zone bars only where a position decides the next round; the gap is kept on every line so the columns stay aligned.
+    // 只有名次决定下一轮去向的表才有色条；每一行都留出色条的位置，各列保持对齐。
+    val zoned = group.rows.any { FootballPolicy.zone(standings.stage, it.position) != TableZone.NONE }
     if (group.group.isNotBlank()) {
         item(key = "group") {
             Hint(stringResource(R.string.football_group, group.group.removePrefix("GROUP_").replace('_', ' ')))
@@ -166,6 +212,7 @@ private fun LazyListScope.table(data: FootballTabData, now: ZonedDateTime, crest
     }
     item(key = "columns") {
         TableLine(highlight = false) {
+            if (zoned) ZoneBar(TableZone.NONE, describe = false)
             HeadCell("#", 24.dp, TextAlign.Start)
             HeadCell(stringResource(R.string.football_table_team), null, TextAlign.Start)
             HeadCell(stringResource(R.string.football_table_played), 26.dp)
@@ -179,6 +226,7 @@ private fun LazyListScope.table(data: FootballTabData, now: ZonedDateTime, crest
     itemsIndexed(group.rows, key = { _, row -> "row-${row.position}-${row.team.id}" }) { _, row ->
         val ours = row.team.id == data.teamId
         TableLine(highlight = ours) {
+            if (zoned) ZoneBar(FootballPolicy.zone(standings.stage, row.position))
             NumCell(row.position.toString(), 24.dp, ours, TextAlign.Start)
             Crest(row.team, crests, size = 20.dp)
             Spacer(Modifier.width(8.dp))
@@ -198,18 +246,25 @@ private fun LazyListScope.table(data: FootballTabData, now: ZonedDateTime, crest
             NumCell(row.points.toString(), 36.dp, bold = true)
         }
     }
+    if (zoned) item(key = "zones") { ZoneLegend() }
     item(key = "attribution") { Attribution() }
 }
 
-private fun LazyListScope.scorers(data: FootballTabData, now: ZonedDateTime, crests: CrestLoader) {
+private fun LazyListScope.scorers(data: FootballTabData, competition: String, now: ZonedDateTime, crests: CrestLoader) {
     data.scorersError?.let { error -> item(key = "error") { ErrorLine(error) } }
-    val scorers = data.scorers
+    val scorers = data.scorers?.tables?.firstOrNull { it.competitionCode == competition }
     if (scorers == null || scorers.scorers.isEmpty()) {
         if (data.scorersError == null) item(key = "empty") { Hint(stringResource(R.string.football_no_scorers)) }
         return
     }
     item(key = "header") {
-        LeagueHeader(competitionLabel(scorers.competitionCode, scorers.competition), scorers.matchday, data.scorersFetchedAt, data.scorersStale, now)
+        LeagueHeader(
+            competitionLabel(scorers.competitionCode, scorers.competition),
+            scorers.matchday,
+            scorers.fetchedAt.takeIf { it > 0 } ?: data.scorersFetchedAt,
+            data.scorersStale || isOld(scorers.fetchedAt, data.tableMaxAge, now),
+            now,
+        )
     }
     item(key = "columns") {
         TableLine(highlight = false) {
@@ -265,9 +320,10 @@ private fun SectionTitle(text: String) {
 
 /** "LaLiga · Matchday 8 · Updated 21:19". / 「西甲 · 第 8 轮 · 更新于 21:19」。 */
 @Composable
-private fun LeagueHeader(competition: String, matchday: Int?, fetchedAt: Long?, stale: Boolean, now: ZonedDateTime) {
+private fun LeagueHeader(competition: String, matchday: Int?, fetchedAt: Long?, stale: Boolean, now: ZonedDateTime, stage: String? = null) {
     val parts = listOfNotNull(
         competition.takeIf { it.isNotBlank() },
+        stage,
         matchday?.let { stringResource(R.string.football_matchday, it) },
         fetchedAt?.let { stringResource(R.string.football_updated_at, Instant.ofEpochMilli(it).atZone(now.zone).format(rememberTimeFormatter())) },
     )
@@ -289,6 +345,57 @@ private fun LeagueHeader(competition: String, matchday: Int?, fetchedAt: Long?, 
 @Composable
 private fun StaleChip() {
     StatusChip(stringResource(R.string.common_cached), MaterialTheme.statusColors.gray)
+}
+
+/** A table kept from an earlier round after a failed request can be older than its snapshot. / 请求失败后沿用的旧表可能比整份快照更旧。 */
+private fun isOld(fetchedAt: Long, maxAge: Duration, now: ZonedDateTime): Boolean =
+    fetchedAt > 0 && Duration.between(Instant.ofEpochMilli(fetchedAt), now.toInstant()) > maxAge
+
+/** The coloured edge of a table line; [TableZone.NONE] keeps the space empty. / 表格行左侧的色条；[TableZone.NONE] 只留空位。 */
+@Composable
+private fun ZoneBar(zone: TableZone, describe: Boolean = true) {
+    val color = when (zone) {
+        TableZone.QUALIFY -> MaterialTheme.statusColors.green
+        TableZone.PLAYOFF -> MaterialTheme.statusColors.amber
+        TableZone.NONE -> Color.Transparent
+    }
+    // Screen readers hear the zone, which the colour alone cannot tell. / 读屏会读出区域，单靠颜色无法传达。
+    val label = if (describe) zoneLabel(zone) else null
+    Box(
+        Modifier
+            .then(if (label != null) Modifier.semantics { contentDescription = label } else Modifier)
+            .width(3.dp)
+            .height(18.dp)
+            .background(color, RoundedCornerShape(2.dp)),
+    )
+    Spacer(Modifier.width(6.dp))
+}
+
+/** What the two bar colours mean, under the table. / 表格下方说明两种色条的含义。 */
+@Composable
+private fun ZoneLegend() {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(start = 8.dp, top = 2.dp),
+    ) {
+        ZoneBar(TableZone.QUALIFY, describe = false)
+        LegendText(zoneLabel(TableZone.QUALIFY).orEmpty())
+        Spacer(Modifier.width(16.dp))
+        ZoneBar(TableZone.PLAYOFF, describe = false)
+        LegendText(zoneLabel(TableZone.PLAYOFF).orEmpty())
+    }
+}
+
+@Composable
+private fun zoneLabel(zone: TableZone): String? = when (zone) {
+    TableZone.QUALIFY -> stringResource(R.string.football_zone_qualify, FootballPolicy.QUALIFY_PLACES.first, FootballPolicy.QUALIFY_PLACES.last)
+    TableZone.PLAYOFF -> stringResource(R.string.football_zone_playoff, FootballPolicy.PLAYOFF_PLACES.first, FootballPolicy.PLAYOFF_PLACES.last)
+    TableZone.NONE -> null
+}
+
+@Composable
+private fun LegendText(text: String) {
+    Text(text, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
 }
 
 /** One table line; the followed team's is filled. / 表格的一行；关注球队那一行加底色。 */

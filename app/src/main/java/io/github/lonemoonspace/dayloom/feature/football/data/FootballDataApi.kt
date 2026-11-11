@@ -13,6 +13,7 @@ import io.github.lonemoonspace.dayloom.feature.football.domain.Standings
 import io.github.lonemoonspace.dayloom.feature.football.domain.TableGroup
 import io.github.lonemoonspace.dayloom.feature.football.domain.TableRow
 import io.github.lonemoonspace.dayloom.feature.football.domain.TeamRef
+import java.io.IOException
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeParseException
@@ -47,6 +48,15 @@ class FootballDataApi(
         get(key, url, TeamsDto.serializer(), "teams response").teams.map { it.toRef() }.sortedBy { it.label }
     }
 
+    /**
+     * Codes of the competitions the team plays in this season, including ones outside the free tier.
+     * 球队本赛季参加的赛事代码，包括免费档以外的赛事。
+     */
+    suspend fun runningCompetitions(key: String, teamId: Int): List<String> = withContext(io) {
+        val url = baseUrl.newBuilder().addPathSegment("teams").addPathSegment(teamId.toString()).build()
+        get(key, url, TeamDetailDto.serializer(), "team response").runningCompetitions.map { it.code }.filter { it.isNotBlank() }
+    }
+
     suspend fun teamMatches(key: String, teamId: Int, from: LocalDate, to: LocalDate): List<Match> = withContext(io) {
         val url = baseUrl.newBuilder()
             .addPathSegment("teams").addPathSegment(teamId.toString()).addPathSegment("matches")
@@ -60,7 +70,8 @@ class FootballDataApi(
         val url = baseUrl.newBuilder().addPathSegment("competitions").addPathSegment(competition).addPathSegment("standings").build()
         val dto = get(key, url, StandingsDto.serializer(), "standings response")
         // Only the overall tables; home and away tables repeat the same teams. / 只取总表；主场表、客场表是同一批球队的重复。
-        val groups = dto.standings.filter { it.type == "TOTAL" }.map { s ->
+        val totals = dto.standings.filter { it.type == "TOTAL" }
+        val groups = totals.map { s ->
             TableGroup(
                 group = s.group.orEmpty(),
                 rows = s.table.map { r ->
@@ -73,6 +84,7 @@ class FootballDataApi(
             competition = dto.competition.name,
             groups = groups,
             matchday = dto.season?.currentMatchday,
+            stage = totals.firstOrNull()?.stage.orEmpty(),
         )
     }
 
@@ -93,7 +105,13 @@ class FootballDataApi(
     private fun <T> get(key: String, url: HttpUrl, serializer: KSerializer<T>, what: String): T {
         val request = Request.Builder().url(url).header("X-Auth-Token", key).build()
         http.newCall(request).executeOrAppError().use { response ->
-            val body = response.body.string()
+            // Reading the body can also time out or be cut off; that is a network failure like any other.
+            // 读响应体也可能超时或被中断；这和其他网络失败一样处理。
+            val body = try {
+                response.body.string()
+            } catch (e: IOException) {
+                throw AppError.Network(e)
+            }
             // The message says what is wrong (restricted competition, bad key), so a short excerpt is kept.
             // 错误信息会说明原因（赛事不在套餐内、Key 不对），所以保留一小段。
             if (!response.isSuccessful) throw AppError.Http(SERVICE, response.code, body.take(200))
@@ -135,6 +153,9 @@ internal data class TeamDto(
 ) {
     fun toRef() = TeamRef(id, name.orEmpty(), shortName.orEmpty(), tla.orEmpty(), crest.orEmpty())
 }
+
+@Serializable
+internal data class TeamDetailDto(val runningCompetitions: List<CompetitionDto> = emptyList())
 
 @Serializable
 internal data class TeamsDto(val teams: List<TeamDto> = emptyList())
@@ -216,7 +237,12 @@ internal data class TableRowDto(
 )
 
 @Serializable
-internal data class StandingDto(val type: String? = null, val group: String? = null, val table: List<TableRowDto> = emptyList())
+internal data class StandingDto(
+    val stage: String? = null,
+    val type: String? = null,
+    val group: String? = null,
+    val table: List<TableRowDto> = emptyList(),
+)
 
 @Serializable
 internal data class SeasonDto(val currentMatchday: Int? = null)

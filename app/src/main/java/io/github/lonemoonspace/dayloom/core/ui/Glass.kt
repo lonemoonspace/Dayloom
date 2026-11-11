@@ -8,14 +8,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
+import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.blur.HazeBlurStyle
+import dev.chrisbanes.haze.blur.HazeColorEffect
+import dev.chrisbanes.haze.blur.hazeBlur
 
 // Only the two bars are blurred; cards stay solid, because small times and status colours lose contrast on a blurred background.
 // 只有两条栏做模糊，卡片保持实色：小字号的时刻与状态色在模糊底上对比度会明显下降。
@@ -43,28 +46,30 @@ fun PaddingValues.plusBars(top: Boolean = false): PaddingValues {
     )
 }
 
-@Composable
-@ReadOnlyComposable
-private fun glassStyle(): HazeStyle {
-    val surface = MaterialTheme.colorScheme.surface
-    return HazeStyle(
-        backgroundColor = surface,
-        tints = listOf(HazeTint(surface.copy(alpha = 0.55f))),
-        blurRadius = 24.dp,
-        noiseFactor = 0f,
-        fallbackTint = HazeTint(surface.copy(alpha = 0.9f)),
-    )
+/**
+ * Blur Styles compare by identity, so one is kept per surface colour; a new one each composition would redo the effect.
+ * 模糊样式按对象身份比较，所以每种表面色只建一个；每次重组都新建会让效果重新配置。
+ */
+private fun glassStyle(surface: Color): HazeBlurStyle = HazeBlurStyle {
+    backgroundColor(surface)
+    colorEffects(listOf(HazeColorEffect.tint(surface.copy(alpha = 0.55f))))
+    blurRadius(24.dp)
+    noiseFactor(0f)
+    fallbackColorEffect(HazeColorEffect.tint(surface.copy(alpha = 0.9f)))
 }
 
 /**
- * Glass background for a bar. Without a blur source, a translucent fill: hazeEffect with no state would blur the bar's own content.
- * 栏的玻璃底。没有模糊源时画半透明底色：不给 state 的 hazeEffect 会去模糊栏自己的内容。
+ * Glass background for a bar. Without a blur source, a translucent fill, since blurring with no source would blur the bar's own content.
+ * 栏的玻璃底。没有模糊源时画半透明底色：没有模糊源的模糊会去模糊栏自己的内容。
  */
 @Composable
 fun Modifier.glass(): Modifier {
     val state = LocalHazeState.current
+    val surface = MaterialTheme.colorScheme.surface
     return if (state != null) {
-        hazeEffect(state = state, style = glassStyle())
+        val input = remember(state) { HazeInput.Sources(state) }
+        val style = remember(surface) { glassStyle(surface) }
+        hazeBlur(input = input, style = style)
     } else {
         background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
     }

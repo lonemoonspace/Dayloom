@@ -4,7 +4,7 @@ Each version has an English section followed by a Chinese one. The heading must 
 looks it up literally.
 每个版本先写英文、再写中文。标题必须恰好是 `## X.Y.Z`：发版 workflow 按字面查找。
 
-## Unreleased
+## 0.3.0
 
 - Commute alerts: a new "Weekdays only" switch under the alert switch of the train and bus commutes, on by default, so a
   late train no longer rings on Saturday and Sunday.
@@ -29,7 +29,6 @@ looks it up literally.
   expiry reminders card no longer cuts off "PM".
 - Project: Dependabot proposes dependency and Actions updates weekly; workflow actions are pinned to commit hashes; the
   home cards are drawn in tests (`app/src/test/screenshots/`) and CI reports the ones whose look changed.
-
 - Themes: Settings has a new "Theme" card. Besides the wallpaper colours (still the default) there are five hand-picked
   schemes: Nordic Dawn, Warm Linen and Sage Forest in light and dark, and the dark-only OLED Obsidian (pure black page)
   and Aurora Twilight. Each choice shows dots for its page, card and accent colours. In light mode the dark-only schemes

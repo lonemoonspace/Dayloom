@@ -213,6 +213,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.core)
     // Blur behind the glass top and bottom bars. / 玻璃顶栏与底栏背后的模糊。
     implementation(libs.haze)
+    implementation(libs.haze.blur)
     // Drag-to-reorder for home cards. / 首页卡片的拖动排序。
     implementation(libs.reorderable)
     // Lunar dates and solar terms for the calendar module, behind its LunarProvider. / 日历模块的农历与节气，藏在 LunarProvider 后面。

@@ -17,6 +17,10 @@ updates:
     ignore:
       # Pinned on purpose, see gradle/libs.versions.toml. / 有意固定版本，原因见 gradle/libs.versions.toml。
       - dependency-name: 'androidx.datastore:*'
+      # Haze 2 split the blur into its own artifact with a new API; moving the glass bars over is a change of its own.
+      # Haze 2 把模糊效果拆成单独的库并换了 API；玻璃栏迁过去要单独做。
+      - dependency-name: 'dev.chrisbanes.haze:*'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: github-actions
     directory: /

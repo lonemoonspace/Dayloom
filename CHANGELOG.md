@@ -4,6 +4,16 @@ Each version has an English section followed by a Chinese one. The heading must 
 looks it up literally.
 每个版本先写英文、再写中文。标题必须恰好是 `## X.Y.Z`：发版 workflow 按字面查找。
 
+## Unreleased
+
+- Train, bus and departure board rows: the departure time, the status pill and, on the train and bus cards, the
+  arrival line up with the line chips; the opposing-train warning, the folded direct option and the struck timetable
+  time sit below without pulling them down.
+  The departure board shows the platform as the same outlined pill as the train card, right after the line.
+
+- 火车、公交与发车板的行：出发时刻、状态胶囊，以及火车与公交卡片上的到达时刻，都与线路标签对齐；对向车晚点提示、叠在下面的直达方案和划掉的时刻表
+  时间放在下面，不再把它们往下拉。发车板的站台改成与火车卡片相同的描边胶囊，紧跟在线路后面。
+
 ## 0.3.1
 
 - Settings: the long page is now a short list. "General" has Theme, Language and time zone, Places and

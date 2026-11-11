@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.lonemoonspace.dayloom.R
+import io.github.lonemoonspace.dayloom.core.i18n.UiText
 import io.github.lonemoonspace.dayloom.core.i18n.uiText
 import io.github.lonemoonspace.dayloom.core.location.Place
 import io.github.lonemoonspace.dayloom.core.module.ConfigState
@@ -154,6 +155,10 @@ private class CommuteInstance(private val ctx: ModuleContext, private val kind: 
 
     override val configured = route.map { if (it.isSet) ConfigState.Ready else ConfigState.NeedsSetup(uiText(R.string.transit_setup_commute)) }
 
+    override val settingsStatus = route.map<CommuteRoute, UiText?> {
+        if (it.isSet) uiText(R.string.transit_settings_status, UiText.Raw(it.origin.name), UiText.Raw(it.destination.name)) else null
+    }
+
     override val homeCards = listOf(
         HomeCard(key = "commute", title = kindTitle(kind), defaultOrder = 150 + kind.ordinal * 5, formerKey = kind.formerCardKey) {
             val snapshot by source.observe().collectAsStateWithLifecycle(initialValue = null)
@@ -222,6 +227,10 @@ private class DeparturesInstance(private val ctx: ModuleContext) : ModuleInstanc
 
     override val configured = favourites.map { list ->
         if (list.any { it.stop.isSet }) ConfigState.Ready else ConfigState.NeedsSetup(uiText(R.string.transit_setup_boards))
+    }
+
+    override val settingsStatus = favourites.map<List<FavouriteBoard>, UiText?> { list ->
+        list.count { it.stop.isSet }.takeIf { it > 0 }?.let { UiText.Plural(R.plurals.transit_boards_status, it) }
     }
 
     override val homeCards = listOf(

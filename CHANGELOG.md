@@ -6,11 +6,19 @@ looks it up literally.
 
 ## Unreleased
 
+- Settings: the long page is now a short list. "General" has Theme, Language and time zone, Places and
+  Notifications; "Modules" has one row per module with its switch; "Other" has About. Each row says how it is set now
+  (the commute's two stops, how many feeds, "Off", or what still needs setting up), and tapping it opens that page. Back
+  returns to the list, and tapping Settings again on a page does too. A gear in the top bar of the football and news tabs
+  opens that module's settings directly; Back returns to the tab.
 - Football: the table and top scorers tabs also cover the other competitions the followed team plays in this season,
   as far as the free tier of football-data.org reaches (for most top clubs, the Champions League). A row of chips under
   the tab switch picks the competition; it starts on the league and is shared by both tabs. Fixtures stay one list. In
   a UEFA league phase a coloured edge marks places 1–8 (round of 16) and 9–24 (play-offs), with a legend under the table.
 
+- 设置：原来很长的一页改成一张简短的目录。「通用」里是外观与主题、语言与时区、地点和通知；「模块」里每个模块一行，开关就在
+  这一行上；「其他」里是关于。每行下面写着现在的设置（通勤的两个站点、订阅了几个源、「已关闭」，或者还缺哪项设置），点一下
+  打开那一页。返回键回到目录，在子页面上再点一次「设置」也会回到目录。足球和新闻标签页的顶栏多了一个齿轮，直接打开这个模块的设置，返回键回到标签页。
 - 足球：积分榜和射手榜也能看关注球队本赛季参加的其他赛事，只要 football-data.org 免费档覆盖（多数豪门就是欧冠）。分段按钮下面
   多了一排赛事小标签用来切换，默认停在联赛，两页共用同一个选择；赛程仍是一张汇总列表。欧战联赛阶段的积分榜左侧用色条标出
   1–8 名（直接进十六强）与 9–24 名（附加赛），表下有图例。

@@ -20,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.lonemoonspace.dayloom.R
+import io.github.lonemoonspace.dayloom.core.i18n.UiText
 import io.github.lonemoonspace.dayloom.core.i18n.uiText
 import io.github.lonemoonspace.dayloom.core.module.CardPlacement
 import io.github.lonemoonspace.dayloom.core.module.ConfigState
@@ -157,6 +158,11 @@ private class FootballInstance(private val ctx: ModuleContext) : ModuleInstance 
             s.team.id <= 0 -> ConfigState.NeedsSetup(uiText(R.string.football_setup_team))
             else -> ConfigState.Ready
         }
+    }
+
+    /** The followed team, named as elsewhere in the app. / 关注的球队，名称写法与 App 其他地方一致。 */
+    override val settingsStatus: Flow<UiText?> = store.flow.map { s ->
+        s.team.takeIf { it.id > 0 }?.let { UiText.Raw(it.label) }
     }
 
     /** Around match time only; at other times the card takes no space. / 只在比赛前后出现；其余时间卡片不占位置。 */

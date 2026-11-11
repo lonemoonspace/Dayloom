@@ -129,7 +129,8 @@ interface ModuleInstance {
     val sources: List<CachedSource<*, *>>          // Data sources, registered with RefreshCoordinator
     val homeCards: List<HomeCard>                  // Home screen cards
     val tab: ModuleTab?                            // Own tab (football, news)
-    val settings: SettingsSection?                 // Section on the settings screen
+    val settings: SettingsSection?                 // The module's settings page in Settings
+    val settingsStatus: Flow<UiText?>              // One line under its row in the settings list
     val notificationChannels: List<ChannelSpec>
     val notificationRules: List<NotificationRule<*>>
     val brief: BriefContributor?                   // One line in the morning brief

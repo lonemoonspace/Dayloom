@@ -26,6 +26,10 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,12 +43,14 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import io.github.lonemoonspace.dayloom.R
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -56,6 +62,11 @@ fun CompactTopBar(
      */
     subtitle: String? = null,
     subtitleStyle: TextStyle = MaterialTheme.typography.labelMedium,
+    /**
+     * Shows a back arrow before the title (a settings sub-page); the title then starts where the arrow's touch target ends.
+     * 在标题前显示返回箭头（设置的子页面）；标题紧接在箭头的触摸区域之后。
+     */
+    onBack: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val edge = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
@@ -72,9 +83,14 @@ fun CompactTopBar(
                 }
                 .windowInsetsPadding(WindowInsets.statusBars)
                 .height(44.dp)
-                .padding(start = 20.dp, end = 4.dp),
+                .padding(start = if (onBack == null) 20.dp else 4.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (onBack != null) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
+                }
+            }
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,

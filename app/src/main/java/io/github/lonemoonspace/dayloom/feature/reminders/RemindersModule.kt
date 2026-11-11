@@ -1,6 +1,7 @@
 package io.github.lonemoonspace.dayloom.feature.reminders
 
 import io.github.lonemoonspace.dayloom.R
+import io.github.lonemoonspace.dayloom.core.i18n.UiText
 import io.github.lonemoonspace.dayloom.core.module.CardPlacement
 import io.github.lonemoonspace.dayloom.core.module.FeatureModule
 import io.github.lonemoonspace.dayloom.core.module.HomeCard
@@ -16,6 +17,7 @@ import io.github.lonemoonspace.dayloom.feature.reminders.domain.ReminderRule
 import io.github.lonemoonspace.dayloom.feature.reminders.domain.briefLine
 import io.github.lonemoonspace.dayloom.feature.reminders.ui.RemindersCard
 import io.github.lonemoonspace.dayloom.feature.reminders.ui.RemindersSettingsSection
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -62,6 +64,10 @@ private class RemindersInstance(private val ctx: ModuleContext) : ModuleInstance
                 before = items
             }
         }
+    }
+
+    override val settingsStatus: Flow<UiText?> = store.flow.map { s ->
+        s.items.size.takeIf { it > 0 }?.let { UiText.Plural(R.plurals.reminders_settings_status, it) }
     }
 
     private fun slot(item: ReminderItem) = ReminderPolicy.idNumber(item.id) % NOTIFICATION_SLOTS

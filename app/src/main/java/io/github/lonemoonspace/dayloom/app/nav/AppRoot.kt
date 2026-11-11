@@ -55,6 +55,9 @@ import io.github.lonemoonspace.dayloom.app.home.HomeScreen
 import io.github.lonemoonspace.dayloom.app.home.HomeViewModel
 import io.github.lonemoonspace.dayloom.app.onboarding.OnboardingScreen
 import io.github.lonemoonspace.dayloom.app.settings.PlacesCard
+import io.github.lonemoonspace.dayloom.app.settings.ModuleSettingsScreen
+import io.github.lonemoonspace.dayloom.app.settings.SettingsPage
+import io.github.lonemoonspace.dayloom.app.settings.SettingsPageScreen
 import io.github.lonemoonspace.dayloom.app.settings.SettingsScreen
 import io.github.lonemoonspace.dayloom.app.settings.SettingsViewModel
 import io.github.lonemoonspace.dayloom.app.settings.SharedDataViewModel
@@ -87,8 +90,31 @@ internal object Routes {
     const val HOME = "home"
     const val SETTINGS = "settings"
     private const val MODULE_PREFIX = "module/"
+    private const val SETTINGS_PAGE_PREFIX = "settings/"
+    private const val SETTINGS_MODULE_PREFIX = "settings/module/"
     fun module(id: String) = MODULE_PREFIX + id
     fun moduleIdOf(route: String?): String? = route?.takeIf { it.startsWith(MODULE_PREFIX) }?.removePrefix(MODULE_PREFIX)
+
+    /**
+     * Settings pages opened from the settings list sit on the settings tab's back stack; a module's page opened with the gear
+     * on its own tab sits on that tab's stack instead, and that tab stays selected ([gearPageOf]).
+     * 从设置列表打开的子页面在设置标签页的返回栈上；在模块自己的标签页上点齿轮打开的模块设置页，则在那个标签页的栈上，
+     * 底栏也仍选中那个标签页（[gearPageOf]）。
+     */
+    fun settingsPage(page: SettingsPage) = SETTINGS_PAGE_PREFIX + page.segment
+    fun settingsModule(id: String) = SETTINGS_MODULE_PREFIX + id
+    fun settingsPageOf(route: String?): SettingsPage? =
+        route?.takeIf { it.startsWith(SETTINGS_PAGE_PREFIX) && !it.startsWith(SETTINGS_MODULE_PREFIX) }
+            ?.removePrefix(SETTINGS_PAGE_PREFIX)
+            ?.let(SettingsPage::of)
+    fun settingsModuleOf(route: String?): String? = route?.takeIf { it.startsWith(SETTINGS_MODULE_PREFIX) }?.removePrefix(SETTINGS_MODULE_PREFIX)
+    fun isSettings(route: String?): Boolean = route == SETTINGS || route?.startsWith(SETTINGS_PAGE_PREFIX) == true
+
+    /**
+     * The module whose settings page [route] is when it was opened from that module's tab ([previous] is the tab), else null.
+     * [route] 是从模块标签页（[previous]）点齿轮打开的那个模块的设置页时，返回模块 id；否则返回 null。
+     */
+    fun gearPageOf(route: String?, previous: String?): String? = settingsModuleOf(route)?.takeIf { previous == module(it) }
 }
 
 /**
@@ -145,6 +171,8 @@ private fun settingsViewModel(graph: AppGraph): SettingsViewModel = viewModel(
                 modules = graph.host.modules,
                 settings = graph.appSettings,
                 sectionsOf = { graph.host.instanceOf(it).settingsSections },
+                statusOf = { graph.host.instanceOf(it).settingsStatus },
+                configOf = { graph.host.instanceOf(it).configured },
                 zone = graph.zone,
                 language = graph.language,
             )
@@ -192,6 +220,11 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?, weave: Boolean) {
         }
     }
 
+    // One pair for all settings pages instead of one per page, each of which would read every module's status line.
+    // 所有设置页共用这一对，而不是每页各建一份——那样每一页都要读一遍所有模块的状态行。
+    val settingsVm = settingsViewModel(graph)
+    val sharedVm = sharedDataViewModel(graph)
+
     val homeVm: HomeViewModel = viewModel(
         factory = viewModelFactory {
             initializer { HomeViewModel(graph.host.active, graph.appSettings, graph.coordinator, graph.clock) }
@@ -202,7 +235,8 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?, weave: Boolean) {
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val route = backStackEntry?.destination?.route ?: Routes.HOME
-    val currentModuleId = Routes.moduleIdOf(route)
+    val gearModuleId = Routes.gearPageOf(route, navController.previousBackStackEntry?.destination?.route)
+    val currentModuleId = Routes.moduleIdOf(route) ?: gearModuleId
     // Routes for every registered module, enabled or not, so the graph never loses a destination that is on the back stack.
     // 为每个已登记的模块建路由（不论是否开启），图里就不会缺少返回栈上的目的地。
     val moduleIds = remember(graph) { graph.host.modules.map { it.id } }
@@ -244,8 +278,24 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?, weave: Boolean) {
                     }
                     Routes.SETTINGS -> CompactTopBar(title = stringResource(R.string.nav_settings))
                     else -> {
-                        val module = tabModules.firstOrNull { it.module.id == currentModuleId }
-                        CompactTopBar(title = module?.let { stringResource(it.module.title) }.orEmpty())
+                        val settingsPage = Routes.settingsPageOf(route)
+                        val settingsModule = Routes.settingsModuleOf(route)?.let { id -> graph.host.modules.firstOrNull { it.id == id } }
+                        when {
+                            settingsPage != null -> CompactTopBar(title = stringResource(settingsPage.title), onBack = { navController.popBackStack() })
+                            settingsModule != null -> CompactTopBar(title = stringResource(settingsModule.title), onBack = { navController.popBackStack() })
+                            else -> {
+                                val module = tabModules.firstOrNull { it.module.id == currentModuleId }
+                                CompactTopBar(title = module?.let { stringResource(it.module.title) }.orEmpty()) {
+                                    // Straight to this module's settings; Back returns to the tab. / 直接打开这个模块的设置；返回键回到标签页。
+                                    if (module != null) {
+                                        val label = stringResource(R.string.settings_module_settings, stringResource(module.module.title))
+                                        IconButton(onClick = { navController.navigate(Routes.settingsModule(module.module.id)) }) {
+                                            Icon(Icons.Default.Settings, contentDescription = label)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             },
@@ -259,11 +309,16 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?, weave: Boolean) {
                     tabModules.forEach { m ->
                         val tab = m.instance.tab ?: return@forEach
                         val label = stringResource(tab.label)
-                        add(NavTab(currentModuleId == m.module.id, label, { navController.navigateToTab(Routes.module(m.module.id)) }) { tint ->
+                        val onClick = {
+                            // On this tab's settings page, the tab goes back to the tab itself. / 在这个标签页的设置页上，点标签页回到标签页本身。
+                            if (gearModuleId == m.module.id) navController.popBackStack() else navController.navigateToTab(Routes.module(m.module.id))
+                            Unit
+                        }
+                        add(NavTab(currentModuleId == m.module.id, label, onClick) { tint ->
                             tab.iconContent?.invoke(tint) ?: Icon(painterResource(tab.icon), contentDescription = null, tint = tint)
                         })
                     }
-                    add(NavTab(route == Routes.SETTINGS, settings, { navController.navigateToTab(Routes.SETTINGS) }) { tint ->
+                    add(NavTab(Routes.isSettings(route) && gearModuleId == null, settings, { navController.openSettingsTab(route) }) { tint ->
                         Icon(Icons.Default.Settings, contentDescription = null, tint = tint)
                     })
                 }
@@ -308,22 +363,41 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?, weave: Boolean) {
                             }
                         }
                         composable(Routes.SETTINGS) {
-                            val vm = settingsViewModel(graph)
-                            val sharedVm = sharedDataViewModel(graph)
-                            val state by vm.state.collectAsStateWithLifecycle()
+                            val state by settingsVm.state.collectAsStateWithLifecycle()
+                            val places by sharedVm.placeList.collectAsStateWithLifecycle()
                             SettingsScreen(
                                 state = state,
-                                onLanguage = vm::setLanguage,
-                                onTimeZone = vm::setTimeZone,
-                                onModuleEnabled = vm::setModuleEnabled,
-                                onMorningBrief = vm::setMorningBrief,
-                                onMorningBriefTime = vm::setMorningBriefTime,
-                                onThemePreset = vm::setThemePreset,
-                                onWeaveBackground = vm::setWeaveBackground,
-                            ) {
-                                val places by sharedVm.placeList.collectAsStateWithLifecycle()
-                                val editor by sharedVm.editor.collectAsStateWithLifecycle()
-                                PlacesCard(places, editor, sharedVm)
+                                places = places,
+                                onOpenPage = { navController.navigate(Routes.settingsPage(it)) { launchSingleTop = true } },
+                                onOpenModule = { navController.navigate(Routes.settingsModule(it)) { launchSingleTop = true } },
+                                onModuleEnabled = settingsVm::setModuleEnabled,
+                            )
+                        }
+                        SettingsPage.entries.forEach { page ->
+                            composable(Routes.settingsPage(page)) {
+                                val state by settingsVm.state.collectAsStateWithLifecycle()
+                                SettingsPageScreen(
+                                    page = page,
+                                    state = state,
+                                    onLanguage = settingsVm::setLanguage,
+                                    onTimeZone = settingsVm::setTimeZone,
+                                    onMorningBrief = settingsVm::setMorningBrief,
+                                    onMorningBriefTime = settingsVm::setMorningBriefTime,
+                                    onThemePreset = settingsVm::setThemePreset,
+                                    onWeaveBackground = settingsVm::setWeaveBackground,
+                                ) {
+                                    val places by sharedVm.placeList.collectAsStateWithLifecycle()
+                                    val editor by sharedVm.editor.collectAsStateWithLifecycle()
+                                    PlacesCard(places, editor, sharedVm)
+                                }
+                            }
+                        }
+                        moduleIds.forEach { id ->
+                            composable(Routes.settingsModule(id)) {
+                                val state by settingsVm.state.collectAsStateWithLifecycle()
+                                // Before the first read the list is empty; the page fills in a moment later. / 第一次读到之前列表为空，稍后页面就会填上。
+                                val toggle = state.modules.firstOrNull { it.module.id == id } ?: return@composable
+                                ModuleSettingsScreen(toggle, settingsVm::setModuleEnabled)
                             }
                         }
                         moduleIds.forEach { id ->
@@ -365,6 +439,15 @@ private fun ModuleRefresh(coordinator: RefreshCoordinator, active: ActiveModule,
         },
         content = content,
     )
+}
+
+/**
+ * Tapping Settings while on one of its pages goes back to the list, like other apps; from elsewhere it switches tabs.
+ * 在设置的某个子页面上再点「设置」回到设置列表，与其他 App 一致；在别处点则切换标签页。
+ */
+private fun NavHostController.openSettingsTab(route: String) {
+    if (route != Routes.SETTINGS && Routes.isSettings(route) && popBackStack(Routes.SETTINGS, inclusive = false)) return
+    navigateToTab(Routes.SETTINGS)
 }
 
 /** Switches tabs keeping each tab's own back stack and state. / 切换标签页，并保留每个标签页自己的返回栈与状态。 */

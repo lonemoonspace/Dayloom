@@ -23,7 +23,7 @@
     <string name="weather_title">天气</string>
     <string name="weather_summary">所选地点（默认是家）今天的天气与穿衣建议，晚上改看明天；数据来自挪威气象局</string>
     <string name="weather_place">天气地点</string>
-    <string name="weather_setup_place">请在「地点」里设置家</string>
+    <string name="weather_setup_place">家的位置</string>
     <string name="weather_feels_like">体感 %1$d°</string>
     <string name="weather_range">%1$d° ~ %2$d°</string>
     <string name="weather_wind_speed">风 %1$d m/s</string>
@@ -421,7 +421,28 @@
     <string name="settings_license">以 Apache License 2.0 开源</string>
     <string name="settings_source_code">源代码</string>
     <string name="settings_notifications">通知</string>
-    <string name="settings_notifications_note">所有通知都要你自己打开。各模块的通知开关在下面对应模块里。</string>
+    <string name="settings_notifications_note">所有通知都要你自己打开。各模块的通知开关在各自的设置页里。</string>
+    <string name="settings_group_general">通用</string>
+    <string name="settings_group_other">其他</string>
+    <string name="settings_language_time">语言与时区</string>
+    <string name="settings_status_pair">%1$s · %2$s</string>
+    <string name="settings_status_list_separator">、</string>
+    <string name="settings_status_off">已关闭</string>
+    <string name="settings_status_brief">早间简报 %1$s</string>
+    <string name="settings_status_brief_off">早间简报未开启</string>
+    <string name="settings_module_switch">开启这个模块</string>
+    <string name="common_back">返回</string>
+    <string name="settings_module_settings">%1$s设置</string>
+    <string name="transit_settings_status">%1$s → %2$s</string>
+    <plurals name="transit_boards_status">
+        <item quantity="other">%d 个收藏站点</item>
+    </plurals>
+    <plurals name="reminders_settings_status">
+        <item quantity="other">%d 项</item>
+    </plurals>
+    <plurals name="news_settings_status_feeds">
+        <item quantity="other">%d 个订阅源</item>
+    </plurals>
     <string name="brief_title">早间简报</string>
     <string name="brief_time">发送时间</string>
     <string name="brief_switch_summary">每天在下面的时间，汇总各模块的情况发一条</string>

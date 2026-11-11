@@ -28,7 +28,7 @@
     <string name="weather_title">Weather</string>
     <string name="weather_summary">Today\'s weather at a saved place (Home unless you pick another), with what to wear; tomorrow\'s in the evening. From MET Norway</string>
     <string name="weather_place">Weather for</string>
-    <string name="weather_setup_place">Set Home under Places</string>
+    <string name="weather_setup_place">Home location</string>
     <string name="weather_feels_like">Feels like %1$d°</string>
     <string name="weather_range">%1$d° to %2$d°</string>
     <string name="weather_wind_speed">Wind %1$d m/s</string>
@@ -436,7 +436,31 @@
     <string name="settings_license">Open source under the Apache License 2.0</string>
     <string name="settings_source_code">Source code</string>
     <string name="settings_notifications">Notifications</string>
-    <string name="settings_notifications_note">Every notification is off until you turn it on. Module notifications are under each module below.</string>
+    <string name="settings_notifications_note">Every notification is off until you turn it on. Module notifications are on each module\'s own settings page.</string>
+    <string name="settings_group_general">General</string>
+    <string name="settings_group_other">Other</string>
+    <string name="settings_language_time">Language and time zone</string>
+    <string name="settings_status_pair">%1$s · %2$s</string>
+    <string name="settings_status_list_separator">", "</string>
+    <string name="settings_status_off">Off</string>
+    <string name="settings_status_brief">Morning brief at %1$s</string>
+    <string name="settings_status_brief_off">Morning brief off</string>
+    <string name="settings_module_switch">Turn on this module</string>
+    <string name="common_back">Back</string>
+    <string name="settings_module_settings">%1$s settings</string>
+    <string name="transit_settings_status">%1$s → %2$s</string>
+    <plurals name="transit_boards_status">
+        <item quantity="one">%d favourite stop</item>
+        <item quantity="other">%d favourite stops</item>
+    </plurals>
+    <plurals name="reminders_settings_status">
+        <item quantity="one">%d item</item>
+        <item quantity="other">%d items</item>
+    </plurals>
+    <plurals name="news_settings_status_feeds">
+        <item quantity="one">%d feed</item>
+        <item quantity="other">%d feeds</item>
+    </plurals>
     <string name="brief_title">Morning brief</string>
     <string name="brief_time">Send at</string>
     <string name="brief_switch_summary">Every day at the time below, one summary from your modules</string>

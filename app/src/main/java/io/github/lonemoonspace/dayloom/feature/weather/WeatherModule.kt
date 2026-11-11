@@ -19,6 +19,7 @@ import io.github.lonemoonspace.dayloom.core.module.SettingsSection
 import io.github.lonemoonspace.dayloom.core.notify.BriefContributor
 import io.github.lonemoonspace.dayloom.core.ui.PlacePicker
 import io.github.lonemoonspace.dayloom.core.ui.placeTitle
+import io.github.lonemoonspace.dayloom.core.ui.placeTitleText
 import io.github.lonemoonspace.dayloom.feature.weather.data.MetApi
 import io.github.lonemoonspace.dayloom.feature.weather.data.WeatherSource
 import io.github.lonemoonspace.dayloom.feature.weather.domain.Forecast
@@ -85,6 +86,8 @@ private class WeatherInstance(private val ctx: ModuleContext) : ModuleInstance {
     override val configured: Flow<ConfigState> = place.map {
         if (it == null) ConfigState.NeedsSetup(uiText(R.string.weather_setup_place)) else ConfigState.Ready
     }
+
+    override val settingsStatus: Flow<UiText?> = place.map { it?.let(::placeTitleText) }
 
     override val homeCards = listOf(
         HomeCard(key = "now", title = R.string.weather_title, defaultOrder = 100) { Card() },

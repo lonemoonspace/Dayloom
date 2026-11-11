@@ -11,13 +11,29 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
+import io.github.lonemoonspace.dayloom.R
+import io.github.lonemoonspace.dayloom.app.settings.ModuleStatus
+import io.github.lonemoonspace.dayloom.app.settings.ModuleToggle
+import io.github.lonemoonspace.dayloom.app.settings.SettingsScreen
+import io.github.lonemoonspace.dayloom.app.settings.SettingsState
+import io.github.lonemoonspace.dayloom.core.i18n.UiText
+import io.github.lonemoonspace.dayloom.core.i18n.uiText
 import io.github.lonemoonspace.dayloom.core.location.Place
 import io.github.lonemoonspace.dayloom.core.storage.Snapshot
 import io.github.lonemoonspace.dayloom.core.time.FixedClock
 import io.github.lonemoonspace.dayloom.core.ui.LocalAppClock
 import io.github.lonemoonspace.dayloom.core.ui.theme.DayloomTheme
 import io.github.lonemoonspace.dayloom.core.ui.theme.ThemePreset
+import io.github.lonemoonspace.dayloom.feature.calendar.CalendarModule
+import io.github.lonemoonspace.dayloom.feature.football.FootballModule
+import io.github.lonemoonspace.dayloom.feature.news.NewsModule
 import io.github.lonemoonspace.dayloom.feature.news.domain.Headline
+import io.github.lonemoonspace.dayloom.feature.reminders.RemindersModule
+import io.github.lonemoonspace.dayloom.feature.traffic.TrafficModule
+import io.github.lonemoonspace.dayloom.feature.transit.BusModule
+import io.github.lonemoonspace.dayloom.feature.transit.DeparturesModule
+import io.github.lonemoonspace.dayloom.feature.transit.TrainModule
+import io.github.lonemoonspace.dayloom.feature.weather.WeatherModule
 import io.github.lonemoonspace.dayloom.feature.news.domain.SyncSummary
 import io.github.lonemoonspace.dayloom.feature.news.ui.NewsCard
 import io.github.lonemoonspace.dayloom.feature.reminders.RemindersSettings
@@ -234,7 +250,42 @@ class CardScreenshotTest {
      * 每个变体一张图：变体是用 `-` 连起来的 Robolectric 资源限定符（`zh`、`en-night`），同时也是文件名后缀。英文用 12 小时制、
      * 中文用 24 小时制，并且显式设定：不设的话 Android 会去问 JDK 这种语言习惯用哪种，而不同版本的 JDK 对中文的回答不一样。
      */
-    private fun shots(name: String, variants: List<String> = listOf("en", "zh", "en-night"), content: @Composable () -> Unit) {
+    /**
+     * The settings list, which brings its own margins and is taller than one card, so the picture is the whole list.
+     * 设置列表：它自带边距、也比一张卡片高，所以图片是整个列表。
+     */
+    @Test
+    @Config(qualifiers = "w384dp-h1040dp-xhdpi")
+    fun `settings list`() {
+        fun line(text: UiText?) = ModuleStatus.Line(text)
+        val modules = listOf(
+            ModuleToggle(CalendarModule, true, status = line(null)),
+            ModuleToggle(WeatherModule, true, status = line(UiText.Res(R.string.place_home))),
+            ModuleToggle(TrainModule, true, status = line(uiText(R.string.transit_settings_status, UiText.Raw("Lindvik"), UiText.Raw("Nordby")))),
+            ModuleToggle(BusModule, false),
+            ModuleToggle(DeparturesModule, true, status = line(UiText.Plural(R.plurals.transit_boards_status, 2))),
+            ModuleToggle(TrafficModule, true, status = line(uiText(R.string.traffic_card_title, UiText.Res(R.string.place_home), UiText.Res(R.string.place_work)))),
+            ModuleToggle(RemindersModule, true, status = line(UiText.Plural(R.plurals.reminders_settings_status, 3))),
+            ModuleToggle(FootballModule, true, status = ModuleStatus.NeedsSetup(uiText(R.string.football_setup_key))),
+            ModuleToggle(NewsModule, true, status = line(UiText.Plural(R.plurals.news_settings_status_feeds, 12))),
+        )
+        val state = SettingsState(
+            effectiveZone = "Europe/Oslo",
+            themePreset = ThemePreset.NORDIC_DAWN.id,
+            modules = modules,
+            morningBrief = true,
+        )
+        shots("settings-list", margin = false) {
+            SettingsScreen(state, listOf(Place(Place.HOME), Place(Place.WORK)), onOpenPage = {}, onOpenModule = {}, onModuleEnabled = { _, _ -> })
+        }
+    }
+
+    private fun shots(
+        name: String,
+        variants: List<String> = listOf("en", "zh", "en-night"),
+        margin: Boolean = true,
+        content: @Composable () -> Unit,
+    ) {
         for (variant in variants) {
             RuntimeEnvironment.setQualifiers("+$variant")
             val clock = if (variant.startsWith("en")) "12" else "24"
@@ -243,7 +294,7 @@ class CardScreenshotTest {
                 CompositionLocalProvider(LocalAppClock provides FixedClock(now)) {
                     // A fixed preset: the default follows the wallpaper, which a test has none of. / 固定用一个预设：默认配色跟随壁纸，而测试里没有壁纸。
                     DayloomTheme(preset = ThemePreset.NORDIC_DAWN.id) {
-                        Surface(color = MaterialTheme.colorScheme.background) { Column(Modifier.padding(12.dp)) { content() } }
+                        Surface(color = MaterialTheme.colorScheme.background) { Column(Modifier.padding(if (margin) 12.dp else 0.dp)) { content() } }
                     }
                 }
             }

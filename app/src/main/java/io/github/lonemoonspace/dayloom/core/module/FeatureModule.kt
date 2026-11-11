@@ -78,6 +78,15 @@ interface ModuleInstance {
      */
     val settingsSections: List<SettingsSection> get() = listOfNotNull(settings)
 
+    /**
+     * One short line for the module's row in the settings list, e.g. the commute's two stops or how many feeds there are;
+     * null shows [FeatureModule.summary] instead. Only read while Settings is open. It must emit soon (null will do): the row
+     * stays blank until both this and [configured] have.
+     * 设置列表里模块那一行下面的一小行字，比如通勤的两个站点、订阅了几个源；为 null 时显示 [FeatureModule.summary]。只在设置页打开时
+     * 读取。它要尽快发出一个值（null 也行）：它和 [configured] 都发出之前，这一行是空白的。
+     */
+    val settingsStatus: Flow<UiText?> get() = flowOf(null)
+
     val notificationChannels: List<ChannelSpec> get() = emptyList()
 
     val notificationRules: List<NotificationRule<*>> get() = emptyList()

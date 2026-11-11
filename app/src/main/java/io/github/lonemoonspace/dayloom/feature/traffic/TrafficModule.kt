@@ -103,6 +103,10 @@ private class TrafficInstance(private val ctx: ModuleContext) : ModuleInstance {
         }
     }
 
+    override val settingsStatus: Flow<UiText?> = combine(from, to) { a, b ->
+        if (a == null || b == null) null else uiText(R.string.traffic_card_title, placeTitleText(a), placeTitleText(b))
+    }
+
     override val homeCards = listOf(
         HomeCard(key = "route", title = R.string.traffic_title, defaultOrder = 200) {
             val snapshot by source.observe().collectAsStateWithLifecycle(initialValue = null)

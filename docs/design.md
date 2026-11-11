@@ -128,7 +128,8 @@ interface ModuleInstance {
     val sources: List<CachedSource<*, *>>          // 数据源，统一注册到 RefreshCoordinator
     val homeCards: List<HomeCard>                  // 首页卡片
     val tab: ModuleTab?                            // 独立标签页（足球、新闻）
-    val settings: SettingsSection?                 // 设置页分区
+    val settings: SettingsSection?                 // 设置里这个模块的设置页
+    val settingsStatus: Flow<UiText?>              // 设置列表里这一行下面的一行字
     val notificationChannels: List<ChannelSpec>
     val notificationRules: List<NotificationRule<*>>
     val brief: BriefContributor?                   // 早间简报中的一行

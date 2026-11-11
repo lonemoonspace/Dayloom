@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings row icon: a map pin for saved places, tinted by the Icon. / 设置行图标：地图钉，代表已保存的地点，由 Icon 着色。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M12,21c0,0 -6.5,-5.6 -6.5,-10.5a6.5,6.5 0,0 1,13 0c0,4.9 -6.5,10.5 -6.5,10.5zM12,8.5a2,2 0,1 0,0 4a2,2 0,1 0,0 -4z" />
+</vector>

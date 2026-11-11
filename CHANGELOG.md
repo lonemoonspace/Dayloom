@@ -4,6 +4,18 @@ Each version has an English section followed by a Chinese one. The heading must 
 looks it up literally.
 每个版本先写英文、再写中文。标题必须恰好是 `## X.Y.Z`：发版 workflow 按字面查找。
 
+## Unreleased
+
+- Settings: the long page is now a short list. "General" has Theme, Language and time zone, Places and
+  Notifications; "Modules" has one row per module with its switch; "Other" has About. Each row says how it is set now
+  (the commute's two stops, how many feeds, "Off", or what still needs setting up), and tapping it opens that page. Back
+  returns to the list, and tapping Settings again on a page does too. A gear in the top bar of the football and news tabs
+  opens that module's settings directly; Back returns to the tab.
+
+- 设置：原来很长的一页改成一张简短的目录。「通用」里是外观与主题、语言与时区、地点和通知；「模块」里每个模块一行，开关就在
+  这一行上；「其他」里是关于。每行下面写着现在的设置（通勤的两个站点、订阅了几个源、「已关闭」，或者还缺哪项设置），点一下
+  打开那一页。返回键回到目录，在子页面上再点一次「设置」也会回到目录。足球和新闻标签页的顶栏多了一个齿轮，直接打开这个模块的设置，返回键回到标签页。
+
 ## 0.3.0
 
 - Commute alerts: a new "Weekdays only" switch under the alert switch of the train and bus commutes, on by default, so a

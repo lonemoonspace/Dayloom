@@ -140,7 +140,7 @@ private fun Swatches(scheme: ColorScheme, dark: Boolean, modifier: Modifier) {
 }
 
 @StringRes
-private fun ThemePreset.nameRes(): Int = when (this) {
+internal fun ThemePreset.nameRes(): Int = when (this) {
     ThemePreset.NORDIC_DAWN -> R.string.theme_nordic_dawn
     ThemePreset.WARM_LINEN -> R.string.theme_warm_linen
     ThemePreset.SAGE_FOREST -> R.string.theme_sage_forest

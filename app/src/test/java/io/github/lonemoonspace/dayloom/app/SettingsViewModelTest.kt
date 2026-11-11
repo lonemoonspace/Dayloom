@@ -1,9 +1,12 @@
 package io.github.lonemoonspace.dayloom.app
 
 import io.github.lonemoonspace.dayloom.R
+import io.github.lonemoonspace.dayloom.app.settings.ModuleStatus
 import io.github.lonemoonspace.dayloom.app.settings.SettingsViewModel
 import io.github.lonemoonspace.dayloom.core.i18n.AppLanguage
 import io.github.lonemoonspace.dayloom.core.i18n.LanguageChoice
+import io.github.lonemoonspace.dayloom.core.i18n.UiText
+import io.github.lonemoonspace.dayloom.core.module.ConfigState
 import io.github.lonemoonspace.dayloom.core.module.FeatureModule
 import io.github.lonemoonspace.dayloom.core.module.ModuleContext
 import io.github.lonemoonspace.dayloom.core.module.ModuleInstance
@@ -12,7 +15,9 @@ import io.github.lonemoonspace.dayloom.core.storage.InMemoryValueStore
 import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -59,6 +64,50 @@ class SettingsViewModelTest {
         zone = MutableStateFlow(ZoneId.of("Europe/Oslo")),
         language = language,
     )
+
+    @Test
+    fun `each module row says what is missing, else the module's own line`() = runTest {
+        val lines = mapOf("a" to MutableStateFlow<UiText?>(UiText.Raw("Lindvik → Nordby")), "b" to MutableStateFlow<UiText?>(null))
+        val configs = mapOf("a" to MutableStateFlow<ConfigState>(ConfigState.Ready), "b" to MutableStateFlow<ConfigState>(ConfigState.Ready))
+        val vm = SettingsViewModel(
+            modules = modules,
+            settings = settings,
+            sectionsOf = { emptyList() },
+            statusOf = { lines.getValue(it.id) },
+            configOf = { configs.getValue(it.id) },
+            zone = MutableStateFlow(ZoneId.of("Europe/Oslo")),
+            language = language,
+        )
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
+
+        assertEquals(
+            listOf(ModuleStatus.Line(UiText.Raw("Lindvik → Nordby")), ModuleStatus.Line(null)),
+            vm.state.value.modules.map { it.status },
+        )
+
+        val missing = UiText.Raw("stops")
+        configs.getValue("a").value = ConfigState.NeedsSetup(missing)
+        assertEquals(ModuleStatus.NeedsSetup(missing), vm.state.value.modules.first().status)
+    }
+
+    @Test
+    fun `a module that never answers stays loading without holding up the screen`() = runTest {
+        val silent: Flow<UiText?> = emptyFlow()
+        val vm = SettingsViewModel(
+            modules = modules,
+            settings = settings,
+            sectionsOf = { emptyList() },
+            statusOf = { if (it.id == "a") silent else MutableStateFlow(null) },
+            configOf = { MutableStateFlow(ConfigState.Ready) },
+            zone = MutableStateFlow(ZoneId.of("Europe/Oslo")),
+            language = language,
+        )
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
+
+        assertEquals(listOf(ModuleStatus.Loading, ModuleStatus.Line(null)), vm.state.value.modules.map { it.status })
+        vm.setMorningBrief(true)
+        assertTrue(vm.state.value.morningBrief)
+    }
 
     @Test
     fun `module switches show defaults and save explicit choices`() = runTest {

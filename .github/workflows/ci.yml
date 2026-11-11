@@ -43,9 +43,27 @@ jobs:
       - name: Gate (verify + R8)
         run: ./gradlew :app:verifyRelease --stacktrace
 
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results
+          path: app/build/reports/tests/
+          if-no-files-found: ignore
+
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-debug.*
+          if-no-files-found: ignore
+
+      # Last, after the gate's test report is uploaded: this run of the test task writes its own report over it.
       # Draws every home card and compares it with its committed picture. A difference does not fail the build, because a
       # layout change is usually meant; it is listed in the run summary and uploaded, so it is seen before merging. To accept
       # it, copy <name>_actual.png from the artifact over app/src/test/screenshots/<name>.png, or record again on Linux.
+      # 放在最后、门禁的测试报告上传之后：这一次运行测试任务会用自己的报告覆盖它。
       # 画出每张首页卡片并与入库的图片比较。有差别不算构建失败，因为布局改动通常是有意的；差别会列在运行摘要里并上传，合并前能看到。
       # 要接受改动，把 artifact 里的 <名字>_actual.png 覆盖到 app/src/test/screenshots/<名字>.png，或在 Linux 上重新录制。
       - name: Card screenshots
@@ -68,20 +86,4 @@ jobs:
         with:
           name: card-screenshots
           path: app/build/outputs/roborazzi/
-          if-no-files-found: ignore
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: test-results
-          path: app/build/reports/tests/
-          if-no-files-found: ignore
-
-      - name: Upload lint report
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: lint-report
-          path: app/build/reports/lint-results-debug.*
           if-no-files-found: ignore

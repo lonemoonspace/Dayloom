@@ -1,6 +1,7 @@
 package io.github.lonemoonspace.dayloom.app
 
 import android.app.Application
+import android.provider.Settings
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -228,11 +229,16 @@ class CardScreenshotTest {
 
     /**
      * One picture per variant: Robolectric resource qualifiers joined by `-` (`zh`, `en-night`), which is also the file suffix.
-     * 每个变体一张图：变体是用 `-` 连起来的 Robolectric 资源限定符（`zh`、`en-night`），同时也是文件名后缀。
+     * English is drawn with a 12-hour clock and Chinese with a 24-hour one, set explicitly: left unset, Android asks the JDK
+     * what the language prefers, and JDK versions disagree about Chinese.
+     * 每个变体一张图：变体是用 `-` 连起来的 Robolectric 资源限定符（`zh`、`en-night`），同时也是文件名后缀。英文用 12 小时制、
+     * 中文用 24 小时制，并且显式设定：不设的话 Android 会去问 JDK 这种语言习惯用哪种，而不同版本的 JDK 对中文的回答不一样。
      */
     private fun shots(name: String, variants: List<String> = listOf("en", "zh", "en-night"), content: @Composable () -> Unit) {
         for (variant in variants) {
             RuntimeEnvironment.setQualifiers("+$variant")
+            val clock = if (variant.startsWith("en")) "12" else "24"
+            Settings.System.putString(RuntimeEnvironment.getApplication().contentResolver, Settings.System.TIME_12_24, clock)
             captureRoboImage("src/test/screenshots/$name-$variant.png") {
                 CompositionLocalProvider(LocalAppClock provides FixedClock(now)) {
                     // A fixed preset: the default follows the wallpaper, which a test has none of. / 固定用一个预设：默认配色跟随壁纸，而测试里没有壁纸。

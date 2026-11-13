@@ -39,6 +39,9 @@ import io.github.lonemoonspace.dayloom.feature.news.ui.NewsCard
 import io.github.lonemoonspace.dayloom.feature.reminders.RemindersSettings
 import io.github.lonemoonspace.dayloom.feature.reminders.domain.ReminderItem
 import io.github.lonemoonspace.dayloom.feature.reminders.ui.RemindersCard
+import io.github.lonemoonspace.dayloom.feature.todo.TodoSettings
+import io.github.lonemoonspace.dayloom.feature.todo.domain.TodoItem
+import io.github.lonemoonspace.dayloom.feature.todo.ui.TodoCard
 import io.github.lonemoonspace.dayloom.feature.traffic.domain.Direction
 import io.github.lonemoonspace.dayloom.feature.traffic.domain.TrafficLevel
 import io.github.lonemoonspace.dayloom.feature.traffic.domain.TrafficStatus
@@ -226,6 +229,22 @@ class CardScreenshotTest {
             ),
         )
         shots("reminders", variants = listOf("en", "zh")) { RemindersCard(flowOf(settings)) }
+    }
+
+    @Test
+    fun `todo card`() {
+        val settings = TodoSettings(
+            items = listOf(
+                TodoItem("todo1", "Change to winter tyres", due = "2026-10-18", createdAt = 1),
+                TodoItem("todo2", "Pay the rent", due = "2026-10-20", createdAt = 2),
+                TodoItem("todo3", "Book the dentist", due = "2026-10-27", createdAt = 3),
+                TodoItem("todo4", "Buy coffee beans", createdAt = 4),
+                TodoItem("todo5", "Answer the landlord about the heating check and when it suits", createdAt = 5),
+                TodoItem("todo6", "Water the plants", createdAt = 6),
+                TodoItem("todo7", "Return the library books", createdAt = 7, doneAt = fetchedAt),
+            ),
+        )
+        shots("todo") { TodoCard(flowOf(settings)) {} }
     }
 
     @Test

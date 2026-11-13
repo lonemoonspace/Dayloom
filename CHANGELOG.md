@@ -4,6 +4,21 @@ Each version has an English section followed by a Chinese one. The heading must 
 looks it up literally.
 每个版本先写英文、再写中文。标题必须恰好是 `## X.Y.Z`：发版 workflow 按字面查找。
 
+## Unreleased
+
+- New To-do module: a home card for quick notes of things to do. Tap the circle to tick one off (it stays struck through
+  for a few seconds with Undo), tap the title to edit or delete it, and "Add to-do" opens a sheet where the keyboard's
+  Done key saves. A due day is optional (today, tomorrow or a picked day); overdue and today's items carry a red or
+  amber chip and move the card to the top. The card lists the five most urgent; "All" opens the whole list grouped by
+  overdue, today, later and no date, with done items kept for seven days. Stored only on the phone; no notifications.
+- Expiry reminders: the dates now start in one column on every row, whatever the status chip next to them says.
+
+- 新增「待办」模块：首页卡片，随手记下要做的事。点圆圈勾选完成（划线保留几秒，可以撤销），点标题编辑或删除；「添加待办」
+  从底部弹出输入框，键盘上的完成键直接保存。截止日期可选（今天、明天或任选一天）；逾期和今天到期的条目分别带红色、黄色标签，
+  并让卡片置顶。卡片列出最急的五条，「全部」打开完整列表，按逾期、今天、以后、无日期分组，已完成的条目保留七天。数据只存在
+  手机上，不发通知。
+- 到期提醒：每行的日期现在从同一列开始，不再随旁边状态胶囊的宽度错开。
+
 ## 0.3.2
 
 - Train, bus and departure board rows: the departure time, the status pill and, on the train and bus cards, the

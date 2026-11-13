@@ -680,4 +680,37 @@
     <string name="about_source_news">新闻：你自己的 Miniflux 服务器。AI 摘要：你配置的接口。</string>
     <string name="about_source_lunar">农历与节气：用 lunar-java（MIT）在手机上计算。</string>
     <string name="about_privacy_body">Dayloom 没有自己的服务器，也不收集任何数据：没有统计、没有崩溃上报、没有广告。\n\n你的设置、地点与 Key 只保存在本机。不做云备份；换机迁移会复制设置，但不复制 Key——Key 用本机的 Android Keystore 加密。\n\nApp 只联系你打开的模块对应的服务，并且只发送它需要的内容：家的坐标发给挪威气象局，你的站点发给 Entur，地点搜索里输入的文字发给 Google，没有 Key 时发给 Entur 与 OpenStreetMap，已保存的地点发给 Google Routes，关注的球队发给 football-data.org，令牌发给你自己的 Miniflux 服务器。只有在你点「生成摘要」时，文章正文才会发给你配置的 AI 接口。\n\nApp 不申请定位权限。只有在你打开某个通知时，才会申请通知权限。</string>
+    <!-- To-do / 待办 -->
+    <string name="todo_title">待办</string>
+    <string name="todo_summary">随手记下要做的事，截止日期可选</string>
+    <string name="todo_empty">还没有待办。</string>
+    <string name="todo_add">添加待办</string>
+    <string name="todo_all">全部</string>
+    <string name="todo_all_title">全部待办</string>
+    <string name="todo_title_hint">要做什么？</string>
+    <string name="todo_no_date">无日期</string>
+    <string name="todo_today">今天</string>
+    <string name="todo_tomorrow">明天</string>
+    <string name="todo_pick_date">选日期…</string>
+    <string name="todo_group_overdue">逾期</string>
+    <string name="todo_group_today">今天</string>
+    <string name="todo_group_later">以后</string>
+    <string name="todo_group_undated">无日期</string>
+    <string name="todo_clear_done">清除已完成</string>
+    <string name="todo_undo">撤销</string>
+    <string name="todo_delete">删除</string>
+    <string name="todo_mark_done">标记为完成</string>
+    <string name="todo_mark_open">标记为未完成</string>
+    <plurals name="todo_open_count">
+        <item quantity="other">%d 项未完成</item>
+    </plurals>
+    <plurals name="todo_overdue_days">
+        <item quantity="other">逾期 %d 天</item>
+    </plurals>
+    <plurals name="todo_done_count">
+        <item quantity="other">已完成 · %d</item>
+    </plurals>
+    <plurals name="todo_keep_done">
+        <item quantity="other">已完成的条目保留 %d 天。</item>
+    </plurals>
 </resources>

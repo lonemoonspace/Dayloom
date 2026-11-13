@@ -708,4 +708,41 @@
     <string name="about_source_news">News: your own Miniflux server. AI summaries: the endpoint you configure.</string>
     <string name="about_source_lunar">Lunar calendar and solar terms: computed on the phone with lunar-java (MIT).</string>
     <string name="about_privacy_body">Dayloom has no server of its own and collects nothing: no analytics, no crash reports, no ads.\n\nYour settings, places and keys stay on this phone. There is no cloud backup; moving to a new phone copies your settings but not your keys, which are encrypted with this phone\'s Android Keystore.\n\nThe app only contacts the services of the modules you turn on, and sends each only what it needs: the coordinates of Home to MET Norway, your stops to Entur, what you type into place search to Google, or else to Entur and OpenStreetMap, your saved places to Google Routes, your team to football-data.org, and your token to your own Miniflux server. An article\'s text goes to your AI endpoint only when you tap Summarize.\n\nThe app asks for no location permission. It asks for the notification permission only when you turn on a notification.</string>
+    <!-- To-do / 待办 -->
+    <string name="todo_title">To-do</string>
+    <string name="todo_summary">Things to do, with an optional due day</string>
+    <string name="todo_empty">Nothing to do yet.</string>
+    <string name="todo_add">Add to-do</string>
+    <string name="todo_all">All</string>
+    <string name="todo_all_title">All to-dos</string>
+    <string name="todo_title_hint">What needs doing?</string>
+    <string name="todo_no_date">No date</string>
+    <string name="todo_today">Today</string>
+    <string name="todo_tomorrow">Tomorrow</string>
+    <string name="todo_pick_date">Pick date…</string>
+    <string name="todo_group_overdue">Overdue</string>
+    <string name="todo_group_today">Today</string>
+    <string name="todo_group_later">Later</string>
+    <string name="todo_group_undated">No date</string>
+    <string name="todo_clear_done">Clear done</string>
+    <string name="todo_undo">Undo</string>
+    <string name="todo_delete">Delete</string>
+    <string name="todo_mark_done">Mark as done</string>
+    <string name="todo_mark_open">Mark as not done</string>
+    <plurals name="todo_open_count">
+        <item quantity="one">%d open</item>
+        <item quantity="other">%d open</item>
+    </plurals>
+    <plurals name="todo_overdue_days">
+        <item quantity="one">%d day overdue</item>
+        <item quantity="other">%d days overdue</item>
+    </plurals>
+    <plurals name="todo_done_count">
+        <item quantity="one">Done · %d</item>
+        <item quantity="other">Done · %d</item>
+    </plurals>
+    <plurals name="todo_keep_done">
+        <item quantity="one">Done items are kept for %d day.</item>
+        <item quantity="other">Done items are kept for %d days.</item>
+    </plurals>
 </resources>

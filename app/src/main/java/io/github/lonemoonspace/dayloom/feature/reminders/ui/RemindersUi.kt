@@ -2,6 +2,8 @@ package io.github.lonemoonspace.dayloom.feature.reminders.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,19 +31,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.lonemoonspace.dayloom.R
 import io.github.lonemoonspace.dayloom.core.ui.NotifySwitch
 import io.github.lonemoonspace.dayloom.core.ui.InfoCard
+import io.github.lonemoonspace.dayloom.core.ui.STATUS_CHIP_PADDING
 import io.github.lonemoonspace.dayloom.core.ui.StatusChip
 import io.github.lonemoonspace.dayloom.core.ui.rememberMinuteTick
 import io.github.lonemoonspace.dayloom.core.ui.rememberPatternFormatter
 import io.github.lonemoonspace.dayloom.core.ui.rememberTimeFormatter
+import io.github.lonemoonspace.dayloom.core.ui.statusChipStyle
 import io.github.lonemoonspace.dayloom.core.ui.theme.statusColors
 import io.github.lonemoonspace.dayloom.feature.reminders.RemindersSettings
 import io.github.lonemoonspace.dayloom.feature.reminders.domain.ReminderItem
@@ -66,33 +73,51 @@ internal fun RemindersCard(settings: Flow<RemindersSettings>) {
         if (saved != null && statuses.isEmpty()) {
             Hint(stringResource(R.string.reminders_empty))
         }
-        // One row per item: name, its date, the remaining time. The name always takes its full share, so the dates start in
-        // one column however long each name is.
-        // 每个条目一行：名称、日期、剩余时间。名称总是占满它那一份宽度，无论名称长短，日期都从同一列开始。
-        statuses.forEach { status ->
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 3.dp)) {
-                Text(
-                    status.item.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                Spacer(Modifier.width(8.dp))
-                // Two lines at most: with a 12-hour clock the date and "11:59 PM" do not fit on one, and a clipped line would
-                // drop the "PM" without a trace.
-                // 最多两行：12 小时制下日期加「11:59 PM」一行放不下，裁掉的话「PM」会无声无息地消失。
-                Text(
-                    untilText(status.until),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                Spacer(Modifier.width(8.dp))
-                StatusChip(remainingText(status), chipColor(status.state))
+        // One row per item: name, its date, the remaining time. The dates and the chips each get one column as wide as their
+        // widest entry, so every date starts at the same place; the date column only narrows (and wraps) to leave the name room.
+        // 每个条目一行：名称、日期、剩余时间。日期和胶囊各占一列，宽度取各自最宽的那条，所以每行的日期都从同一处开始；
+        // 只有为了给名称留出空间，日期列才会变窄（并换行）。
+        val dates = statuses.map { untilText(it.until) }
+        val chips = statuses.map { remainingText(it) }
+        val dateStyle = MaterialTheme.typography.bodySmall
+        val chipStyle = statusChipStyle()
+        val measurer = rememberTextMeasurer()
+        val density = LocalDensity.current
+        fun widest(texts: List<String>, style: TextStyle) =
+            with(density) { (texts.maxOfOrNull { measurer.measure(it, style, softWrap = false).size.width } ?: 0).toDp() }
+        val chipColumn = widest(chips, chipStyle) + STATUS_CHIP_PADDING * 2 + 1.dp
+        BoxWithConstraints {
+            val dateColumn = minOf(widest(dates, dateStyle) + 1.dp, maxWidth - chipColumn - COLUMN_GAP * 2 - NAME_MIN_WIDTH)
+                .coerceAtLeast(0.dp)
+            Column {
+                statuses.forEachIndexed { index, status ->
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 3.dp)) {
+                        Text(
+                            status.item.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Spacer(Modifier.width(COLUMN_GAP))
+                        // Two lines at most: with a 12-hour clock the date and "11:59 PM" may not fit on one, and a clipped
+                        // line would drop the "PM" without a trace.
+                        // 最多两行：12 小时制下日期加「11:59 PM」可能一行放不下，裁掉的话「PM」会无声无息地消失。
+                        Text(
+                            dates[index],
+                            style = dateStyle,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.width(dateColumn),
+                        )
+                        Spacer(Modifier.width(COLUMN_GAP))
+                        Box(Modifier.width(chipColumn), contentAlignment = Alignment.CenterEnd) {
+                            StatusChip(chips[index], chipColor(status.state))
+                        }
+                    }
+                }
             }
         }
     }
@@ -298,5 +323,10 @@ private fun Hint(text: String) {
 }
 
 private const val NEW = ""
+
+private val COLUMN_GAP = 8.dp
+
+/** The name keeps at least this much before the date column gives way. / 名称至少保留这么宽，再窄就让日期列让位。 */
+private val NAME_MIN_WIDTH = 96.dp
 private const val DATE = "date"
 private const val TIME = "time"

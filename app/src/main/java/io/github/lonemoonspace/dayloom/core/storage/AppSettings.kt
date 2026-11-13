@@ -16,6 +16,8 @@ data class AppSettings(
     val themePreset: String = "",
     /** The faint woven texture behind every page. / 每个页面背后那层淡淡的织纹。 */
     val weaveBackground: Boolean = true,
+    /** The "Today" lines at the top of the home screen. / 首页最上面「今天」那几行。 */
+    val homeSummary: Boolean = true,
     /**
      * Explicit on/off choices per module id; a module missing here uses its own default, so modules added
      * in later versions get their default instead of "off".

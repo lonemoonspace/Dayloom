@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.mapLatest
@@ -92,8 +93,15 @@ class HomeViewModel(
      * clock alone (a train leaves) or with a module's own settings (a reminder is edited).
      * 每次刷新后（协调器状态变化）重读，另外每分钟一次：有的行只随时间变化（车开走了），有的随模块自己的设置变化（改了提醒）。
      */
-    private val summary: Flow<List<UiText>> = combine(active, coordinator.status, minuteTicks()) { modules, _, _ -> modules }
-        .mapLatest { modules -> briefLines(modules.orEmpty().mapNotNull { it.instance.brief }, clock.now()) }
+    private val summary: Flow<List<UiText>> = settings.flow.map { it.homeSummary }.distinctUntilChanged().flatMapLatest { on ->
+        if (!on) {
+            // Off reads nothing at all, not just shows nothing. / 关闭时什么都不读，而不只是不显示。
+            flowOf(emptyList())
+        } else {
+            combine(active, coordinator.status, minuteTicks()) { modules, _, _ -> modules }
+                .mapLatest { modules -> briefLines(modules.orEmpty().mapNotNull { it.instance.brief }, clock.now()) }
+        }
+    }
 
     val state: StateFlow<HomeState> = combine(placedCards, settings.flow, refreshing, summary) { placed, s, busy, lines ->
         if (placed == null) return@combine HomeState(refreshing = busy)

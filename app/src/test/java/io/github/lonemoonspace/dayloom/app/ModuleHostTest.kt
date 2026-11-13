@@ -253,6 +253,9 @@ class ModuleHostTest {
             listOf(UiText.Raw("sample line"), UiText.Raw("sample line")),
             vm.state.value.summary,
         )
+        settings.update { it.copy(homeSummary = false) }
+        testScheduler.runCurrent()
+        assertEquals("turned off in settings", emptyList<UiText>(), vm.state.value.summary)
 
         module.instance.placement.value = CardPlacement.TOP
         testScheduler.runCurrent()

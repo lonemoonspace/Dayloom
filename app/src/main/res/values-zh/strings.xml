@@ -384,6 +384,9 @@
     <string name="home_drag_handle">拖动排序</string>
     <string name="home_empty_title">还没有开启任何模块</string>
     <string name="home_summary_title">今天</string>
+    <string name="settings_home">首页</string>
+    <string name="home_summary_switch">「今天」摘要</string>
+    <string name="home_summary_switch_summary">卡片上方的几行字，内容与早间简报相同、取此刻的情况</string>
     <string name="home_empty_body">在设置里打开需要的模块。</string>
     <string name="home_open_settings">打开设置</string>
 

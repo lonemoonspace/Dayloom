@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.lonemoonspace.dayloom.R
+import io.github.lonemoonspace.dayloom.app.home.TodaySummary
 import io.github.lonemoonspace.dayloom.app.settings.ModuleStatus
 import io.github.lonemoonspace.dayloom.app.settings.ModuleToggle
 import io.github.lonemoonspace.dayloom.app.settings.SettingsScreen
@@ -59,6 +60,7 @@ import io.github.lonemoonspace.dayloom.feature.transit.ui.CommuteCard
 import io.github.lonemoonspace.dayloom.feature.weather.domain.Forecast
 import io.github.lonemoonspace.dayloom.feature.weather.domain.ForecastPoint
 import io.github.lonemoonspace.dayloom.feature.weather.ui.WeatherCard
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlin.math.PI
@@ -198,6 +200,7 @@ class CardScreenshotTest {
                 windSpeed = 3.0,
                 symbol6h = if (i % 8 < 4) "cloudy" else "lightsnow",
                 precipitation6h = if (i % 8 < 4) 0.0 else 1.2,
+                precipProbability6h = if (i % 8 < 4) 10.0 else 70.0,
                 temperatureMin6h = 3.0 + (i % 4),
                 temperatureMax6h = 8.0 + (i % 4),
             )
@@ -206,6 +209,19 @@ class CardScreenshotTest {
         shots("weather", variants = listOf("en", "zh")) { WeatherCard(snapshot(forecast), null, { _, _ -> false }) }
         // Any place but Home is named in front of the condition. / 不是家的地点，名字写在天气状况前面。
         shots("weather-place", variants = listOf("zh-night")) { WeatherCard(snapshot(forecast), null, { _, _ -> false }, placeLabel = "Nordby") }
+    }
+
+    @Test
+    fun `home summary`() {
+        // The morning brief's lines as the weather, train, traffic and reminders modules word them.
+        // 天气、火车、路况和到期提醒模块各自给出的早间简报那一行。
+        val lines = listOf(
+            UiText.Res(R.string.weather_brief_umbrella, listOf(UiText.Res(R.string.weather_partly_cloudy), 6, UiText.Res(R.string.weather_clothing_cold))),
+            UiText.Res(R.string.transit_brief, listOf("L1", UiText.Time(LocalTime.of(8, 24)), UiText.Plural(R.plurals.transit_late, 6))),
+            UiText.Res(R.string.traffic_brief, listOf("Nordby", UiText.Plural(R.plurals.traffic_minutes, 26), UiText.Res(R.string.traffic_slight))),
+            UiText.Res(R.string.reminders_notify_tomorrow, listOf("Monthly ticket")),
+        )
+        shots("home-summary", variants = listOf("en", "zh")) { TodaySummary(lines) }
     }
 
     @Test

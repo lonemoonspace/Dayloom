@@ -137,8 +137,10 @@ internal fun WeatherCard(
                 Divider()
                 // If the series runs short, the days that remain still share the full width rather than leaving a gap on the right.
                 // 数据不足时，剩下的几天仍平分整行，而不是在右侧留空。
+                // The chance line appears for every day or none, so the cells keep one height. / 降水概率要么每天都有一行、要么都没有，格子高度一致。
+                val withChance = strip.any { it.precipChance != null }
                 Row {
-                    strip.forEach { DayCell(it, Modifier.weight(1f)) }
+                    strip.forEach { DayCell(it, withChance, Modifier.weight(1f)) }
                 }
                 Spacer(Modifier.height(2.dp))
             }
@@ -415,7 +417,7 @@ private fun DayChart(outlook: DayOutlook) {
 }
 
 @Composable
-private fun DayCell(day: DailyForecast, modifier: Modifier) {
+private fun DayCell(day: DailyForecast, withChance: Boolean, modifier: Modifier) {
     // Weekday names only: "Tomorrow" is too wide for a quarter of the row in English. / 只用星期：英文的「Tomorrow」在四分之一行里放不下。
     val label = day.date.format(rememberPatternFormatter("EEE"))
     val content = LocalContentColor.current
@@ -428,8 +430,23 @@ private fun DayCell(day: DailyForecast, modifier: Modifier) {
             fontWeight = if (day.precipMm >= HEAVY_PRECIP_MM) FontWeight.Bold else null,
             maxLines = 1,
         )
+        if (withChance) {
+            val chance = day.precipChance
+            val description = chance?.let { stringResource(R.string.weather_day_rain_chance_description, it) }
+            Text(
+                text = chance?.let { stringResource(R.string.weather_day_rain_chance, it) }.orEmpty(),
+                style = MaterialTheme.typography.labelSmall,
+                // A low chance fades so the wet days stand out at a glance. / 概率低的淡显，一眼就能看出哪天会下雨。
+                color = content.copy(alpha = if ((chance ?: 0) >= LIKELY_RAIN_PERCENT) 0.95f else 0.5f),
+                maxLines = 1,
+                modifier = if (description == null) Modifier else Modifier.semantics { contentDescription = description },
+            )
+        }
     }
 }
+
+/** From here a day's chance of rain is shown at full strength. / 降水概率达到这个值时用正常亮度显示。 */
+private const val LIKELY_RAIN_PERCENT = 30
 
 /**
  * Weather icon in full colour (not tinted). The text next to it always says the same, so the icon is not read out.

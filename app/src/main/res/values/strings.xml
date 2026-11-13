@@ -36,6 +36,8 @@
     <string name="weather_rain_spell">Rain %1$s–%2$s</string>
     <string name="weather_rain_total">%1$s mm</string>
     <string name="weather_rain_chance">%1$d%% chance</string>
+    <string name="weather_day_rain_chance">%1$d%%</string>
+    <string name="weather_day_rain_chance_description">Chance of rain %1$d%%</string>
     <string name="weather_no_rain">No rain expected</string>
     <string name="weather_clothing_hot">Short sleeves and breathable clothes</string>
     <string name="weather_clothing_warm">T-shirt, maybe a thin layer</string>
@@ -54,7 +56,7 @@
     <string name="weather_tip_sunscreen">Use sunscreen</string>
     <string name="weather_tip_layers">Dress in layers</string>
     <string name="weather_tip_pleasant">Pleasant day</string>
-    <string name="weather_attribution">Weather data: MET Norway (CC BY 4.0)</string>
+    <string name="weather_attribution">MET Norway (CC BY 4.0)</string>
     <string name="weather_brief_short">%1$s, %2$d°</string>
     <string name="weather_brief">%1$s, %2$d° · %3$s</string>
     <string name="weather_brief_umbrella">%1$s, %2$d° · %3$s · rain later, take an umbrella</string>
@@ -342,6 +344,7 @@
     <string name="transit_line_status_compact">%1$s %2$s</string>
     <string name="transit_arrives">Arrives %1$s</string>
     <string name="transit_attribution">Public transport data: Entur (NLOD)</string>
+    <string name="transit_attribution_short">Entur (NLOD)</string>
     <string name="transit_region_note">Your Home is outside Norway. Public transport currently covers Norway only (Entur).</string>
     <string name="transit_from">From</string>
     <string name="transit_to">To</string>
@@ -395,6 +398,7 @@
     <string name="home_move_down">Move down</string>
     <string name="home_drag_handle">Drag to reorder</string>
     <string name="home_empty_title">No modules turned on yet</string>
+    <string name="home_summary_title">Today</string>
     <string name="home_empty_body">Turn on the modules you want in Settings.</string>
     <string name="home_open_settings">Open settings</string>
 

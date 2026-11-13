@@ -4,6 +4,21 @@ Each version has an English section followed by a Chinese one. The heading must 
 looks it up literally.
 每个版本先写英文、再写中文。标题必须恰好是 `## X.Y.Z`：发版 workflow 按字面查找。
 
+## Unreleased
+
+- Home: a few lines under "Today" open the page, with the same content as the morning brief as of now (weather and what
+  to wear, the next commute and its status, the drive to work, what expires soon, today's match). They update after each
+  refresh and every minute, and disappear when no module has anything to say.
+- Weather: each day in the forecast row shows its chance of rain, faint when it is low, so the wet days stand out.
+- The data-source line at the bottom of the weather, train, bus and departure board cards is shorter and fainter
+  ("MET Norway (CC BY 4.0)", "Entur (NLOD)"); the full wording stays on the About page.
+
+- 首页：页面最上面「今天」下面有几行字，内容与早间简报相同、取此刻的情况（天气和穿衣、下一班通勤车及其状态、开车上班、
+  快到期的条目、今天的比赛）。每次刷新后和每分钟更新一次，没有模块有话说时不显示。
+- 天气：预报横排里每天下面写出降水概率，概率低的淡显，一眼看出哪天会下雨。
+- 天气、火车、公交和发车板卡片底部的数据来源改得更短、更淡（「MET Norway（CC BY 4.0）」「Entur（NLOD）」）；完整说明仍在
+  「关于」页。
+
 ## 0.3.2
 
 - Train, bus and departure board rows: the departure time, the status pill and, on the train and bus cards, the

@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import io.github.lonemoonspace.dayloom.app.ActiveModule
 import io.github.lonemoonspace.dayloom.app.ModuleHost
 import io.github.lonemoonspace.dayloom.core.module.CardPlacement
+import io.github.lonemoonspace.dayloom.core.i18n.UiText
 import io.github.lonemoonspace.dayloom.core.module.HomeCard
+import io.github.lonemoonspace.dayloom.core.notify.briefLines
 import io.github.lonemoonspace.dayloom.core.refresh.RefreshCoordinator
 import io.github.lonemoonspace.dayloom.core.refresh.Trigger
 import io.github.lonemoonspace.dayloom.core.routine.RoutinePolicy
@@ -21,6 +23,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -42,6 +46,11 @@ data class HomeState(
     /** In the user's order, for edit mode. / 按用户顺序，供编辑模式使用。 */
     val userOrder: List<HomeCardEntry> = emptyList(),
     val refreshing: Boolean = false,
+    /**
+     * The lines at the top of the home screen: the morning brief's lines as of now, empty when no module has anything to say.
+     * 首页顶部的几行：此刻的早间简报内容；没有模块有话说时为空。
+     */
+    val summary: List<UiText> = emptyList(),
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -78,7 +87,15 @@ class HomeViewModel(
         ids.any { status[it]?.refreshing == true }
     }
 
-    val state: StateFlow<HomeState> = combine(placedCards, settings.flow, refreshing) { placed, s, busy ->
+    /**
+     * Re-read after every refresh (the coordinator's status changes) and once a minute, since a line can also change with the
+     * clock alone (a train leaves) or with a module's own settings (a reminder is edited).
+     * 每次刷新后（协调器状态变化）重读，另外每分钟一次：有的行只随时间变化（车开走了），有的随模块自己的设置变化（改了提醒）。
+     */
+    private val summary: Flow<List<UiText>> = combine(active, coordinator.status, minuteTicks()) { modules, _, _ -> modules }
+        .mapLatest { modules -> briefLines(modules.orEmpty().mapNotNull { it.instance.brief }, clock.now()) }
+
+    val state: StateFlow<HomeState> = combine(placedCards, settings.flow, refreshing, summary) { placed, s, busy, lines ->
         if (placed == null) return@combine HomeState(refreshing = busy)
         val byKey = placed.associate { (entry, _) -> entry.key to entry }
         val hidden = placed.filter { (_, placement) -> placement == CardPlacement.HIDDEN }.mapTo(mutableSetOf()) { (entry, _) -> entry.key }
@@ -92,6 +109,7 @@ class HomeViewModel(
             cards = CardOrderPolicy.displayOrder(cards, s.cardOrder).filterNot { it in hidden }.map(byKey::getValue),
             userOrder = CardOrderPolicy.userOrder(cards, s.cardOrder).map(byKey::getValue),
             refreshing = busy,
+            summary = lines,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeState())
 
@@ -149,6 +167,13 @@ class HomeViewModel(
 
     fun saveOrder(keys: List<String>) {
         viewModelScope.launch { settings.update { it.copy(cardOrder = keys) } }
+    }
+
+    private fun minuteTicks(): Flow<Unit> = flow {
+        while (true) {
+            emit(Unit)
+            delay(POLL_INTERVAL_MS)
+        }
     }
 
     private companion object {

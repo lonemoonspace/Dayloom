@@ -46,7 +46,7 @@ class MetApiTest {
               "wind_speed_of_gust":7.9,"ultraviolet_index_clear_sky":1.2}},
             "next_1_hours":{"summary":{"symbol_code":"lightrain_day"},"details":{"precipitation_amount":0.4,
               "probability_of_precipitation":63.0,"probability_of_thunder":1.5}},
-            "next_6_hours":{"summary":{"symbol_code":"rain_day"},"details":{"precipitation_amount":2.1}}}},
+            "next_6_hours":{"summary":{"symbol_code":"rain_day"},"details":{"precipitation_amount":2.1,"probability_of_precipitation":72.0}}}},
           {"time":"2026-09-25T00:00:00Z","data":{"instant":{"details":{"air_temperature":4.0,"wind_speed":1.0}},
             "next_6_hours":{"summary":{"symbol_code":"cloudy"},"details":{"precipitation_amount":0.0}}}}
         ]}}
@@ -76,6 +76,7 @@ class MetApiTest {
         assertEquals("lightrain_day", first.symbol)
         assertEquals(0.4, first.precipitation1h!!, 0.0)
         assertEquals(2.1, first.precipitation6h!!, 0.0)
+        assertEquals(72.0, first.precipProbability6h!!, 0.0)
         assertEquals(5.1, first.apparentTemperature!!, 0.0)
         assertEquals(7.9, first.windGust!!, 0.0)
         assertEquals(1.2, first.uvIndex!!, 0.0)

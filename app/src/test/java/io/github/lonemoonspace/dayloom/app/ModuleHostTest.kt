@@ -248,6 +248,11 @@ class ModuleHostTest {
         testScheduler.runCurrent()
 
         assertEquals(listOf("other.card", "sample.card"), vm.state.value.cards.map { it.key })
+        assertEquals(
+            "the summary on top says what the morning brief would, one line per module",
+            listOf(UiText.Raw("sample line"), UiText.Raw("sample line")),
+            vm.state.value.summary,
+        )
 
         module.instance.placement.value = CardPlacement.TOP
         testScheduler.runCurrent()

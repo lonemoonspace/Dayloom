@@ -6,6 +6,12 @@ looks it up literally.
 
 ## Unreleased
 
+- New To-do module: a home card for quick notes of things to do. Tap the circle to tick one off (it stays struck through
+  for a few seconds with Undo), tap the title to edit or delete it, and "Add to-do" opens a sheet where the keyboard's
+  Done key saves. A due day is optional (today, tomorrow or a picked day); overdue and today's items carry a red or
+  amber chip and move the card to the top. The card lists the five most urgent; "All" opens the whole list grouped by
+  overdue, today, later and no date, with done items kept for seven days. Stored only on the phone; no notifications.
+- Expiry reminders: the dates now start in one column on every row, whatever the status chip next to them says.
 - Home: a few lines under "Today" open the page, with the same content as the morning brief as of now (weather and what
   to wear, the next commute and its status, the drive to work, what expires soon, today's match). They update after each
   refresh and every minute, and disappear when no module has anything to say. Settings → Theme → Home turns them off.
@@ -13,6 +19,11 @@ looks it up literally.
 - The data-source line at the bottom of the weather, train, bus and departure board cards is shorter and fainter
   ("MET Norway (CC BY 4.0)", "Entur (NLOD)"); the full wording stays on the About page.
 
+- 新增「待办」模块：首页卡片，随手记下要做的事。点圆圈勾选完成（划线保留几秒，可以撤销），点标题编辑或删除；「添加待办」
+  从底部弹出输入框，键盘上的完成键直接保存。截止日期可选（今天、明天或任选一天）；逾期和今天到期的条目分别带红色、黄色标签，
+  并让卡片置顶。卡片列出最急的五条，「全部」打开完整列表，按逾期、今天、以后、无日期分组，已完成的条目保留七天。数据只存在
+  手机上，不发通知。
+- 到期提醒：每行的日期现在从同一列开始，不再随旁边状态胶囊的宽度错开。
 - 首页：页面最上面「今天」下面有几行字，内容与早间简报相同、取此刻的情况（天气和穿衣、下一班通勤车及其状态、开车上班、
   快到期的条目、今天的比赛）。每次刷新后和每分钟更新一次，没有模块有话说时不显示。可在设置 → 外观与主题 → 首页里关掉。
 - 天气：预报横排里每天下面写出降水概率，概率低的淡显，一眼看出哪天会下雨。

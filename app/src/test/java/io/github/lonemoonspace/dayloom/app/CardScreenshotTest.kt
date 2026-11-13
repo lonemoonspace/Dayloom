@@ -42,6 +42,10 @@ import io.github.lonemoonspace.dayloom.feature.news.ui.NewsCard
 import io.github.lonemoonspace.dayloom.feature.reminders.RemindersSettings
 import io.github.lonemoonspace.dayloom.feature.reminders.domain.ReminderItem
 import io.github.lonemoonspace.dayloom.feature.reminders.ui.RemindersCard
+import io.github.lonemoonspace.dayloom.feature.todo.TodoModule
+import io.github.lonemoonspace.dayloom.feature.todo.TodoSettings
+import io.github.lonemoonspace.dayloom.feature.todo.domain.TodoItem
+import io.github.lonemoonspace.dayloom.feature.todo.ui.TodoCard
 import io.github.lonemoonspace.dayloom.feature.traffic.domain.Direction
 import io.github.lonemoonspace.dayloom.feature.traffic.domain.TrafficLevel
 import io.github.lonemoonspace.dayloom.feature.traffic.domain.TrafficStatus
@@ -247,6 +251,22 @@ class CardScreenshotTest {
     }
 
     @Test
+    fun `todo card`() {
+        val settings = TodoSettings(
+            items = listOf(
+                TodoItem("todo1", "Change to winter tyres", due = "2026-10-18", createdAt = 1),
+                TodoItem("todo2", "Pay the rent", due = "2026-10-20", createdAt = 2),
+                TodoItem("todo3", "Book the dentist", due = "2026-10-27", createdAt = 3),
+                TodoItem("todo4", "Buy coffee beans", createdAt = 4),
+                TodoItem("todo5", "Answer the landlord about the heating check and when it suits", createdAt = 5),
+                TodoItem("todo6", "Water the plants", createdAt = 6),
+                TodoItem("todo7", "Return the library books", createdAt = 7, doneAt = fetchedAt),
+            ),
+        )
+        shots("todo") { TodoCard(flowOf(settings)) {} }
+    }
+
+    @Test
     fun `news card`() {
         val summary = SyncSummary(
             unread = 12,
@@ -273,7 +293,7 @@ class CardScreenshotTest {
      * 设置列表：它自带边距、也比一张卡片高，所以图片是整个列表。
      */
     @Test
-    @Config(qualifiers = "w384dp-h1040dp-xhdpi")
+    @Config(qualifiers = "w384dp-h1100dp-xhdpi")
     fun `settings list`() {
         fun line(text: UiText?) = ModuleStatus.Line(text)
         val modules = listOf(
@@ -283,6 +303,7 @@ class CardScreenshotTest {
             ModuleToggle(BusModule, false),
             ModuleToggle(DeparturesModule, true, status = line(UiText.Plural(R.plurals.transit_boards_status, 2))),
             ModuleToggle(TrafficModule, true, status = line(uiText(R.string.traffic_card_title, UiText.Res(R.string.place_home), UiText.Res(R.string.place_work)))),
+            ModuleToggle(TodoModule, true, status = line(UiText.Plural(R.plurals.todo_open_count, 4))),
             ModuleToggle(RemindersModule, true, status = line(UiText.Plural(R.plurals.reminders_settings_status, 3))),
             ModuleToggle(FootballModule, true, status = ModuleStatus.NeedsSetup(uiText(R.string.football_setup_key))),
             ModuleToggle(NewsModule, true, status = line(UiText.Plural(R.plurals.news_settings_status_feeds, 12))),

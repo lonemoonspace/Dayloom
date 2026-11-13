@@ -677,8 +677,8 @@ private fun ErrorLine(error: AppError) {
 
 /**
  * Just the source and licence, faint: NLOD asks for the source to be named, not for a sentence on every card; the full wording
- * is on the About page.
- * 只写来源和许可，颜色淡：NLOD 要求注明来源，不需要每张卡都写一整句；完整说明在「关于」页。
+ * is on the About page and in the transit settings.
+ * 只写来源和许可，颜色淡：NLOD 要求注明来源，不需要每张卡都写一整句；完整说明在「关于」页和交通设置里。
  */
 @Composable
 private fun Attribution() {

@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.lonemoonspace.dayloom.app.ActiveModule
 import io.github.lonemoonspace.dayloom.app.ModuleHost
-import io.github.lonemoonspace.dayloom.core.module.CardPlacement
 import io.github.lonemoonspace.dayloom.core.i18n.UiText
+import io.github.lonemoonspace.dayloom.core.module.CardPlacement
 import io.github.lonemoonspace.dayloom.core.module.HomeCard
 import io.github.lonemoonspace.dayloom.core.notify.briefLines
 import io.github.lonemoonspace.dayloom.core.refresh.RefreshCoordinator
@@ -23,14 +23,15 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
@@ -89,9 +90,11 @@ class HomeViewModel(
     }
 
     /**
-     * Re-read after every refresh (the coordinator's status changes) and once a minute, since a line can also change with the
-     * clock alone (a train leaves) or with a module's own settings (a reminder is edited).
-     * 每次刷新后（协调器状态变化）重读，另外每分钟一次：有的行只随时间变化（车开走了），有的随模块自己的设置变化（改了提醒）。
+     * Re-read after every refresh (the coordinator's status changes) and once a minute, which also picks up lines that change
+     * with the clock alone (a train leaves) or with a module's own settings (an edited reminder shows within a minute). Starts
+     * empty so the cards never wait for the lines.
+     * 每次刷新后（协调器状态变化）重读，另外每分钟一次，只随时间变化的行（车开走了）或随模块自己设置变化的行（改了的提醒一分钟内
+     * 出现）也因此更新。先发出空列表，卡片永远不用等这几行。
      */
     private val summary: Flow<List<UiText>> = settings.flow.map { it.homeSummary }.distinctUntilChanged().flatMapLatest { on ->
         if (!on) {
@@ -101,7 +104,7 @@ class HomeViewModel(
             combine(active, coordinator.status, minuteTicks()) { modules, _, _ -> modules }
                 .mapLatest { modules -> briefLines(modules.orEmpty().mapNotNull { it.instance.brief }, clock.now()) }
         }
-    }
+    }.onStart { emit(emptyList()) }
 
     val state: StateFlow<HomeState> = combine(placedCards, settings.flow, refreshing, summary) { placed, s, busy, lines ->
         if (placed == null) return@combine HomeState(refreshing = busy)

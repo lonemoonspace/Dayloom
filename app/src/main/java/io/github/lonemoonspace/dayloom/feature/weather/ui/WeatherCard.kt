@@ -137,7 +137,9 @@ internal fun WeatherCard(
                 Divider()
                 // If the series runs short, the days that remain still share the full width rather than leaving a gap on the right.
                 // 数据不足时，剩下的几天仍平分整行，而不是在右侧留空。
-                // The chance line appears for every day or none, so the cells keep one height. / 降水概率要么每天都有一行、要么都没有，格子高度一致。
+                // The chance line is there for every day or none; a day MET gave no chance for leaves it blank, so the cells keep
+                // one height. A real 0 % is shown: it is an answer, not missing data.
+                // 降水概率这一行要么每天都有、要么都没有；MET 没给概率的那天留空，格子高度一致。真实的 0% 照样显示：那是答案，不是缺数据。
                 val withChance = strip.any { it.precipChance != null }
                 Row {
                     strip.forEach { DayCell(it, withChance, Modifier.weight(1f)) }

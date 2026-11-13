@@ -15,6 +15,8 @@ import io.github.lonemoonspace.dayloom.R
 import io.github.lonemoonspace.dayloom.app.home.TodaySummary
 import io.github.lonemoonspace.dayloom.app.settings.ModuleStatus
 import io.github.lonemoonspace.dayloom.app.settings.ModuleToggle
+import io.github.lonemoonspace.dayloom.app.settings.SettingsPage
+import io.github.lonemoonspace.dayloom.app.settings.SettingsPageScreen
 import io.github.lonemoonspace.dayloom.app.settings.SettingsScreen
 import io.github.lonemoonspace.dayloom.app.settings.SettingsState
 import io.github.lonemoonspace.dayloom.core.i18n.UiText
@@ -293,6 +295,29 @@ class CardScreenshotTest {
         )
         shots("settings-list", margin = false) {
             SettingsScreen(state, listOf(Place(Place.HOME), Place(Place.WORK)), onOpenPage = {}, onOpenModule = {}, onModuleEnabled = { _, _ -> })
+        }
+    }
+
+    /**
+     * The appearance page: the theme list with the woven-background switch, then the home card with the summary switch.
+     * 外观页：主题列表和背景织纹开关，下面是带摘要开关的「首页」卡片。
+     */
+    @Test
+    @Config(qualifiers = "w384dp-h560dp-xhdpi")
+    fun `settings appearance page`() {
+        val state = SettingsState(themePreset = ThemePreset.NORDIC_DAWN.id)
+        shots("settings-appearance", variants = listOf("zh"), margin = false) {
+            SettingsPageScreen(
+                page = SettingsPage.APPEARANCE,
+                state = state,
+                onLanguage = {},
+                onTimeZone = { true },
+                onMorningBrief = {},
+                onMorningBriefTime = {},
+                onThemePreset = {},
+                onWeaveBackground = {},
+                onHomeSummary = {},
+            )
         }
     }
 

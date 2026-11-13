@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -54,6 +57,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -165,7 +170,10 @@ internal fun TodoCard(settings: Flow<TodoSettings>, update: TodoUpdate) {
         }
     }
 
-    if (showAll) {
+    // One sheet at a time: editing from "All" closes the list and brings it back afterwards, instead of stacking two
+    // sheets whose scrims and dismiss order fight.
+    // 同一时间只有一个面板：从「全部」里编辑时先收起列表、编辑完再打开，而不是叠两层面板、让遮罩和关闭顺序互相打架。
+    if (showAll && editing == null) {
         AllSheet(items, today, update, onEdit = { editing = it }, onDismiss = { showAll = false })
     }
     editing?.let { id ->
@@ -301,7 +309,7 @@ private fun TodoRow(
     trailing: (@Composable () -> Unit)? = null,
 ) {
     val item = entry.item
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.heightIn(min = 36.dp)) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.heightIn(min = ROW_HEIGHT)) {
         Check(item.done, onToggle)
         Text(
             item.title,
@@ -330,15 +338,16 @@ private fun TodoRow(
 @Composable
 private fun Check(done: Boolean, onToggle: () -> Unit) {
     val primary = MaterialTheme.colorScheme.primary
-    val label = stringResource(if (done) R.string.todo_mark_open else R.string.todo_mark_done)
-    // Flush with the card's left edge like every other card's first column; the box is as tall as the row and reaches to
-    // the title, so the target stays large.
-    // 与其他卡片的第一列一样贴着卡片左边；点按区域与行同高、一直延伸到标题，依然够大。
+    val label = stringResource(R.string.todo_mark_done)
+    // Flush with the card's left edge like every other card's first column; the target is the full row height and reaches
+    // to the title. A toggle, so a screen reader announces whether the item is done.
+    // 与其他卡片的第一列一样贴着卡片左边；点按区域与行同高、一直延伸到标题。用 toggleable，读屏会播报是否已完成。
     Box(
         contentAlignment = Alignment.CenterStart,
         modifier = Modifier
-            .size(width = CHECK_WIDTH, height = 36.dp)
-            .clickable(role = Role.Checkbox, onClickLabel = label, onClick = onToggle),
+            .size(CHECK_WIDTH, ROW_HEIGHT)
+            .toggleable(value = done, role = Role.Checkbox, onValueChange = { onToggle() })
+            .semantics { contentDescription = label },
     ) {
         val circle = Modifier
             .size(20.dp)
@@ -360,7 +369,7 @@ private fun Check(done: Boolean, onToggle: () -> Unit) {
  * keyboard's Done key saves, so a quick note takes one line of typing.
  * 从底部弹出的新增/编辑面板：标题，然后是无日期 / 今天 / 明天 / 选日期。键盘上的完成键直接保存，随手记一条只要打一行字。
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun Editor(initial: TodoItem?, today: LocalDate, update: TodoUpdate, onClose: () -> Unit) {
     val clock = LocalAppClock.current
@@ -399,7 +408,8 @@ private fun Editor(initial: TodoItem?, today: LocalDate, update: TodoUpdate, onC
                     .fillMaxWidth()
                     .focusRequester(focus),
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
+            // Wraps on a narrow screen or with large text, like the other chip rows. / 窄屏或大字号时换行，与其他按钮行一致。
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
                 val tomorrow = today.plusDays(1)
                 FilterChip(selected = date == null, onClick = { due = "" }, label = { Text(stringResource(R.string.todo_no_date)) })
                 FilterChip(selected = date == today, onClick = { due = today.toString() }, label = { Text(stringResource(R.string.todo_today)) })
@@ -422,11 +432,17 @@ private fun Editor(initial: TodoItem?, today: LocalDate, update: TodoUpdate, onC
                 TextButton(onClick = onClose) { Text(stringResource(R.string.common_cancel)) }
                 TextButton(onClick = save, enabled = clean != null) { Text(stringResource(R.string.common_save)) }
             }
+            // A new item starts typing at once; an edit leaves the keyboard closed until the field is tapped. Run inside the
+            // sheet, after the field is attached, and a moment later so the sheet's window has focus and the keyboard shows.
+            // 新增时直接弹出键盘；编辑时等点了输入框再弹。放在面板内部、输入框挂上之后执行，并稍等片刻，面板窗口拿到焦点后键盘才会弹出。
+            if (initial == null) {
+                LaunchedEffect(Unit) {
+                    delay(FOCUS_DELAY_MILLIS)
+                    focus.requestFocus()
+                }
+            }
         }
     }
-    // A new item starts typing at once; an edit leaves the keyboard closed until the field is tapped.
-    // 新增时直接弹出键盘；编辑时等点了输入框再弹。
-    if (initial == null) LaunchedEffect(Unit) { focus.requestFocus() }
 
     if (picking) {
         // The picker works in UTC midnights; converting through UTC keeps the chosen calendar day. / 日期选择器以 UTC 零点计；经 UTC 换算才能保持所选的日历日。
@@ -476,7 +492,9 @@ private fun groupLabel(group: TodoPolicy.Group): Int = when (group) {
 }
 
 private const val NEW = ""
-private val CHECK_WIDTH = 30.dp
+private val CHECK_WIDTH = 40.dp
+private val ROW_HEIGHT = 40.dp
+private const val FOCUS_DELAY_MILLIS = 150L
 private val FLUSH_START = PaddingValues(start = 0.dp, end = 12.dp)
 private val FLUSH_END = PaddingValues(start = 12.dp, end = 0.dp)
 private const val UNDO_MILLIS = 5_000L

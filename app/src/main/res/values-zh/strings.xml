@@ -700,7 +700,6 @@
     <string name="todo_undo">撤销</string>
     <string name="todo_delete">删除</string>
     <string name="todo_mark_done">标记为完成</string>
-    <string name="todo_mark_open">标记为未完成</string>
     <plurals name="todo_open_count">
         <item quantity="other">%d 项未完成</item>
     </plurals>

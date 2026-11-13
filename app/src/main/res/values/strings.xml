@@ -728,7 +728,6 @@
     <string name="todo_undo">Undo</string>
     <string name="todo_delete">Delete</string>
     <string name="todo_mark_done">Mark as done</string>
-    <string name="todo_mark_open">Mark as not done</string>
     <plurals name="todo_open_count">
         <item quantity="one">%d open</item>
         <item quantity="other">%d open</item>

@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -85,9 +86,11 @@ internal fun RemindersCard(settings: Flow<RemindersSettings>) {
         val density = LocalDensity.current
         fun widest(texts: List<String>, style: TextStyle) =
             with(density) { (texts.maxOfOrNull { measurer.measure(it, style, softWrap = false).size.width } ?: 0).toDp() }
-        val chipColumn = widest(chips, chipStyle) + STATUS_CHIP_PADDING * 2 + 1.dp
+        // Measured once per change of text or style, not on every recomposition. / 文字或样式变化时才重新测量，而不是每次重组都量。
+        val chipColumn = remember(chips, chipStyle, density) { widest(chips, chipStyle) + STATUS_CHIP_PADDING * 2 + 1.dp }
+        val widestDate = remember(dates, dateStyle, density) { widest(dates, dateStyle) }
         BoxWithConstraints {
-            val dateColumn = minOf(widest(dates, dateStyle) + 1.dp, maxWidth - chipColumn - COLUMN_GAP * 2 - NAME_MIN_WIDTH)
+            val dateColumn = minOf(widestDate + 1.dp, maxWidth - chipColumn - COLUMN_GAP * 2 - NAME_MIN_WIDTH)
                 .coerceAtLeast(0.dp)
             Column {
                 statuses.forEachIndexed { index, status ->

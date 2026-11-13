@@ -39,6 +39,7 @@ import io.github.lonemoonspace.dayloom.feature.news.ui.NewsCard
 import io.github.lonemoonspace.dayloom.feature.reminders.RemindersSettings
 import io.github.lonemoonspace.dayloom.feature.reminders.domain.ReminderItem
 import io.github.lonemoonspace.dayloom.feature.reminders.ui.RemindersCard
+import io.github.lonemoonspace.dayloom.feature.todo.TodoModule
 import io.github.lonemoonspace.dayloom.feature.todo.TodoSettings
 import io.github.lonemoonspace.dayloom.feature.todo.domain.TodoItem
 import io.github.lonemoonspace.dayloom.feature.todo.ui.TodoCard
@@ -274,7 +275,7 @@ class CardScreenshotTest {
      * 设置列表：它自带边距、也比一张卡片高，所以图片是整个列表。
      */
     @Test
-    @Config(qualifiers = "w384dp-h1040dp-xhdpi")
+    @Config(qualifiers = "w384dp-h1100dp-xhdpi")
     fun `settings list`() {
         fun line(text: UiText?) = ModuleStatus.Line(text)
         val modules = listOf(
@@ -284,6 +285,7 @@ class CardScreenshotTest {
             ModuleToggle(BusModule, false),
             ModuleToggle(DeparturesModule, true, status = line(UiText.Plural(R.plurals.transit_boards_status, 2))),
             ModuleToggle(TrafficModule, true, status = line(uiText(R.string.traffic_card_title, UiText.Res(R.string.place_home), UiText.Res(R.string.place_work)))),
+            ModuleToggle(TodoModule, true, status = line(UiText.Plural(R.plurals.todo_open_count, 4))),
             ModuleToggle(RemindersModule, true, status = line(UiText.Plural(R.plurals.reminders_settings_status, 3))),
             ModuleToggle(FootballModule, true, status = ModuleStatus.NeedsSetup(uiText(R.string.football_setup_key))),
             ModuleToggle(NewsModule, true, status = line(UiText.Plural(R.plurals.news_settings_status_feeds, 12))),

@@ -97,6 +97,26 @@ class TodoPolicyTest {
     }
 
     @Test
+    fun `a done item is kept for exactly the full week`() {
+        val boundary = item("edge", doneAt = now.minus(TodoPolicy.KEEP_DONE).toEpochMilli())
+        assertEquals(listOf("edge"), TodoPolicy.purge(listOf(boundary), now).map { it.id })
+        assertEquals(emptyList<String>(), TodoPolicy.purge(listOf(boundary), now.plusMillis(1)).map { it.id })
+    }
+
+    @Test
+    fun `edit sets or clears the due day`() {
+        val items = listOf(item("todo1"))
+        assertEquals("2026-12-24", TodoPolicy.edit(items, "todo1", "Gifts", LocalDate.parse("2026-12-24"))[0].due)
+        assertEquals("", TodoPolicy.edit(listOf(item("todo1", "2026-12-24")), "todo1", "Gifts", null)[0].due)
+    }
+
+    @Test
+    fun `the derived done flag is not stored`() {
+        val json = Json.encodeToString(TodoItem.serializer(), TodoItem(id = "todo1", title = "A", doneAt = 5))
+        assertFalse(json.contains("\"done\""))
+    }
+
+    @Test
     fun `stored settings decode with missing fields`() {
         val decoded = Json { ignoreUnknownKeys = true }.decodeFromString(TodoSettings.serializer(), """{"items":[{"id":"todo1","title":"A"}]}""")
         assertEquals(listOf(TodoItem(id = "todo1", title = "A")), decoded.items)

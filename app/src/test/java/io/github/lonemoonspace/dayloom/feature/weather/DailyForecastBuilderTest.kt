@@ -107,4 +107,25 @@ class DailyForecastBuilderTest {
         assertEquals(4.0, byDate.getValue(LocalDate.of(2026, 9, 22)).precipMm, 1e-9)
         assertEquals(2.0, byDate.getValue(LocalDate.of(2026, 9, 23)).precipMm, 1e-9)
     }
+
+    @Test
+    fun `chance of rain is the highest hourly or six-hour chance of the day`() {
+        fun hourly(time: String, chance: Double) = point(time, 8.0).copy(symbol1h = "cloudy", precipitation1h = 0.0, precipProbability1h = chance)
+        fun sixHourly(time: String, chance: Double) = point(time, 8.0, "rain", 1.0).copy(precipProbability6h = chance)
+        val series = listOf(
+            // 22 Sep, hourly: the six-hour chance of an hourly point is ignored. / 9 月 22 日，逐小时：逐小时点上的 6 小时概率不计。
+            hourly("2026-09-22T06:00:00Z", 12.4).copy(precipProbability6h = 90.0),
+            hourly("2026-09-22T07:00:00Z", 41.6),
+            // 23 Sep, six-hourly only. / 9 月 23 日，只有 6 小时数据。
+            sixHourly("2026-09-23T00:00:00Z", 20.0),
+            sixHourly("2026-09-23T06:00:00Z", 63.0),
+            sixHourly("2026-09-23T12:00:00Z", 10.0),
+            // 24 Sep has a temperature but no chance at all (the compact fallback). / 9 月 24 日有温度但没有任何概率（compact 兜底）。
+            point("2026-09-24T10:00:00Z", 9.0, "cloudy"),
+        )
+        val byDate = build(series, LocalDate.of(2026, 9, 22)).associateBy { it.date }
+        assertEquals(42, byDate.getValue(LocalDate.of(2026, 9, 22)).precipChance)
+        assertEquals(63, byDate.getValue(LocalDate.of(2026, 9, 23)).precipChance)
+        assertEquals(null, byDate.getValue(LocalDate.of(2026, 9, 24)).precipChance)
+    }
 }

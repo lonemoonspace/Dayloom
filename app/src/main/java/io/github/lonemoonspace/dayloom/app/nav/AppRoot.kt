@@ -385,6 +385,7 @@ private fun MainShell(graph: AppGraph, pendingIntent: Intent?, weave: Boolean) {
                                     onMorningBriefTime = settingsVm::setMorningBriefTime,
                                     onThemePreset = settingsVm::setThemePreset,
                                     onWeaveBackground = settingsVm::setWeaveBackground,
+                                    onHomeSummary = settingsVm::setHomeSummary,
                                 ) {
                                     val places by sharedVm.placeList.collectAsStateWithLifecycle()
                                     val editor by sharedVm.editor.collectAsStateWithLifecycle()

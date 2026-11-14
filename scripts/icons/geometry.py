@@ -217,6 +217,60 @@ def render(strands, fills=()):
     return strokes, filled
 
 
+def _ribbon_piece(lo, hi, a, b, r):
+    """
+    Outline of the part of a round-ended ribbon between a and b, in ribbon coordinates (along, across).
+    圆头带子在 a 到 b 之间那一段的轮廓，用带子自身的坐标（沿长度方向、垂直方向）。
+    """
+    def half(s):
+        d = lo + r - s if s < lo + r else s - (hi - r) if s > hi - r else 0.0
+        return math.sqrt(max(r * r - d * d, 0.0))
+
+    cmds = [("M", a, -half(a))]
+    if a < lo + r:
+        cmds.append(("A", min(b, lo + r), -half(min(b, lo + r))))
+    if max(a, lo + r) < min(b, hi - r):
+        cmds.append(("L", min(b, hi - r), -r))
+    if b > hi - r:
+        cmds.append(("A", b, -half(b)))
+    if b < hi:
+        cmds.append(("L", b, half(b)))
+    if b > hi - r:
+        cmds.append(("A", max(a, hi - r), half(max(a, hi - r))))
+    if max(a, lo + r) < min(b, hi - r):
+        cmds.append(("L", max(a, lo + r), r))
+    if a < lo + r:
+        cmds.append(("A", a, half(a)))
+    return cmds
+
+
+def ribbon(lo, hi, cuts, width, horizontal, fixed):
+    """
+    Filled pieces of a straight ribbon along one axis, from lo to hi including its round ends, with the (a, b) intervals in
+    `cuts` taken out. A stroked Strand cannot do this when a cut falls inside an end cap and leaves only a sliver of it.
+    沿一个坐标轴的直带子的各段填充路径：从 lo 到 hi（含两端圆头），去掉 `cuts` 里的 (a, b) 区间。切口落在圆头里、只剩一小片
+    圆头时，描边的 Strand 画不出来，所以这里直接算轮廓。
+    """
+    r = width / 2
+    spans, s = [], lo
+    for a, b in sorted(cuts):
+        if a - s > 0.05:
+            spans.append((s, a))
+        s = max(s, b)
+    if hi - s > 0.05:
+        spans.append((s, hi))
+    out = []
+    for a, b in spans:
+        d = []
+        for cmd, along, across in _ribbon_piece(lo, hi, a, b, r):
+            # A vertical ribbon is the horizontal one mirrored on the diagonal, which reverses the arcs.
+            # 竖带子是横带子沿对角线镜像，圆弧方向相反。
+            x, y = (along, fixed + across) if horizontal else (fixed + across, along)
+            d.append(f"A{fmt(r)},{fmt(r)} 0 0,{1 if horizontal else 0} {fmt(x)},{fmt(y)}" if cmd == "A" else f"{cmd}{fmt(x)},{fmt(y)}")
+        out.append(" ".join(d) + " Z")
+    return out
+
+
 def circle_intersections(c1, r1, c2, r2):
     dx, dy = c2[0] - c1[0], c2[1] - c1[1]
     d = math.hypot(dx, dy)

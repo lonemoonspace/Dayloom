@@ -18,6 +18,8 @@ looks it up literally.
 - Weather: each day in the forecast row shows its chance of rain, faint when it is low, so the wet days stand out.
 - The data-source line at the bottom of the weather, train, bus and departure board cards is shorter and fainter
   ("MET Norway (CC BY 4.0)", "Entur (NLOD)"); the full wording stays on the About page.
+- New app icon: the character 日 (day) woven from two warp and three weft ribbons, with the middle ribbon in gold as the
+  sun, on deep teal. The themed icon, the notification icon and the splash screen use the same shape.
 
 - 新增「待办」模块：首页卡片，随手记下要做的事。点圆圈勾选完成（划线保留几秒，可以撤销），点标题编辑或删除；「添加待办」
   从底部弹出输入框，键盘上的完成键直接保存。截止日期可选（今天、明天或任选一天）；逾期和今天到期的条目分别带红色、黄色标签，
@@ -29,6 +31,8 @@ looks it up literally.
 - 天气：预报横排里每天下面写出降水概率，概率低的淡显，一眼看出哪天会下雨。
 - 天气、火车、公交和发车板卡片底部的数据来源改得更短、更淡（「MET Norway（CC BY 4.0）」「Entur（NLOD）」）；完整说明仍在
   「关于」页。
+- 新的应用图标：两根经线、三根纬线织成的「日」字，中间一横是金色的太阳，深青色底。主题图标、通知小图标和启动页用的是
+  同一个图形。
 
 ## 0.3.2
 

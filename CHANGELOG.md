@@ -4,6 +4,14 @@ Each version has an English section followed by a Chinese one. The heading must 
 looks it up literally.
 每个版本先写英文、再写中文。标题必须恰好是 `## X.Y.Z`：发版 workflow 按字面查找。
 
+## Unreleased
+
+- New app icon: the character 日 (day) woven from two warp and three weft ribbons, with the middle ribbon in gold as the
+  sun, on deep teal. The themed icon, the notification icon and the splash screen use the same shape.
+
+- 新的应用图标：两根经线、三根纬线织成的「日」字，中间一横是金色的太阳，深青色底。主题图标、通知小图标和启动页用的是
+  同一个图形。
+
 ## 0.3.2
 
 - Train, bus and departure board rows: the departure time, the status pill and, on the train and bus cards, the

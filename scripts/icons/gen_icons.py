@@ -1,8 +1,8 @@
 """
-Generates the launcher icon, its themed-icon layer and the notification icon into the app's resources, and the woven set of
-module, button and status icons into `scripts/icons/generated/`, which the app does not use for now.
+Generates the launcher icon, its background and themed-icon layer and the notification icon into the app's resources, and
+the woven set of module, button and status icons into `scripts/icons/generated/`, which the app does not use for now.
 Run from the repository root: `python3 scripts/icons/gen_icons.py [preview.html]`. Edit the shapes here, not the XML.
-把启动器图标、主题图标层和通知图标生成到 App 资源里；模块、按钮与状态图标这套编织图标生成到 `scripts/icons/generated/`，
+把启动器图标及其背景、主题图标层和通知图标生成到 App 资源里；模块、按钮与状态图标这套编织图标生成到 `scripts/icons/generated/`，
 App 暂时不用。在仓库根目录运行：`python3 scripts/icons/gen_icons.py [preview.html]`。要改形状就改这里，不要手改 XML。
 
 The woven set uses two colour keys: black is the ink and pure green the accent; drawing it needs a colour filter that maps
@@ -13,7 +13,7 @@ import math
 import os
 import sys
 
-from geometry import Arc, Line, Strand, ang, circle, circle_intersections, cut, dot, fmt, poly, render, roundrect
+from geometry import Arc, Line, Strand, ang, circle, circle_intersections, cut, dot, fmt, poly, render, ribbon, roundrect
 
 INK, ACC = "ink", "acc"
 W = 1.75
@@ -245,49 +245,69 @@ STATUS_PALETTE = {"ink": "#FF000000", "soft": "#33000000"}
 
 # ---------------- launcher / 启动器 ----------------
 
-SUN, THREAD, WAVE = "sun", "thread", "wave"
+WARP, WEFT, SUN = "warp", "weft", "sun"
+
+
+def woven_day(cx, cy, w, dx, dy, over, gap):
+    """
+    The character 日 as cloth: two warps and three wefts in plain weave, every ribbon going over one crossing and under the
+    next, reaching `over` past the outer ones and leaving `gap` clear where it passes under. Returns fills keyed WARP, WEFT
+    and SUN, the middle weft.
+    把「日」字织出来：两根经线、三根纬线的平纹，每根带子一上一下，两端比最外的交叉点多伸出 `over`，从下面穿过时两侧各留
+    `gap` 的缝。返回按 WARP、WEFT、SUN（中间那根纬线）归类的填充路径。
+    """
+    xs, ys = (cx - dx, cx + dx), (cy - dy, cy, cy + dy)
+    reach, half = w / 2 + over, w / 2 + gap
+    fills = {WARP: [], WEFT: [], SUN: []}
+    for i, x in enumerate(xs):
+        cuts = [(y - half, y + half) for j, y in enumerate(ys) if (i + j) % 2 == 1]
+        fills[WARP] += ribbon(ys[0] - reach, ys[-1] + reach, cuts, w, False, x)
+    for j, y in enumerate(ys):
+        cuts = [(x - half, x + half) for i, x in enumerate(xs) if (i + j) % 2 == 0]
+        fills[SUN if j == 1 else WEFT] += ribbon(xs[0] - reach, xs[-1] + reach, cuts, w, True, y)
+    return fills
 
 
 def launcher():
     """
-    Sunrise over the sea on the 108dp adaptive-icon canvas: a sun sliced near its base, three swells and three threads.
-    108dp 自适应图标画布上的海上日出：底部切片的太阳、三道涌浪和三缕细线。
+    The woven 日 on the 108dp adaptive-icon canvas, inside the 66dp safe zone.
+    108dp 自适应图标画布上织出来的「日」字，在 66dp 安全区内。
     """
-    dy = 4.5
-    cols = [strand(poly((x, 49.05 + dy), (x, (67 if x == 54 else 66.55) + dy)), THREAD, name="thread", width=1.3)
-            for x in (45.15, 54, 62.85)]
-    r, h = 7.693, 6.293
-    rows = []
-    for y0 in (52.6 + dy, 59.1 + dy, 65.6 + dy):
-        rows.append(strand([
-            Arc(36.3, y0 - h, r, ang((36.3, y0 - h), (39.25, y0 + 0.812)), 54.88),
-            Arc(45.15, y0 + h, r, -125.12, -54.88), Arc(54, y0 - h, r, 125.12, 54.88),
-            Arc(62.85, y0 + h, r, -125.12, -54.88), Arc(71.7, y0 - h, r, 125.12, ang((71.7, y0 - h), (68.75, y0 + 0.812))),
-        ], WAVE, name="swell", width=2))
-    c0, c1, c2 = cols
-    r0, r1, r2 = rows
-    cut(r0, c0, (45.15, 51.2 + dy), 2.4)
-    cut(r0, c2, (62.85, 51.2 + dy), 2.4)
-    cut(r1, c1, (54, 60.5 + dy), 2.6)
-    cut(r2, c0, (45.15, 64.2 + dy), 2.6)
-    cut(r2, c2, (62.85, 64.2 + dy), 2.6)
-    cut(c1, r0, (54, 54.0 + dy), 8)
-    cut(c0, r1, (45.15, 57.7 + dy), 8)
-    cut(c2, r1, (62.85, 57.7 + dy), 8)
-    cut(c1, r2, (54, 67.0 + dy), 8)
-    sun = [
-        "M39.814,44.1 A16,16 0 0,1 68.186,44.1 Z",
-        "M39.25,45.3 L68.75,45.3 A16,16 0 0,1 69.492,47.5 L38.508,47.5 A16,16 0 0,1 39.25,45.3 Z",
-        "M38.152,49.3 L69.848,49.3 A16,16 0 0,1 70,51.5 L38,51.5 A16,16 0 0,1 38.152,49.3 Z",
-    ]
-    return [*cols, *rows], [(SUN, d) for d in sun]
+    return woven_day(54, 54, w=8, dx=11.6, dy=15.4, over=4.8, gap=1.6)
 
 
-NOTIFICATION = (
-    [("white", "M6.418,9.3 A6,6 0 0,1 17.582,9.3 Z M6.121,10.3 L17.879,10.3 A6,6 0 0,1 18,11.5 L6,11.5 A6,6 0 0,1 6.121,10.3 Z")],
-    [("M6.75,15 a2.314,2.314 0 0,1 3.5,0 a2.314,2.314 0 0,0 3.5,0 a2.314,2.314 0 0,1 3.5,0 "
-      "M6.75,19 a2.314,2.314 0 0,1 3.5,0 a2.314,2.314 0 0,0 3.5,0 a2.314,2.314 0 0,1 3.5,0", "round")],
-)
+def notification():
+    """
+    The same character on the 24dp status-bar canvas, with wider gaps so they survive at that size.
+    24dp 状态栏画布上的同一个字；缝留得更宽，这么小也不会糊掉。
+    """
+    return woven_day(12, 12, w=3.2, dx=5, dy=6.8, over=2.1, gap=1.2)
+
+
+# Top and bottom of the launcher background. / 启动器背景的上端与下端颜色。
+BACKGROUND = ("#FF245E6C", "#FF1B4656")
+
+
+def background_xml():
+    return "\n".join([
+        '<?xml version="1.0" encoding="utf-8"?>',
+        "<!-- Launcher background: deep teal, a little lighter at the top. -->",
+        "<!-- 启动器背景：深青色，上端略亮。 -->",
+        "<!-- Generated by scripts/icons/gen_icons.py; edit the script, not this file. -->",
+        "<!-- 由 scripts/icons/gen_icons.py 生成；请改脚本，不要改这个文件。 -->",
+        '<vector xmlns:android="http://schemas.android.com/apk/res/android"',
+        '    xmlns:aapt="http://schemas.android.com/aapt"',
+        '    android:width="108dp"', '    android:height="108dp"',
+        '    android:viewportWidth="108"', '    android:viewportHeight="108">',
+        '    <path android:pathData="M0,0 H108 V108 H0 Z">',
+        '        <aapt:attr name="android:fillColor">',
+        '            <gradient', '                android:type="linear"',
+        '                android:startX="54"', '                android:startY="0"',
+        '                android:endX="54"', '                android:endY="108"',
+        f'                android:startColor="{BACKGROUND[0]}"', f'                android:endColor="{BACKGROUND[1]}" />',
+        "        </aapt:attr>", "    </path>", "</vector>",
+    ]) + "\n"
+
 
 # ---------------- output / 输出 ----------------
 
@@ -359,28 +379,27 @@ def main(preview=None):
         write(name, vector_xml(strokes, fills, 24, 24, STATUS_PALETTE, f"{en} Coloured by the Icon tint; tinted shapes keep their own alpha.",
                                f"{zh}颜色由 Icon 的 tint 决定，淡色部分保持各自的透明度。"), GENERATED)
 
-    fill_list, stroke_list = NOTIFICATION
-    write("ic_notification", vector_xml({("white", 1.8, cap): [d] for d, cap in stroke_list}, {c: [d] for c, d in fill_list},
-                                        24, 24, {"white": "#FFFFFFFF"},
-                                        "Status-bar icon: a sliced sun over two waves, white on transparent; the system uses only the alpha channel.",
-                                        "状态栏小图标：两道浪上的切片太阳，透明底上的白色；系统只取 alpha 通道着色。"))
+    write("ic_notification", vector_xml({}, notification(), 24, 24, {WARP: "#FFFFFFFF", WEFT: "#FFFFFFFF", SUN: "#FFFFFFFF"},
+                                        "Status-bar icon: the woven character 日, white on transparent; the system uses only the alpha channel.",
+                                        "状态栏小图标：织出来的「日」字，透明底上的白色；系统只取 alpha 通道着色。"))
 
-    strokes, fills = render(*launcher())
+    fills = launcher()
     write("ic_launcher_foreground", vector_xml(
-        strokes, fills, 108, 108, {SUN: "#FFF4B740", THREAD: "#FF7FD1C7", WAVE: "#FFF3EFE6"},
-        "Sunrise over the sea: a sliced sun rising from three swells, three threads woven through them. Inside the 66dp safe zone of the 108dp canvas.",
-        "海上日出：切片的太阳从三道浪里升起，三缕细线和浪一压一挑。绘制在 108dp 画布中 66dp 的安全区内。"))
+        {}, fills, 108, 108, {WARP: "#FFF6F1E6", WEFT: "#FFF6F1E6", SUN: "#FFF6B73C"},
+        "The character 日 woven from two warps and three wefts; the middle weft is the golden sun. Inside the 66dp safe zone of the 108dp canvas.",
+        "两根经线、三根纬线织成的「日」字，中间那根纬线是金色的太阳。绘制在 108dp 画布中 66dp 的安全区内。"))
     write("ic_launcher_monochrome", vector_xml(
-        strokes, fills, 108, 108, {SUN: "#FFFFFFFF", THREAD: "#FFFFFFFF", WAVE: "#FFFFFFFF"},
+        {}, fills, 108, 108, {WARP: "#FFFFFFFF", WEFT: "#FFFFFFFF", SUN: "#FFFFFFFF"},
         "Themed-icon layer: the foreground shapes in one colour; the gaps are real cuts, so the system tint keeps them.",
         "主题图标层：与前景相同的形状，单色；缝是真实切开的，系统着色后依然保留。"))
+    write("ic_launcher_background", background_xml())
 
     if preview:
-        app = svg(strokes, fills, {SUN: "#F4B740", THREAD: "#7FD1C7", WAVE: "#F3EFE6"}, "18 18 72 72", 192)
+        app = svg({}, fills, {WARP: "#F6F1E6", WEFT: "#F6F1E6", SUN: "#F6B73C"}, "18 18 72 72", 192)
         grid = "".join(f'<div class="c">{big}<span class="d">{small}</span><b>{n}</b></div>' for n, big, small in cells)
         with open(preview, "w", encoding="utf-8") as f:
             f.write("<!doctype html><meta charset='utf-8'><style>body{margin:0;padding:24px;background:#F3F4F0;font:13px sans-serif}"
-                    ".a{width:192px;height:192px;border-radius:44px;overflow:hidden;background:#1E4E5F;margin-bottom:24px}"
+                    f".a{{width:192px;height:192px;border-radius:44px;overflow:hidden;background:linear-gradient(#{BACKGROUND[0][3:]},#{BACKGROUND[1][3:]});margin-bottom:24px}}"
                     ".g{display:grid;grid-template-columns:repeat(7,140px);gap:12px}.c{background:#fff;border-radius:14px;padding:12px;"
                     "display:flex;flex-direction:column;align-items:center;gap:8px}.d{background:#141A21;padding:4px;border-radius:6px;line-height:0}</style>"
                     f"<div class='a'>{app}</div><div class='g'>{grid}</div>")

@@ -262,11 +262,11 @@
     </plurals>
     <string name="reminders_channel">到期提醒</string>
     <string name="reminders_channel_description">已保存的条目快到期或已过期时</string>
-    <string name="reminders_notify_expired">%1$s已过期</string>
-    <string name="reminders_notify_today">%1$s今天到期</string>
-    <string name="reminders_notify_tomorrow">%1$s明天到期</string>
+    <string name="reminders_notify_expired">%1$s 已过期</string>
+    <string name="reminders_notify_today">%1$s 今天到期</string>
+    <string name="reminders_notify_tomorrow">%1$s 明天到期</string>
     <plurals name="reminders_notify_days">
-        <item quantity="other">%1$s还剩 %2$d 天</item>
+        <item quantity="other">%1$s 还剩 %2$d 天</item>
     </plurals>
     <string name="reminders_notify_body">有效期至 %1$s。续期后记得回到织日更新截止时间。</string>
     <string name="reminders_notify_switch">到期提醒</string>
@@ -295,8 +295,8 @@
     <string name="traffic_moderate">中度拥堵</string>
     <string name="traffic_severe">严重拥堵</string>
     <string name="traffic_unknown">未知</string>
-    <string name="traffic_brief">开车去%1$s：%2$s · %3$s</string>
-    <string name="traffic_brief_plain">开车去%1$s：%2$s</string>
+    <string name="traffic_brief">开车去 %1$s：%2$s · %3$s</string>
+    <string name="traffic_brief_plain">开车去 %1$s：%2$s</string>
 
     <string name="transit_train_title">火车</string>
     <string name="transit_bus_title">公交</string>

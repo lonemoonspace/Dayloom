@@ -9,11 +9,11 @@
 > 计划见[设计文档](docs/design.md)。
 
 <p>
-  <img src="docs/screenshots/home-zh.png" width="300" alt="首页：时钟与农历、今天的天气与穿衣建议、带实时状态的火车与公交通勤、到期提醒">
+  <img src="docs/screenshots/home-zh.png" width="300" alt="织纹背景上的首页：「今天」摘要、时钟与农历、天气与穿衣建议和降水概率、带实时状态的火车通勤、发车板、待办和到期提醒">
   <img src="docs/screenshots/home-zh-dark.png" width="300" alt="同一首页的深色模式">
 </p>
 
-<sub>用示例数据渲染；颜色跟随手机壁纸。</sub>
+<sub>由 <code>CardScreenshotTest</code> 用示例数据在「北欧晨曦」主题下画出；默认颜色跟随手机壁纸。</sub>
 
 ## 原则
 

@@ -4,7 +4,7 @@ Each version has an English section followed by a Chinese one. The heading must 
 looks it up literally.
 每个版本先写英文、再写中文。标题必须恰好是 `## X.Y.Z`：发版 workflow 按字面查找。
 
-## Unreleased
+## 0.3.3
 
 - New To-do module: a home card for quick notes of things to do. Tap the circle to tick one off (it stays struck through
   for a few seconds with Undo), tap the title to edit or delete it, and "Add to-do" opens a sheet where the keyboard's
@@ -20,6 +20,10 @@ looks it up literally.
   ("MET Norway (CC BY 4.0)", "Entur (NLOD)"); the full wording stays on the About page.
 - New app icon: the character 日 (day) woven from two warp and three weft ribbons, with the middle ribbon in gold as the
   sun, on deep teal. The themed icon, the notification icon and the splash screen use the same shape.
+- Chinese: a space now separates Chinese from names and numbers dropped into the morning brief, the "Today" lines and
+  expiry notifications ("开车去 Nordby", "Monthly ticket 明天到期").
+- README: new screenshots of the whole home page, drawn by the screenshot test so they follow the next layout change.
+- Build: Gradle 9.9.1, kotlinx.serialization 1.13.0, Robolectric 4.18, Roborazzi 1.79.0.
 
 - 新增「待办」模块：首页卡片，随手记下要做的事。点圆圈勾选完成（划线保留几秒，可以撤销），点标题编辑或删除；「添加待办」
   从底部弹出输入框，键盘上的完成键直接保存。截止日期可选（今天、明天或任选一天）；逾期和今天到期的条目分别带红色、黄色标签，
@@ -33,6 +37,9 @@ looks it up literally.
   「关于」页。
 - 新的应用图标：两根经线、三根纬线织成的「日」字，中间一横是金色的太阳，深青色底。主题图标、通知小图标和启动页用的是
   同一个图形。
+- 中文：早间简报、「今天」摘要和到期通知里，嵌入的英文名字和数字与中文之间加了空格（「开车去 Nordby」「Monthly ticket 明天到期」）。
+- README：换上整页首页的新截图，由截图测试画出，以后改布局时跟着更新。
+- 构建：Gradle 9.9.1、kotlinx.serialization 1.13.0、Robolectric 4.18、Roborazzi 1.79.0。
 
 ## 0.3.2
 

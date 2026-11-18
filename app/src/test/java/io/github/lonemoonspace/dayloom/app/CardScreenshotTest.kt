@@ -2,6 +2,17 @@ package io.github.lonemoonspace.dayloom.app
 
 import android.app.Application
 import android.provider.Settings
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.graphics.luminance
+import io.github.lonemoonspace.dayloom.core.ui.theme.LocalAppSurfaces
+import io.github.lonemoonspace.dayloom.core.ui.theme.appSurfaces
+import io.github.lonemoonspace.dayloom.core.ui.theme.overWeave
+import io.github.lonemoonspace.dayloom.core.ui.theme.weaveBackground
+import io.github.lonemoonspace.dayloom.core.ui.theme.weaveColor
+import io.github.lonemoonspace.dayloom.feature.calendar.data.LunarJavaProvider
+import io.github.lonemoonspace.dayloom.feature.calendar.domain.HolidayCountry
+import io.github.lonemoonspace.dayloom.feature.calendar.ui.CalendarHeader
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -112,11 +123,12 @@ class CardScreenshotTest {
         realtime = realtime, platform = platform,
     )
 
-    @Test
-    fun `train card`() {
-        // A late first train held for a late opposing one, with a faster change folded over it; an on-time change; a direct
-        // train without live data.
-        // 首车晚点、在等晚点的对向车，更快的换乘方案叠在它上面；一班准点换乘；一班没有实时数据的直达。
+    /**
+     * A late first train held for a late opposing one, with a faster change folded over it; an on-time change; a direct
+     * train without live data.
+     * 首车晚点、在等晚点的对向车，更快的换乘方案叠在它上面；一班准点换乘；一班没有实时数据的直达。
+     */
+    private fun trainTrips(): CommuteTrips {
         val outbound = listOf(
             TripOption(listOf(ride("L1", at(8, 24), 6, at(8, 52), "Lindvik stasjon", "Nordby stasjon", "1"))),
             TripOption(
@@ -137,9 +149,16 @@ class CardScreenshotTest {
         val opposing = listOf(
             BoardDeparture(line = "L1", mode = "rail", frontText = "Vestby", platform = "2", aimed = at(8, 25), expected = at(8, 30), realtime = true),
         )
-        val trips = CommuteTrips(CommuteMode.OUTBOUND, outbound = outbound, opposing = opposing)
-        shots("train") { CommuteCard(CommuteKind.TRAIN, snapshot(trips), null, { _, _ -> false }, route, 0) {} }
+        return CommuteTrips(CommuteMode.OUTBOUND, outbound = outbound, opposing = opposing)
     }
+
+    @Test
+    fun `train card`() {
+        shots("train") { TrainCard() }
+    }
+
+    @Composable
+    private fun TrainCard() = CommuteCard(CommuteKind.TRAIN, snapshot(trainTrips()), null, { _, _ -> false }, route, 0) {}
 
     @Test
     fun `train card turned round by hand`() {
@@ -152,13 +171,12 @@ class CardScreenshotTest {
         shots("train-flipped", variants = listOf("zh")) { CommuteCard(CommuteKind.TRAIN, snapshot(trips), null, { _, _ -> false }, route, flippedAt) {} }
     }
 
-    @Test
-    fun `departure board card`() {
+    private fun boards(): Boards {
         fun bus(line: String, front: String, platform: String, aimed: Long, late: Int = 0, cancelled: Boolean = false) = BoardDeparture(
             line = line, mode = "bus", frontText = front, platform = platform,
             aimed = aimed, expected = aimed + late * 60_000L, realtime = true, cancelled = cancelled,
         )
-        val boards = Boards(
+        return Boards(
             listOf(
                 BoardResult(
                     "board1",
@@ -172,12 +190,18 @@ class CardScreenshotTest {
                 ),
             ),
         )
-        val favourites = listOf(FavouriteBoard("board1", TransitStop("stop:3", "Sentrum")))
-        shots("boards", variants = listOf("en", "zh")) { BoardsCard(snapshot(boards), null, { _, _ -> false }, favourites) }
     }
 
     @Test
-    fun `weather card`() {
+    fun `departure board card`() {
+        shots("boards", variants = listOf("en", "zh")) { BoardsCard() }
+    }
+
+    @Composable
+    private fun BoardsCard() =
+        BoardsCard(snapshot(boards()), null, { _, _ -> false }, listOf(FavouriteBoard("board1", TransitStop("stop:3", "Sentrum"))))
+
+    private fun forecast(): Forecast {
         // Hourly for two and a half days, then every six hours as MET does: a cool morning with rain around noon.
         // 先逐小时两天半，之后像 MET 那样每 6 小时一个点：凉爽的早晨，中午前后有雨。
         val start = now.withMinute(0)
@@ -211,7 +235,12 @@ class CardScreenshotTest {
                 temperatureMax6h = 8.0 + (i % 4),
             )
         }
-        val forecast = Forecast(updatedAt = fetchedAt, observedAt = start.toInstant().toEpochMilli(), points = hourly + later)
+        return Forecast(updatedAt = fetchedAt, observedAt = start.toInstant().toEpochMilli(), points = hourly + later)
+    }
+
+    @Test
+    fun `weather card`() {
+        val forecast = forecast()
         shots("weather", variants = listOf("en", "zh")) { WeatherCard(snapshot(forecast), null, { _, _ -> false }) }
         // Any place but Home is named in front of the condition. / 不是家的地点，名字写在天气状况前面。
         shots("weather-place", variants = listOf("zh-night")) { WeatherCard(snapshot(forecast), null, { _, _ -> false }, placeLabel = "Nordby") }
@@ -238,21 +267,20 @@ class CardScreenshotTest {
         shots("traffic", variants = listOf("en", "zh")) { TrafficCard(snapshot(status), null, { _, _ -> false }, home, work, 0) {} }
     }
 
-    @Test
-    fun `reminders card`() {
-        val settings = RemindersSettings(
+    private val reminders = RemindersSettings(
             items = listOf(
                 ReminderItem("item1", "Monthly ticket", "2026-10-21T23:59", warnDays = 3),
                 ReminderItem("item2", "Parking permit", "2026-11-30T23:59", warnDays = 7),
                 ReminderItem("item3", "Passport", "2031-04-12T23:59", warnDays = 90),
             ),
         )
-        shots("reminders", variants = listOf("en", "zh")) { RemindersCard(flowOf(settings)) }
-    }
 
     @Test
-    fun `todo card`() {
-        val settings = TodoSettings(
+    fun `reminders card`() {
+        shots("reminders", variants = listOf("en", "zh")) { RemindersCard(flowOf(reminders)) }
+    }
+
+    private val todos = TodoSettings(
             items = listOf(
                 TodoItem("todo1", "Change to winter tyres", due = "2026-10-18", createdAt = 1),
                 TodoItem("todo2", "Pay the rent", due = "2026-10-20", createdAt = 2),
@@ -263,7 +291,50 @@ class CardScreenshotTest {
                 TodoItem("todo7", "Return the library books", createdAt = 7, doneAt = fetchedAt),
             ),
         )
-        shots("todo") { TodoCard(flowOf(settings)) {} }
+
+    @Test
+    fun `todo card`() {
+        shots("todo") { TodoCard(flowOf(todos)) {} }
+    }
+
+    /**
+     * The whole home page as it opens with the default settings, woven background included, for the README. Taller than the
+     * window of the other tests, so the picture is the full page; it is written to `docs/screenshots/`, not next to the cards.
+     * 按默认设置打开时的整个首页，包括织纹背景，给 README 用。比其他测试的窗口高，图片就是整页；写到 `docs/screenshots/`，
+     * 不和卡片图片放在一起。
+     */
+    @Test
+    @Config(qualifiers = "w384dp-h2400dp-xhdpi")
+    fun `home page`() {
+        val summary = listOf(
+            UiText.Res(R.string.weather_brief_umbrella, listOf(UiText.Res(R.string.weather_partly_cloudy), 6, UiText.Res(R.string.weather_clothing_cold))),
+            UiText.Res(R.string.transit_brief, listOf("L1", UiText.Time(LocalTime.of(8, 24)), UiText.Plural(R.plurals.transit_late, 6))),
+            UiText.Res(R.string.reminders_notify_tomorrow, listOf("Monthly ticket")),
+        )
+        val forecast = forecast()
+        for ((variant, file) in listOf("en" to "home-en", "zh" to "home-zh", "zh-night" to "home-zh-dark")) {
+            shot(variant, "../docs/screenshots/$file.png") {
+                val scheme = MaterialTheme.colorScheme
+                val dark = scheme.background.luminance() < 0.5f
+                CompositionLocalProvider(LocalAppSurfaces provides MaterialTheme.appSurfaces.overWeave()) {
+                    Column(
+                        Modifier
+                            .background(scheme.background)
+                            .weaveBackground(weaveColor(scheme, dark))
+                            .padding(start = 12.dp, end = 12.dp, top = 16.dp, bottom = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        TodaySummary(summary)
+                        CalendarHeader(showLunar = true, countries = setOf(HolidayCountry.CN, HolidayCountry.NO), lunar = LunarJavaProvider())
+                        WeatherCard(snapshot(forecast), null, { _, _ -> false })
+                        TrainCard()
+                        BoardsCard()
+                        TodoCard(flowOf(todos)) {}
+                        RemindersCard(flowOf(reminders))
+                    }
+                }
+            }
+        }
     }
 
     @Test
@@ -349,16 +420,20 @@ class CardScreenshotTest {
         content: @Composable () -> Unit,
     ) {
         for (variant in variants) {
-            RuntimeEnvironment.setQualifiers("+$variant")
-            val clock = if (variant.startsWith("en")) "12" else "24"
-            Settings.System.putString(RuntimeEnvironment.getApplication().contentResolver, Settings.System.TIME_12_24, clock)
-            captureRoboImage("src/test/screenshots/$name-$variant.png") {
-                CompositionLocalProvider(LocalAppClock provides FixedClock(now)) {
-                    // A fixed preset: the default follows the wallpaper, which a test has none of. / 固定用一个预设：默认配色跟随壁纸，而测试里没有壁纸。
-                    DayloomTheme(preset = ThemePreset.NORDIC_DAWN.id) {
-                        Surface(color = MaterialTheme.colorScheme.background) { Column(Modifier.padding(if (margin) 12.dp else 0.dp)) { content() } }
-                    }
-                }
+            shot(variant, "src/test/screenshots/$name-$variant.png") {
+                Surface(color = MaterialTheme.colorScheme.background) { Column(Modifier.padding(if (margin) 12.dp else 0.dp)) { content() } }
+            }
+        }
+    }
+
+    private fun shot(variant: String, path: String, content: @Composable () -> Unit) {
+        RuntimeEnvironment.setQualifiers("+$variant")
+        val clock = if (variant.startsWith("en")) "12" else "24"
+        Settings.System.putString(RuntimeEnvironment.getApplication().contentResolver, Settings.System.TIME_12_24, clock)
+        captureRoboImage(path) {
+            CompositionLocalProvider(LocalAppClock provides FixedClock(now)) {
+                // A fixed preset: the default follows the wallpaper, which a test has none of. / 固定用一个预设：默认配色跟随壁纸，而测试里没有壁纸。
+                DayloomTheme(preset = ThemePreset.NORDIC_DAWN.id) { content() }
             }
         }
     }

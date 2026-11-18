@@ -47,6 +47,8 @@ data class ForecastPoint(
     val precipProbability1h: Double? = null,
     /** 0–100 %, next hour. / 0–100 %，未来一小时。 */
     val thunderProbability1h: Double? = null,
+    /** 0–100 %, next six hours; only `complete` has it. / 0–100 %，未来 6 小时；只有 `complete` 提供。 */
+    val precipProbability6h: Double? = null,
     /** °C, lowest and highest in the next six hours; only `complete` has them. / °C，未来 6 小时内的最低与最高；只有 `complete` 提供。 */
     val temperatureMin6h: Double? = null,
     val temperatureMax6h: Double? = null,

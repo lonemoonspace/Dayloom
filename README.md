@@ -2,18 +2,18 @@
 
 **English** · [中文](README.zh-CN.md)
 
-Dayloom is an extensible Android daily dashboard: weather, Norwegian public transport, traffic, expiry reminders, calendar,
+Dayloom is an extensible Android daily dashboard: weather, Norwegian public transport, traffic, to-dos, expiry reminders, calendar,
 football and news, each as a module you can turn on or off. The UI is available in English and Chinese.
 
 > **Status: early development.** The module system, home screen, settings and build pipeline are in place (milestone M0),
 > along with shared places, weather and calendar (M1), expiry reminders and traffic (M2), Norwegian public transport (M3), background refresh, notifications, the morning brief and onboarding (M4), football (M5) and news with AI summaries (M6). See the [design document](docs/design.en.md) for the plan.
 
 <p>
-  <img src="docs/screenshots/home-en.png" width="300" alt="Home screen: clock and lunar date, the weather for today with what to wear, train and bus commutes with live status, expiry reminders">
+  <img src="docs/screenshots/home-en.png" width="300" alt="Home screen on the woven background: the Today summary, clock and lunar date, the weather with what to wear and the chance of rain, the train commute with live status, a departure board, to-dos and expiry reminders">
   <img src="docs/screenshots/home-zh-dark.png" width="300" alt="The same home screen in Chinese, dark mode">
 </p>
 
-<sub>Rendered with sample data; colours follow the phone's wallpaper.</sub>
+<sub>Drawn from sample data by <code>CardScreenshotTest</code> in the Nordic Dawn theme; by default the colours follow the phone's wallpaper.</sub>
 
 ## Principles
 

@@ -186,4 +186,15 @@ class SettingsViewModelTest {
         assertFalse(settings.state.value.weaveBackground)
         assertFalse(vm.state.value.weaveBackground)
     }
+
+    @Test
+    fun `the home summary is on by default and can be turned off`() = runTest {
+        val vm = vm()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
+
+        assertTrue(vm.state.value.homeSummary)
+        vm.setHomeSummary(false)
+        assertFalse(settings.state.value.homeSummary)
+        assertFalse(vm.state.value.homeSummary)
+    }
 }

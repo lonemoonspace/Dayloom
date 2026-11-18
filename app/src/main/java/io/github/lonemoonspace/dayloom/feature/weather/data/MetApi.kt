@@ -107,6 +107,7 @@ class MetApi(
                     uvIndex = step.data.instant.details.uvIndex,
                     precipProbability1h = step.data.next1h?.details?.precipitationProbability,
                     thunderProbability1h = step.data.next1h?.details?.thunderProbability,
+                    precipProbability6h = step.data.next6h?.details?.precipitationProbability,
                     temperatureMin6h = step.data.next6h?.details?.temperatureMin,
                     temperatureMax6h = step.data.next6h?.details?.temperatureMax,
                 )

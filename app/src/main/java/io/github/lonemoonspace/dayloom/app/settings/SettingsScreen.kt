@@ -156,6 +156,7 @@ fun SettingsPageScreen(
     onMorningBriefTime: (Int) -> Unit,
     onThemePreset: (String) -> Unit,
     onWeaveBackground: (Boolean) -> Unit,
+    onHomeSummary: (Boolean) -> Unit,
     sharedData: @Composable () -> Unit = {},
 ) {
     LazyColumn(
@@ -164,7 +165,19 @@ fun SettingsPageScreen(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         when (page) {
-            SettingsPage.APPEARANCE -> item(key = "theme") { ThemeCard(state.themePreset, onThemePreset, state.weaveBackground, onWeaveBackground) }
+            SettingsPage.APPEARANCE -> {
+                item(key = "theme") { ThemeCard(state.themePreset, onThemePreset, state.weaveBackground, onWeaveBackground) }
+                item(key = "home") {
+                    InfoCard(title = stringResource(R.string.settings_home)) {
+                        SwitchRow(
+                            label = stringResource(R.string.home_summary_switch),
+                            checked = state.homeSummary,
+                            onCheckedChange = onHomeSummary,
+                            summary = stringResource(R.string.home_summary_switch_summary),
+                        )
+                    }
+                }
+            }
             SettingsPage.LANGUAGE -> {
                 item(key = "language") { LanguageCard(state.language, onLanguage) }
                 item(key = "timezone") { TimeZoneCard(state.timeZoneOverride, state.effectiveZone, onTimeZone) }

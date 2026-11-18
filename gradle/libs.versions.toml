@@ -16,7 +16,7 @@ navigationCompose = "2.10.2"
 datastore = "1.1.4"
 work = "2.12.0"
 coroutines = "1.11.0"
-serializationJson = "1.12.0"
+serializationJson = "1.13.0"
 okhttp = "5.5.1"
 haze = "2.1.0"
 reorderable = "3.1.0"
@@ -28,9 +28,9 @@ ksp = "2.3.13"
 
 junit = "4.13.2"
 # Only for Room migration tests and card screenshots on the JVM (design §17). / 只用于在 JVM 上跑 Room 迁移测试与卡片截图（设计文档 §17）。
-robolectric = "4.17"
+robolectric = "4.18"
 # Card screenshots drawn on the JVM by Robolectric; see CardScreenshotTest. / 在 JVM 上由 Robolectric 画出的卡片截图，见 CardScreenshotTest。
-roborazzi = "1.78.0"
+roborazzi = "1.79.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }

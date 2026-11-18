@@ -30,10 +30,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.lonemoonspace.dayloom.R
+import io.github.lonemoonspace.dayloom.core.i18n.UiText
+import io.github.lonemoonspace.dayloom.core.i18n.asString
 import io.github.lonemoonspace.dayloom.core.ui.InfoCard
 import io.github.lonemoonspace.dayloom.core.ui.SkeletonLines
 import io.github.lonemoonspace.dayloom.core.ui.plusBars
@@ -58,21 +61,49 @@ fun HomeScreen(
         // userOrder, not cards: a module whose card is only hidden for now is not an empty home. / 看 userOrder 而不是 cards：卡片只是暂时隐藏的模块不算首页为空。
         state.userOrder.isEmpty() -> EmptyHome(onOpenSettings)
         editing -> EditableCardList(state.userOrder, onSaveOrder)
-        else -> CardList(state.cards)
+        else -> CardList(state.cards, state.summary)
     }
 }
 
 private val ListPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 12.dp)
 
 @Composable
-private fun CardList(cards: List<HomeCardEntry>) {
+private fun CardList(cards: List<HomeCardEntry>, summary: List<UiText>) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = ListPadding.plusBars(top = true),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        if (summary.isNotEmpty()) {
+            item(key = SUMMARY_KEY) { Box(Modifier.animateItem()) { TodaySummary(summary) } }
+        }
         items(cards, key = { it.key }) { entry ->
             Box(Modifier.animateItem()) { entry.card.content() }
+        }
+    }
+}
+
+/** Not a card key: those are always `<moduleId>.<key>`. / 不是卡片键：卡片键总是 `<模块id>.<键>`。 */
+private const val SUMMARY_KEY = "summary"
+
+/**
+ * The day at a glance above the cards: the same lines as the morning brief, as of now. Plain text on the page rather than a
+ * card, so it reads as a heading for the cards below and is not mistaken for one more module.
+ * 卡片上方的「今日一句话」：与早间简报相同的几行，取此刻的内容。直接写在页面上而不是放进卡片，读起来像下面各卡的标题，
+ * 不会被当成又一个模块。
+ */
+@Composable
+internal fun TodaySummary(lines: List<UiText>) {
+    Column(Modifier.padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 6.dp)) {
+        Text(
+            text = stringResource(R.string.home_summary_title),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.semantics { heading() },
+        )
+        Spacer(Modifier.height(2.dp))
+        lines.forEach { line ->
+            Text(text = line.asString(), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 2.dp))
         }
     }
 }

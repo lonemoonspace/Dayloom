@@ -70,6 +70,24 @@ object MorningBriefPolicy {
 }
 
 /**
+ * Each contributor's line at [now], in the given order; a contributor that fails is reported to [onError] and left out.
+ * Shared by the morning brief and the summary at the top of the home screen, so both always say the same.
+ * 各模块在 [now] 时的那一行，按给定顺序；出错的模块交给 [onError] 并跳过。早间简报和首页顶部的摘要共用它，两处说的总是一样。
+ */
+suspend fun briefLines(contributors: List<BriefContributor>, now: ZonedDateTime, onError: (Exception) -> Unit = {}): List<UiText> =
+    contributors.mapNotNull { contributor ->
+        // One module failing drops its own line, not the rest. / 某个模块出错只少它那一行，不影响其他行。
+        try {
+            contributor.line(now)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            onError(e)
+            null
+        }
+    }
+
+/**
  * The morning brief: one line from each enabled module with a [BriefContributor], in module order. When no module has
  * anything to say the day is not used up, so a later round can still send it.
  * 早间简报：每个提供 [BriefContributor] 的已开启模块一行，按模块顺序。没有任何模块有话说时不算发过，稍后的一轮仍可以发。
@@ -89,17 +107,7 @@ class MorningBriefRule(
 
     override suspend fun evaluate(input: RuleInput, previous: LocalDate?): RuleDecision<LocalDate?> {
         val day = MorningBriefPolicy.dueDay(briefMinute(), input.now, previous) ?: return RuleDecision(previous)
-        val lines = contributors().mapNotNull { contributor ->
-            // One module failing drops its own line, not the brief. / 某个模块出错只少它那一行，不影响整条简报。
-            try {
-                contributor.line(input.now)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                onError(e)
-                null
-            }
-        }
+        val lines = briefLines(contributors(), input.now, onError)
         if (lines.isEmpty()) return RuleDecision(previous)
         val notification = AppNotification(
             id = CoreNotifications.BRIEF_ID,

@@ -9,7 +9,7 @@
 
 **Goals**
 
-1. A ready-to-use Android daily dashboard that anyone can configure: weather, public transport, traffic, expiry reminders, calendar, football and news.
+1. A ready-to-use Android daily dashboard that anyone can configure: weather, public transport, traffic, to-dos, expiry reminders, calendar, football and news.
 2. **Extensible**: adding a module = a new feature package + one line in the registry. The home screen, settings, navigation, refresh, notifications and background work need no changes.
 3. **Trimmable**: users can turn off any module. A disabled module makes no requests and does not appear on the home screen, in navigation or in settings.
 4. **Bilingual (English / Chinese)**: all UI text, notifications and error messages come from resources; the language can be switched inside the app.
@@ -33,7 +33,7 @@
 | License | Apache-2.0 |
 | applicationId / package | `io.github.lonemoonspace.dayloom` |
 | Project structure | Single Gradle module `:app`, layered by package, boundaries guarded by an **architecture test** |
-| Module scope (first version) | Weather, public transport, traffic, expiry reminders, calendar, football, news — all generalized |
+| Module scope (first version) | Weather, public transport, traffic, to-dos, expiry reminders, calendar, football, news — all generalized |
 | Public transport | Generic trip planning via Entur Journey Planner, Norway only; pluggable through a `TransitProvider` interface |
 | Weather | MET Norway, works worldwide |
 | Time zone | Follows the device by default; can be overridden in settings |
@@ -395,6 +395,13 @@ Three modules in one package (`feature/transit`), each with its own switch. They
 
 ---
 
+### 11.8 To-do `todo`
+
+- **Function**: a simple to-do list on a home card: tick the circle to finish an item (undo for a few seconds), tap the title to edit or delete, add from a bottom sheet; the due day is optional (none, today, tomorrow, any day). Overdue or due-today items move the card to the top. The card lists the five most urgent; "All" groups everything by overdue, today, later and no date, and done items are purged after seven days.
+- **Settings**: the same full list.
+- **Source**: none (local data only).
+- **Notifications**: none; moving to the top stands in for a reminder.
+
 ## 12. Background work
 
 - One generic periodic refresh worker (unique work name `dayloom.refresh`): picks the sources due according to their `RefreshCadence` → refreshes them → hands the result to `NotificationEngine` to evaluate the rules of all enabled modules.
@@ -409,7 +416,7 @@ Three modules in one package (`feature/transit`), each with its own switch. They
 
 1. Welcome + language choice;
 2. set "Home" (search or coordinates), skippable;
-3. choose which modules to enable (defaults: calendar, weather, expiry reminders; modules that need a key or only work in Norway are unchecked, with the reason shown);
+3. choose which modules to enable (defaults: calendar, weather, to-dos, expiry reminders; modules that need a key or only work in Norway are unchecked, with the reason shown);
 4. go to the home screen. Cards of modules that are not fully set up show a "Set up" prompt.
 
 ---

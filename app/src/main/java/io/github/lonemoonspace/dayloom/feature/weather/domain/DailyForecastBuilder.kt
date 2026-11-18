@@ -7,6 +7,7 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /** One day's weather for the forecast strip. / 预报横排里某一天的天气。 */
 data class DailyForecast(
@@ -17,6 +18,11 @@ data class DailyForecast(
     val symbolCode: String,
     /** Total precipitation of the day, mm. / 当天累计降水，毫米。 */
     val precipMm: Double,
+    /**
+     * Highest chance of rain in any hour or six-hour period of the day, 0–100; null when MET gave none (the `compact` fallback).
+     * 当天任一小时或任一 6 小时时段里最高的降水概率，0–100；MET 没给时（`compact` 兜底）为 null。
+     */
+    val precipChance: Int? = null,
 )
 
 /**
@@ -47,6 +53,7 @@ object DailyForecastBuilder {
                 maxTemp = maxOf(temps.max(), periodMax ?: -Double.MAX_VALUE),
                 symbolCode = symbol,
                 precipMm = precipitationForDay(timed, date, zone),
+                precipChance = precipitationChance(timed, date, zone),
             )
         }
     }
@@ -74,6 +81,19 @@ object DailyForecastBuilder {
     }
 
     /**
+     * Hourly chances where the series is hourly, then the six-hour ones of windows at least half inside the day, as for the
+     * extremes below. The highest wins: "60 %" reads as "it may well rain at some point that day", which is what a commuter
+     * looking days ahead wants to know.
+     * 逐小时范围内用逐小时的概率，之后用至少一半落在当天的 6 小时窗口的概率，与下面的极值同样处理。取最高的：「60%」读作
+     * 「那天某个时候很可能下雨」，提前几天看通勤的人想知道的正是这个。
+     */
+    private fun precipitationChance(points: List<Pair<ZonedDateTime, ForecastPoint>>, date: LocalDate, zone: ZoneId): Int? {
+        val hourly = points.filter { (t, _) -> t.toLocalDate() == date }.mapNotNull { (_, p) -> p.precipProbability1h }
+        val periods = sixHourOnly(points, date, zone).mapNotNull { (_, p) -> p.precipProbability6h }
+        return (hourly + periods).maxOrNull()?.roundToInt()?.coerceIn(0, 100)
+    }
+
+    /**
      * Beyond the hourly range a day has only four instant readings, which miss the afternoon peak and the early-morning low,
      * so the six-hour minimum and maximum join in. A window counts for the day that holds at least half of it; hourly points
      * are left out, their instants already cover the day.
@@ -81,13 +101,18 @@ object DailyForecastBuilder {
      * 落在哪天就算哪天的；逐小时的点不参与，它们的瞬时值已经覆盖全天。
      */
     private fun sixHourExtremes(points: List<Pair<ZonedDateTime, ForecastPoint>>, date: LocalDate, zone: ZoneId): Pair<Double?, Double?> {
+        val inDay = sixHourOnly(points, date, zone)
+        return inDay.mapNotNull { (_, p) -> p.temperatureMin6h }.minOrNull() to inDay.mapNotNull { (_, p) -> p.temperatureMax6h }.maxOrNull()
+    }
+
+    /** Points beyond the hourly range whose six-hour window lies at least half in [date]. / 超出逐小时范围、6 小时窗口至少一半落在 [date] 的点。 */
+    private fun sixHourOnly(points: List<Pair<ZonedDateTime, ForecastPoint>>, date: LocalDate, zone: ZoneId): List<Pair<ZonedDateTime, ForecastPoint>> {
         val dayStart = date.atStartOfDay(zone).toInstant()
         val dayEnd = date.plusDays(1).atStartOfDay(zone).toInstant()
-        val inDay = points.filter { (t, p) ->
+        return points.filter { (t, p) ->
             p.symbol1h.isEmpty() && p.precipitation1h == null &&
                 Duration.between(maxOf(t.toInstant(), dayStart), minOf(t.plusHours(6).toInstant(), dayEnd)).toMinutes() >= 3 * 60
         }
-        return inDay.mapNotNull { (_, p) -> p.temperatureMin6h }.minOrNull() to inDay.mapNotNull { (_, p) -> p.temperatureMax6h }.maxOrNull()
     }
 
     private const val NOON = 12 * 60

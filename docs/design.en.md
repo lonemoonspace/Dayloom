@@ -320,10 +320,11 @@ Module settings refer to these shared items — weather defaults to "Home", traf
 
 ### 11.1 Weather `weather`
 
-- **Features**: the weather at Home now (feels-like, wind and gusts), then the day: until 18:00 today, from 18:00 tomorrow (`DayOutlookPolicy`, daytime hours 06:00–22:00): low/high and feels-like, an hourly temperature curve (high and low marked) with rain bars underneath (rain spells shaded and labelled with amount and chance, the hour marked every three hours), what to wear (from the lowest feels-like temperature) and tips (umbrella, heavy rain, thunder, snow, icy roads, strong wind, heat, sunscreen, layers); then a four-day strip.
-- **Data source**: MET Norway Locationforecast 2.0 `complete` (worldwide; `complete` for feels-like, gusts, UV and rain probability).
-- **Settings**: the place, picked from the saved places, Home by default; the card names the place when it is not Home.
-- **Sources**: `weather.forecast`.
+- **Features**: the weather at Home now (feels-like, wind and gusts), then the day: until 18:00 today, from 18:00 tomorrow (`DayOutlookPolicy`, daytime hours 06:00–22:00): low/high and feels-like, an hourly temperature curve (high and low marked) with rain bars underneath (rain spells shaded and labelled with amount and chance, the hour marked every three hours), what to wear (from the lowest feels-like temperature) and tips (umbrella, heavy rain, thunder, snow, icy roads, strong wind, heat, sunscreen, layers); a daylight row (sunrise, sunset, day length and the change since yesterday; in polar night or midnight sun, when the sun returns or first sets; worked out on the phone by `SunPolicy` with NOAA's equations, no network); then a four-day strip. For places in Norway, MET Norway's land warnings show at the top of the card (at most two, in MET's yellow/orange/red, with type and time; tap one for MET's English text; `WarningPolicy`), and lead the Today summary and the morning brief.
+- **Data source**: MET Norway Locationforecast 2.0 `complete` (worldwide; `complete` for feels-like, gusts, UV and rain probability); MET Norway MetAlerts 2.0 `current.json?lat&lon&lang=en` (Norway only; land warnings only, test alerts skipped).
+- **Settings**: the place, picked from the saved places, Home by default; the card names the place when it is not Home. A warning notification switch (off by default); when the place is abroad, a note under it says warnings cover Norway only.
+- **Sources**: `weather.forecast`; `weather.warnings` (not queried for places abroad).
+- **Notifications**: channel `weather.warnings`, id 1000: each new warning once (deduplicated by event, level and start, so a reworded update stays quiet and a raised level notifies again); when some warnings told about end the text is updated silently, and when all are over it is taken down.
 - **Ported**: `MetApi`, `WeatherPointPicker`, `DailyForecastBuilder`, weather icons (the original project's own `ic_wx_*` vector drawables).
 - **Note**: MET requires contact information in the User-Agent; it becomes `Dayloom/<version> (+https://github.com/lonemoonspace/dayloom)`. The UI must credit the data source (CC BY 4.0).
 

@@ -48,6 +48,9 @@ import io.github.lonemoonspace.dayloom.feature.transit.BusModule
 import io.github.lonemoonspace.dayloom.feature.transit.DeparturesModule
 import io.github.lonemoonspace.dayloom.feature.transit.TrainModule
 import io.github.lonemoonspace.dayloom.feature.weather.WeatherModule
+import io.github.lonemoonspace.dayloom.feature.weather.data.WeatherParams
+import io.github.lonemoonspace.dayloom.feature.weather.domain.WarningText
+import io.github.lonemoonspace.dayloom.feature.weather.domain.WeatherWarning
 import io.github.lonemoonspace.dayloom.feature.news.domain.SyncSummary
 import io.github.lonemoonspace.dayloom.feature.news.ui.NewsCard
 import io.github.lonemoonspace.dayloom.feature.reminders.RemindersSettings
@@ -238,12 +241,36 @@ class CardScreenshotTest {
         return Forecast(updatedAt = fetchedAt, observedAt = start.toInstant().toEpochMilli(), points = hourly + later)
     }
 
+    /** A made-up spot in southern Norway for the sun times. / 用来算日出日落的挪威南部虚构地点。 */
+    private val sunSpot = WeatherParams(60.0, 10.0)
+
+    /** An orange wind warning for tomorrow, 06:00–18:00. / 明天 06:00–18:00 的橙色大风预警。 */
+    private val windWarning = WeatherWarning(
+        id = "wind",
+        event = "wind",
+        level = 3,
+        start = now.plusDays(1).withHour(6).withMinute(0).toInstant().toEpochMilli(),
+        end = now.plusDays(1).withHour(18).withMinute(0).toInstant().toEpochMilli(),
+        description = "Strong gusts.",
+    )
+
     @Test
     fun `weather card`() {
         val forecast = forecast()
-        shots("weather", variants = listOf("en", "zh")) { WeatherCard(snapshot(forecast), null, { _, _ -> false }) }
+        shots("weather", variants = listOf("en", "zh")) {
+            WeatherCard(snapshot(forecast), null, { _, _ -> false }, warnings = listOf(windWarning), coordinates = sunSpot)
+        }
         // Any place but Home is named in front of the condition. / 不是家的地点，名字写在天气状况前面。
-        shots("weather-place", variants = listOf("zh-night")) { WeatherCard(snapshot(forecast), null, { _, _ -> false }, placeLabel = "Nordby") }
+        shots("weather-place", variants = listOf("zh-night")) {
+            WeatherCard(snapshot(forecast), null, { _, _ -> false }, placeLabel = "Nordby", coordinates = sunSpot)
+        }
+        // A red warning already in force says only when it ends, and comes before a yellow one.
+        // 已经生效的红色预警只说何时结束，排在黄色预警前面。
+        val red = WeatherWarning(id = "rain", event = "rain", level = 4, start = now.minusHours(2).toInstant().toEpochMilli(), end = now.plusHours(10).toInstant().toEpochMilli())
+        val yellow = WeatherWarning(id = "ice", event = "ice", level = 2, start = now.plusDays(2).toInstant().toEpochMilli(), end = now.plusDays(3).toInstant().toEpochMilli())
+        shots("weather-warnings", variants = listOf("en", "zh")) {
+            WeatherCard(snapshot(forecast), null, { _, _ -> false }, warnings = listOf(yellow, red), coordinates = sunSpot)
+        }
     }
 
     @Test
@@ -251,6 +278,7 @@ class CardScreenshotTest {
         // The morning brief's lines as the weather, train, traffic and reminders modules word them.
         // 天气、火车、路况和到期提醒模块各自给出的早间简报那一行。
         val lines = listOf(
+            WarningText.line(windWarning, now),
             UiText.Res(R.string.weather_brief_umbrella, listOf(UiText.Res(R.string.weather_partly_cloudy), 6, UiText.Res(R.string.weather_clothing_cold))),
             UiText.Res(R.string.transit_brief, listOf("L1", UiText.Time(LocalTime.of(8, 24)), UiText.Plural(R.plurals.transit_late, 6))),
             UiText.Res(R.string.traffic_brief, listOf("Nordby", UiText.Plural(R.plurals.traffic_minutes, 26), UiText.Res(R.string.traffic_slight))),
@@ -326,7 +354,7 @@ class CardScreenshotTest {
                     ) {
                         TodaySummary(summary)
                         CalendarHeader(showLunar = true, countries = setOf(HolidayCountry.CN, HolidayCountry.NO), lunar = LunarJavaProvider())
-                        WeatherCard(snapshot(forecast), null, { _, _ -> false })
+                        WeatherCard(snapshot(forecast), null, { _, _ -> false }, coordinates = sunSpot)
                         TrainCard()
                         BoardsCard()
                         TodoCard(flowOf(todos)) {}

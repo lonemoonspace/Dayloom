@@ -8,9 +8,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import java.time.DayOfWeek
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
 import java.util.Locale
 
 /**
@@ -42,6 +44,12 @@ sealed interface UiText {
     /** A date with its clock time, e.g. "Nov 10, 2026, 14:05". / 日期加时刻，如「2026年11月10日 14:05」。 */
     data class DateTime(val at: LocalDateTime) : UiText
 
+    /**
+     * A weekday in its short form ("Wed", "周三"), for days within the coming week.
+     * 星期的简写（「Wed」「周三」），用于一周之内的日子。
+     */
+    data class Weekday(val day: DayOfWeek) : UiText
+
     /** Several texts, one per line (the morning brief). / 多段文字，每段一行（早间简报）。 */
     data class Lines(val lines: List<UiText>) : UiText
 }
@@ -58,6 +66,7 @@ fun UiText.resolve(resources: Resources, clock24: Boolean = true): String = when
     is UiText.Plural -> resources.getQuantityString(id, count, *resolveArgs(args, resources, clock24))
     is UiText.Time -> time.format(formatter(resources, if (clock24) "Hm" else "hm"))
     is UiText.DateTime -> at.format(formatter(resources, if (clock24) "yMMMdHm" else "yMMMdhm"))
+    is UiText.Weekday -> day.getDisplayName(TextStyle.SHORT, resources.configuration.locales[0] ?: Locale.ROOT)
     is UiText.Lines -> lines.joinToString("\n") { it.resolve(resources, clock24) }
 }
 

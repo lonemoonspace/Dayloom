@@ -75,7 +75,9 @@
     <string name="weather_warning_notify_title">Weather warnings</string>
     <string name="weather_warning_switch">Notify about weather warnings</string>
     <string name="weather_warning_switch_summary">When MET Norway issues a new warning for this place (Norway only)</string>
-    <string name="weather_warnings_norway_only">A place in Norway</string>
+    <string name="weather_warnings_norway_only">MET Norway only issues warnings for places in Norway.</string>
+    <string name="weather_warning_open">Expanded</string>
+    <string name="weather_warning_closed">Collapsed</string>
     <string name="weather_event_wind">wind</string>
     <string name="weather_event_rain">heavy rain</string>
     <string name="weather_event_rain_flood">rain and flooding</string>

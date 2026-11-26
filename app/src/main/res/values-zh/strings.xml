@@ -70,7 +70,9 @@
     <string name="weather_warning_notify_title">天气预警</string>
     <string name="weather_warning_switch">天气预警通知</string>
     <string name="weather_warning_switch_summary">挪威气象局对这个地点发布新预警时通知（仅限挪威）</string>
-    <string name="weather_warnings_norway_only">挪威境内的地点</string>
+    <string name="weather_warnings_norway_only">挪威气象局只为挪威境内的地点发布预警。</string>
+    <string name="weather_warning_open">已展开</string>
+    <string name="weather_warning_closed">已收起</string>
     <string name="weather_event_wind">大风</string>
     <string name="weather_event_rain">大雨</string>
     <string name="weather_event_rain_flood">暴雨洪水</string>

@@ -31,9 +31,9 @@ class MetAlertsApiTest {
 
     private fun api() = MetAlertsApi(OkHttpClient(), baseUrl = server.url("/weatherapi/metalerts/2.0/current.json"))
 
-    private fun feature(id: String, event: String, level: String, domain: String, type: String = "Alert", start: String = "2026-10-21T04:00:00+00:00") = """
+    private fun feature(id: String, event: String, level: String, domain: String, status: String = "Actual", start: String = "2026-10-21T04:00:00+00:00") = """
         {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[10.0,59.0],[11.0,59.0],[11.0,60.0],[10.0,59.0]]]},
-         "properties":{"id":"$id","event":"$event","type":"$type","awareness_level":"$level","awareness_type":"1; Wind",
+         "properties":{"id":"$id","event":"$event","status":"$status","awareness_level":"$level","awareness_type":"1; Wind",
            "geographicDomain":"$domain","county":["03"],"description":" Strong gusts. ","instruction":"Secure loose objects.",
            "riskMatrixColor":"Orange","title":"Wind"},
          "when":{"interval":["$start","2026-10-21T16:00:00+00:00"]}}
@@ -44,7 +44,7 @@ class MetAlertsApiTest {
         val body = """{"type":"FeatureCollection","lang":"en","lastChange":"2026-10-20T06:00:00+00:00","features":[
             ${feature("land", "wind", "3; orange; Severe", "land")},
             ${feature("sea", "gale", "2; yellow; Moderate", "marine")},
-            ${feature("gone", "rain", "2; yellow; Moderate", "land", type = "Cancel")},
+            ${feature("drill", "rain", "2; yellow; Moderate", "land", status = "Test")},
             ${feature("odd", "snow", "2; yellow; Moderate", "land", start = "soon")}
         ]}"""
         server.enqueue(MockResponse().setBody(body))

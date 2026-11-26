@@ -50,8 +50,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -118,8 +121,15 @@ internal fun WeatherCard(
     val now = rememberMinuteTick()
     val forecast = snapshot?.value
     val current = forecast?.let { f -> WeatherPointPicker.pick(f.points, now) { Instant.ofEpochMilli(it.time).atZone(now.zone) } }
+    val active = remember(warnings, now) { WarningPolicy.active(warnings, now).take(MAX_WARNINGS) }
     if (snapshot == null || forecast == null || current == null) {
         InfoCard(title = stringResource(R.string.weather_title), icon = R.drawable.ic_wx_partly_day) {
+            // Warnings come from their own source: a forecast that failed or has not arrived yet must not hide them.
+            // 预警来自独立的来源：预报抓取失败或还没到，不能把预警一起藏掉。
+            active.forEach { warning ->
+                WarningBar(warning, now)
+                Spacer(Modifier.height(8.dp))
+            }
             if (error == null) SkeletonLines() else Text(error.userMessage().asString(), color = MaterialTheme.statusColors.red, style = MaterialTheme.typography.bodySmall)
         }
         return
@@ -143,7 +153,7 @@ internal fun WeatherCard(
                 .padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 8.dp),
         ) {
             NowRow(current, outlook, stale = isStale(snapshot, now.toInstant()), placeLabel = placeLabel)
-            WarningPolicy.active(warnings, now).take(MAX_WARNINGS).forEach { warning ->
+            active.forEach { warning ->
                 Spacer(Modifier.height(8.dp))
                 WarningBar(warning, now)
             }
@@ -315,13 +325,22 @@ private fun WarningBar(warning: WeatherWarning, now: ZonedDateTime) {
     val details = listOf(warning.description, warning.instruction).filter { it.isNotBlank() }
     val title = WarningText.title(warning).asString()
     val span = WarningText.span(WarningPolicy.window(warning, now), now).asString()
+    val expandedState = stringResource(if (open) R.string.weather_warning_open else R.string.weather_warning_closed)
     CompositionLocalProvider(LocalContentColor provides content) {
         Column(
             Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(WARNING_CORNER))
                 .background(background)
-                .then(if (details.isEmpty()) Modifier else Modifier.clickable(onClickLabel = stringResource(R.string.weather_warning_details)) { open = !open })
+                .then(
+                    if (details.isEmpty()) {
+                        Modifier
+                    } else {
+                        Modifier
+                            .clickable(role = Role.Button, onClickLabel = stringResource(R.string.weather_warning_details)) { open = !open }
+                            .semantics { stateDescription = expandedState }
+                    },
+                )
                 .padding(horizontal = 12.dp, vertical = 7.dp)
                 .animateContentSize(),
         ) {
@@ -331,10 +350,11 @@ private fun WarningBar(warning: WeatherWarning, now: ZonedDateTime) {
                     Text(span, style = MaterialTheme.typography.labelLarge, maxLines = 1)
                 }
                 if (details.isNotEmpty()) {
+                    // Decoration only: the bar's own state already says whether it is open. / 仅作装饰：预警条自身的状态已说明是否展开。
                     Text(
                         "›",
                         style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(start = 6.dp).rotate(if (open) 90f else 0f),
+                        modifier = Modifier.padding(start = 6.dp).rotate(if (open) 90f else 0f).clearAndSetSemantics {},
                     )
                 }
             }

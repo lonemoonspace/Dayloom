@@ -47,15 +47,15 @@ class MetAlertsApi(
         const val SERVICE = "MET Norway"
 
         /**
-         * Land warnings only: a point on the coast also lies in sea areas, whose gale warnings are for boats. Cancellations
-         * and warnings without a readable time are dropped.
-         * 只要陆地预警：海边的点也落在海区里，那里的大风预警是给船的。撤销通知与时间读不出的预警丢弃。
+         * Land warnings only: a point on the coast also lies in sea areas, whose gale warnings are for boats. MET's test
+         * alerts and warnings without a readable time are dropped. A withdrawn warning simply leaves the feed.
+         * 只要陆地预警：海边的点也落在海区里，那里的大风预警是给船的。MET 的测试预警与时间读不出的预警丢弃。撤回的预警直接从列表里消失。
          */
         internal fun parse(dto: AlertsResponse): WeatherWarnings = WeatherWarnings(
             dto.features.mapNotNull { feature ->
                 val p = feature.properties
                 if (p.geographicDomain.equals("marine", ignoreCase = true)) return@mapNotNull null
-                if (p.type.equals("Cancel", ignoreCase = true)) return@mapNotNull null
+                if (p.status.equals("Test", ignoreCase = true)) return@mapNotNull null
                 val start = feature.time.interval.getOrNull(0)?.let(::epochMillis) ?: return@mapNotNull null
                 val end = feature.time.interval.getOrNull(1)?.let(::epochMillis) ?: return@mapNotNull null
                 WeatherWarning(
@@ -90,7 +90,8 @@ internal data class AlertsResponse(val features: List<Feature> = emptyList()) {
     data class Properties(
         val id: String = "",
         val event: String = "",
-        val type: String = "",
+        /** `Actual` or `Test`. / `Actual` 或 `Test`。 */
+        val status: String = "",
         @SerialName("awareness_level") val awarenessLevel: String = "",
         val geographicDomain: String = "",
         val description: String = "",

@@ -38,18 +38,25 @@ class WarningRule(
         val snapshot = warnings() ?: return RuleDecision(previous)
         val (fresh, keys) = WarningPolicy.toNotify(snapshot.warnings, previous, input.now)
         if (fresh.isEmpty()) {
-            return RuleDecision(keys, cancel = if (keys.isEmpty() && previous.isNotEmpty()) listOf(notificationId) else emptyList())
+            return when {
+                keys == previous -> RuleDecision(keys)
+                keys.isEmpty() -> RuleDecision(keys, cancel = listOf(notificationId))
+                // A warning told about has ended while others go on: the shown text is rewritten without it, silently.
+                // 说过的某条预警已结束、其他仍在：把显示的内容改成不含它的版本，不响铃。
+                else -> RuleDecision(keys, listOf(notification(WarningPolicy.active(snapshot.warnings, input.now), input, alertOnce = true)))
+            }
         }
-        val notification = AppNotification(
-            id = notificationId,
-            channelId = channelId,
-            title = if (fresh.size == 1) WarningText.title(fresh.first()) else UiText.Res(R.string.weather_warning_notify_title),
-            body = fresh.singleOrNull()?.let { WarningText.span(WarningPolicy.window(it, input.now), input.now) }
-                ?: UiText.Lines(fresh.map { WarningText.line(it, input.now) }),
-            deepLink = deepLink,
-            // A new warning is news even while an older one is still in the shade. / 即使旧预警还在通知栏，新预警也是新消息。
-            alertOnce = false,
-        )
-        return RuleDecision(keys, listOf(notification))
+        // A new warning is news even while an older one is still in the shade. / 即使旧预警还在通知栏，新预警也是新消息。
+        return RuleDecision(keys, listOf(notification(fresh, input, alertOnce = false)))
     }
+
+    private fun notification(warnings: List<WeatherWarning>, input: RuleInput, alertOnce: Boolean) = AppNotification(
+        id = notificationId,
+        channelId = channelId,
+        title = if (warnings.size == 1) WarningText.title(warnings.first()) else UiText.Res(R.string.weather_warning_notify_title),
+        body = warnings.singleOrNull()?.let { WarningText.span(WarningPolicy.window(it, input.now), input.now) }
+            ?: UiText.Lines(warnings.map { WarningText.line(it, input.now) }),
+        deepLink = deepLink,
+        alertOnce = alertOnce,
+    )
 }

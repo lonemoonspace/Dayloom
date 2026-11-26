@@ -140,6 +140,15 @@ private class WeatherInstance(private val ctx: ModuleContext) : ModuleInstance {
             checked = saved.notifyWarnings,
             channelId = ctx.channelId(channel.name),
         ) { on -> ctx.appScope.launch { store.update { it.copy(notifyWarnings = on) } } }
+        val shown by place.collectAsStateWithLifecycle(initialValue = null)
+        // Said here because the card simply shows no warnings abroad. / 在这里说明，因为在国外时卡片只是不显示预警。
+        if (shown?.let(WarningsSource::outsideNorway) == true) {
+            Text(
+                text = stringResource(R.string.weather_warnings_norway_only),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 
     override val notificationChannels = listOf(channel)

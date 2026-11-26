@@ -50,11 +50,14 @@ class WarningsSource(
             if (place == null) return SourceInput.Missing(uiText(R.string.weather_setup_place))
             // An unknown country (older saved places) is asked about: abroad, MET simply answers with nothing.
             // 国家未知（较早保存的地点）时照样查询：在国外，MET 只会返回空。
-            if (place.countryCode.isNotEmpty() && !place.countryCode.equals("NO", ignoreCase = true)) {
+            if (outsideNorway(place)) {
                 return SourceInput.Missing(uiText(R.string.weather_warnings_norway_only))
             }
             val key = PlacesPolicy.formatCoordinate(place.lat) + "," + PlacesPolicy.formatCoordinate(place.lon)
             return SourceInput.Ready(WeatherParams(place.lat, place.lon), key = key)
         }
+
+        /** Known to be abroad; an unknown country counts as Norway. / 已知在国外；国家未知时按挪威算。 */
+        fun outsideNorway(place: Place): Boolean = place.countryCode.isNotEmpty() && !place.countryCode.equals("NO", ignoreCase = true)
     }
 }

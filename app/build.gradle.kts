@@ -24,7 +24,11 @@ val hasReleaseKey = listOf("storeFile", "storePassword", "keyAlias", "keyPasswor
 
 android {
     namespace = "io.github.lonemoonspace.dayloom"
-    compileSdk = 37
+    // Compose 1.13 needs a 37.1+ platform to compile against; only the compile API level, runtime behaviour follows targetSdk.
+    // Compose 1.13 要求用 37.1 及以上的平台编译；这只是编译用的 API 级别，运行行为看 targetSdk。
+    compileSdk {
+        version = release(37) { minorApiLevel = 2 }
+    }
 
     defaultConfig {
         applicationId = "io.github.lonemoonspace.dayloom"

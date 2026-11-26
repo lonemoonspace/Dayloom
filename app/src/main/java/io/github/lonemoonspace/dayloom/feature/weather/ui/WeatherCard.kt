@@ -7,6 +7,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,16 +22,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -46,8 +53,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -63,20 +70,29 @@ import io.github.lonemoonspace.dayloom.core.ui.rememberPatternFormatter
 import io.github.lonemoonspace.dayloom.core.ui.rememberTimeFormatter
 import io.github.lonemoonspace.dayloom.core.ui.theme.statusColors
 import io.github.lonemoonspace.dayloom.core.ui.userMessage
+import io.github.lonemoonspace.dayloom.feature.weather.data.WeatherParams
 import io.github.lonemoonspace.dayloom.feature.weather.domain.ClothingLevel
 import io.github.lonemoonspace.dayloom.feature.weather.domain.DailyForecast
 import io.github.lonemoonspace.dayloom.feature.weather.domain.DailyForecastBuilder
 import io.github.lonemoonspace.dayloom.feature.weather.domain.DayOutlook
 import io.github.lonemoonspace.dayloom.feature.weather.domain.DayOutlookPolicy
+import io.github.lonemoonspace.dayloom.feature.weather.domain.Daylight
 import io.github.lonemoonspace.dayloom.feature.weather.domain.Forecast
 import io.github.lonemoonspace.dayloom.feature.weather.domain.ForecastPoint
 import io.github.lonemoonspace.dayloom.feature.weather.domain.OutlookDay
+import io.github.lonemoonspace.dayloom.feature.weather.domain.SunDay
+import io.github.lonemoonspace.dayloom.feature.weather.domain.SunPolicy
+import io.github.lonemoonspace.dayloom.feature.weather.domain.WarningLevel
+import io.github.lonemoonspace.dayloom.feature.weather.domain.WarningPolicy
+import io.github.lonemoonspace.dayloom.feature.weather.domain.WarningText
 import io.github.lonemoonspace.dayloom.feature.weather.domain.WeatherCondition
 import io.github.lonemoonspace.dayloom.feature.weather.domain.WeatherIcon
 import io.github.lonemoonspace.dayloom.feature.weather.domain.WeatherPointPicker
 import io.github.lonemoonspace.dayloom.feature.weather.domain.WeatherSymbolPolicy
 import io.github.lonemoonspace.dayloom.feature.weather.domain.WeatherTip
+import io.github.lonemoonspace.dayloom.feature.weather.domain.WeatherWarning
 import java.time.Instant
+import java.time.ZonedDateTime
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -94,6 +110,10 @@ internal fun WeatherCard(
     isStale: (Snapshot<Forecast>, Instant) -> Boolean,
     /** Named in front of the condition when the weather is not Home's. / 天气不是家的时，写在天气状况前面。 */
     placeLabel: String? = null,
+    /** MET warnings for the place; those already over are left out here. / 该地点的 MET 预警；已结束的在这里过滤掉。 */
+    warnings: List<WeatherWarning> = emptyList(),
+    /** Where the sun times are worked out for; null leaves the daylight row out. / 日出日落按这个位置计算；为 null 时不显示日照一行。 */
+    coordinates: WeatherParams? = null,
 ) {
     val now = rememberMinuteTick()
     val forecast = snapshot?.value
@@ -123,12 +143,23 @@ internal fun WeatherCard(
                 .padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 8.dp),
         ) {
             NowRow(current, outlook, stale = isStale(snapshot, now.toInstant()), placeLabel = placeLabel)
+            WarningPolicy.active(warnings, now).take(MAX_WARNINGS).forEach { warning ->
+                Spacer(Modifier.height(8.dp))
+                WarningBar(warning, now)
+            }
             val chart = outlook?.takeIf { o -> o.hours.count { it.temperature != null } >= MIN_CHART_HOURS }
             if (chart != null) {
                 Spacer(Modifier.height(6.dp))
                 DayChart(chart)
             }
             outlook?.let { AdvicePills(it, amountsInChart = chart != null) }
+            if (coordinates != null) {
+                // The same day as the hero above: tomorrow's sun once the card has moved on to tomorrow.
+                // 与上方显示的是同一天：卡片转到明天后，日出日落也是明天的。
+                val day = outlook?.date ?: now.toLocalDate()
+                val daylight = remember(coordinates, day, now.zone) { SunPolicy.daylight(day, coordinates.lat, coordinates.lon, now.zone) }
+                DaylightRow(daylight)
+            }
             if (error != null) {
                 Spacer(Modifier.height(6.dp))
                 HeroPill(error.userMessage().asString(), strong = true)
@@ -269,6 +300,129 @@ private fun HeroPill(text: String, @DrawableRes icon: Int? = null, strong: Boole
             Spacer(Modifier.width(4.dp))
         }
         Text(text, style = MaterialTheme.typography.labelMedium, fontWeight = if (strong) FontWeight.SemiBold else null)
+    }
+}
+
+/**
+ * One MET warning in MET's own colour for its level, so it reads like the warnings on yr.no and the news. Tapping it opens
+ * MET's description and advice, which MET writes in English or Norwegian only.
+ * 一条 MET 预警，用 MET 对应级别的颜色，与 yr.no 和新闻里的预警看起来一样。点开显示 MET 的说明与建议，MET 只提供英文或挪威文。
+ */
+@Composable
+private fun WarningBar(warning: WeatherWarning, now: ZonedDateTime) {
+    var open by rememberSaveable(warning.id) { mutableStateOf(false) }
+    val (background, content) = warningColors(warning.severity)
+    val details = listOf(warning.description, warning.instruction).filter { it.isNotBlank() }
+    val title = WarningText.title(warning).asString()
+    val span = WarningText.span(WarningPolicy.window(warning, now), now).asString()
+    CompositionLocalProvider(LocalContentColor provides content) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(WARNING_CORNER))
+                .background(background)
+                .then(if (details.isEmpty()) Modifier else Modifier.clickable(onClickLabel = stringResource(R.string.weather_warning_details)) { open = !open })
+                .padding(horizontal = 12.dp, vertical = 7.dp)
+                .animateContentSize(),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                FlowRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text(span, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                }
+                if (details.isNotEmpty()) {
+                    Text(
+                        "›",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(start = 6.dp).rotate(if (open) 90f else 0f),
+                    )
+                }
+            }
+            if (open) {
+                details.forEach {
+                    Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+                }
+                Text(
+                    stringResource(R.string.weather_warning_source),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = content.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * MET's warning colours, with dark text on yellow and orange and white on red, as MET prints them.
+ * MET 的预警颜色；黄与橙上用深色字，红上用白字，与 MET 自己的样式一致。
+ */
+private fun warningColors(level: WarningLevel?): Pair<Color, Color> = when (level) {
+    WarningLevel.RED -> Color(0xFFD7302A) to Color.White
+    WarningLevel.ORANGE -> Color(0xFFF28C28) to Color(0xFF2B1A05)
+    WarningLevel.YELLOW, null -> Color(0xFFF7CB3C) to Color(0xFF2B2205)
+}
+
+/**
+ * Sunrise and sunset on the left, the day's length and how it changed since yesterday on the right; on a narrow screen
+ * or with 12-hour times the right part wraps under the left.
+ * 左边日出日落，右边白天时长及比昨天长短多少；屏幕窄或用 12 小时制时，右边整段换到下一行。
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DaylightRow(daylight: Daylight) {
+    val time = rememberTimeFormatter()
+    val date = rememberPatternFormatter("MMMd")
+    val content = LocalContentColor.current
+    val (left, right) = when (val day = daylight.day) {
+        is SunDay.Rises -> {
+            val minutes = SunPolicy.minutes(day.length)
+            val length = stringResource(R.string.weather_day_length, minutes / 60, minutes % 60)
+            val change = daylight.changeMinutes
+            stringResource(R.string.weather_sunrise_sunset, day.sunrise.format(time), day.sunset.format(time)) to when {
+                change == null || change == 0 -> length
+                change < 0 -> stringResource(R.string.weather_day_shorter, length, -change)
+                else -> stringResource(R.string.weather_day_longer, length, change)
+            }
+        }
+        SunDay.Down -> stringResource(R.string.weather_polar_night) to
+            daylight.until?.let { stringResource(R.string.weather_polar_night_until, it.format(date)) }
+        SunDay.Up -> stringResource(R.string.weather_midnight_sun) to
+            daylight.until?.let { stringResource(R.string.weather_midnight_sun_until, it.format(date)) }
+    }
+    Spacer(Modifier.height(10.dp))
+    FlowRow(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SunIcon(Modifier.size(width = 16.dp, height = 10.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(left, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        }
+        right?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = content.copy(alpha = 0.85f), maxLines = 1) }
+    }
+}
+
+/** A half sun on the horizon, in the card's text colour with a warm tint. / 地平线上的半个太阳，卡片文字色偏暖。 */
+@Composable
+private fun SunIcon(modifier: Modifier) {
+    val content = LocalContentColor.current
+    val sun = lerp(content, SUN_TINT, SUN_TINT_AMOUNT)
+    Canvas(modifier) {
+        val horizon = size.height * 0.85f
+        val radius = size.height * 0.62f
+        drawArc(
+            color = sun,
+            startAngle = 180f,
+            sweepAngle = 180f,
+            useCenter = true,
+            topLeft = Offset(size.width / 2 - radius, horizon - radius),
+            size = Size(radius * 2, radius * 2),
+        )
+        drawLine(content.copy(alpha = 0.8f), Offset(0f, horizon), Offset(size.width, horizon), strokeWidth = 1.2.dp.toPx(), cap = StrokeCap.Round)
     }
 }
 
@@ -565,3 +719,12 @@ private const val STRIP_DAYS = 4
 
 /** A day with at least this much precipitation is shown bold. / 当天累计降水达到该值时加粗显示。 */
 private const val HEAVY_PRECIP_MM = 5.0
+
+/** More than two warnings at once is rare; the rest would push the forecast down. / 同时超过两条预警很少见，再多会把预报挤下去。 */
+private const val MAX_WARNINGS = 2
+
+private val WARNING_CORNER = 14.dp
+
+/** The sun is the card's text colour pulled towards amber. / 太阳是卡片文字色向琥珀色偏移。 */
+private val SUN_TINT = Color(0xFFFFC14D)
+private const val SUN_TINT_AMOUNT = 0.8f

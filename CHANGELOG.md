@@ -9,9 +9,20 @@ looks it up literally.
 - README redone: a banner with the icon, slogan and two phones, badges and a download button, a grid of all modules with
   their woven icons, a mosaic of the home cards, install steps and data sources. The artwork is drawn by
   `scripts/readme/make_art.py` from the screenshot-test pictures.
+- Weather warnings: MET Norway's warnings for the weather place appear at the top of the weather card in MET's own
+  colour (yellow, orange, red), with the kind and when it applies ("Orange warning · wind, tomorrow 06:00–18:00"); tap
+  one for MET's description and advice. They also lead the "Today" lines and the morning brief. Only land warnings, only
+  in Norway. A new switch in the weather settings notifies about new warnings; it is off by default.
+- Weather: a daylight row with sunrise, sunset, the length of the day and how much it changed since yesterday; polar
+  night and midnight sun say when the sun comes back or first sets. Worked out on the phone, no network needed.
 
 - README 重新设计：带图标、标语和两部手机的横幅，徽章和下载按钮，带编织图标的模块一览，首页卡片拼图，安装步骤和数据来源。
   图由 `scripts/readme/make_art.py` 用截图测试的图片画出。
+- 天气预警：天气地点的挪威气象局预警显示在天气卡顶部，用 MET 自己的颜色（黄、橙、红），写明类型和时间（「橙色预警 · 大风
+  明天 06:00–18:00」）；点开看 MET 的说明和建议。预警也排在「今天」和早间简报的第一行。只要陆地预警，只限挪威。天气设置里
+  新增预警通知开关，默认关闭。
+- 天气：新增日照一行，显示日出、日落、白天时长以及比昨天长短多少；极夜和极昼时写明太阳哪天回来、哪天开始落下。在手机上计算，
+  不需要联网。
 
 ## 0.3.3
 

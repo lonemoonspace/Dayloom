@@ -15,6 +15,8 @@ looks it up literally.
   in Norway. A new switch in the weather settings notifies about new warnings; it is off by default.
 - Weather: a daylight row with sunrise, sunset, the length of the day and how much it changed since yesterday; polar
   night and midnight sun say when the sun comes back or first sets. Worked out on the phone, no network needed.
+- Build: compileSdk 37.2 (Compose 1.13 needs 37.1+; targetSdk unchanged), Compose BOM 2026.11.01, AGP 9.5.3,
+  Gradle 9.9.2, lifecycle 2.11.1, KSP 2.3.14, Robolectric 4.18.1, setup-java 6.3.0.
 
 - README 重新设计：带图标、标语和两部手机的横幅，徽章和下载按钮，带编织图标的模块一览，首页卡片拼图，安装步骤和数据来源。
   图由 `scripts/readme/make_art.py` 用截图测试的图片画出。
@@ -23,6 +25,8 @@ looks it up literally.
   新增预警通知开关，默认关闭。
 - 天气：新增日照一行，显示日出、日落、白天时长以及比昨天长短多少；极夜和极昼时写明太阳哪天回来、哪天开始落下。在手机上计算，
   不需要联网。
+- 构建：compileSdk 37.2（Compose 1.13 要求 37.1 及以上；targetSdk 不变）、Compose BOM 2026.11.01、AGP 9.5.3、
+  Gradle 9.9.2、lifecycle 2.11.1、KSP 2.3.14、Robolectric 4.18.1、setup-java 6.3.0。
 
 ## 0.3.3
 

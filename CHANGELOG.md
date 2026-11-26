@@ -4,6 +4,15 @@ Each version has an English section followed by a Chinese one. The heading must 
 looks it up literally.
 每个版本先写英文、再写中文。标题必须恰好是 `## X.Y.Z`：发版 workflow 按字面查找。
 
+## Unreleased
+
+- README redone: a banner with the icon, slogan and two phones, badges and a download button, a grid of all modules with
+  their woven icons, a mosaic of the home cards, install steps and data sources. The artwork is drawn by
+  `scripts/readme/make_art.py` from the screenshot-test pictures.
+
+- README 重新设计：带图标、标语和两部手机的横幅，徽章和下载按钮，带编织图标的模块一览，首页卡片拼图，安装步骤和数据来源。
+  图由 `scripts/readme/make_art.py` 用截图测试的图片画出。
+
 ## 0.3.3
 
 - New To-do module: a home card for quick notes of things to do. Tap the circle to tick one off (it stays struck through
